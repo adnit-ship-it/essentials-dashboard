@@ -64,7 +64,7 @@ export function LogoSizesEditorWrapper() {
       return {
         ...data,
         logoSizes: newLogoSizes,
-      }
+      } as any
     })
   }
 
