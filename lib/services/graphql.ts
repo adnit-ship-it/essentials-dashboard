@@ -9,10 +9,18 @@ export interface GraphQLRequestOptions<Vars = Record<string, any>> {
 }
 
 export async function fetchGraphQL<TData = any, TVars = Record<string, any>>(options: GraphQLRequestOptions<TVars>): Promise<TData> {
-	const endpoint = options.endpoint || process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT
+	// Use proxy endpoint to avoid CORS issues in production
+	// The proxy endpoint is at /api/graphql and forwards to the actual GraphQL API
+	const useProxy = typeof window !== "undefined" // Use proxy in browser (client-side)
+	const proxyEndpoint = "/api/graphql"
+	const directEndpoint = options.endpoint || process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT
+	
+	const endpoint = useProxy ? proxyEndpoint : directEndpoint
+	
 	if (!endpoint) {
 		throw new Error("GraphQL endpoint is not configured. Set NEXT_PUBLIC_GRAPHQL_ENDPOINT.")
 	}
+	
 	const defaultHeaders: Record<string, string> = {
 		"Content-Type": "application/json",
 	}
@@ -41,6 +49,8 @@ export async function fetchGraphQL<TData = any, TVars = Record<string, any>>(opt
 		console.groupCollapsed("[GraphQL] Request")
 		// eslint-disable-next-line no-console
 		console.log("Endpoint:", endpoint)
+		// eslint-disable-next-line no-console
+		console.log("Using proxy:", useProxy)
 		// eslint-disable-next-line no-console
 		console.log("Has Authorization:", Boolean(defaultHeaders["Authorization"]))
 		// eslint-disable-next-line no-console

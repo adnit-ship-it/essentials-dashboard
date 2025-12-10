@@ -2527,6 +2527,47 @@ app.delete(
   }
 )
 
+// --- GraphQL Proxy Endpoint (to avoid CORS issues) ---
+app.post("/api/graphql", async (req: Request, res: Response) => {
+  try {
+    const graphqlEndpoint = process.env.GRAPHQL_ENDPOINT || process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
+    if (!graphqlEndpoint) {
+      return res.status(500).json({
+        error: "GraphQL endpoint is not configured. Set GRAPHQL_ENDPOINT or NEXT_PUBLIC_GRAPHQL_ENDPOINT.",
+      });
+    }
+
+    // Forward the authorization header from the client request
+    const authHeader = req.headers.authorization;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (authHeader) {
+      headers["Authorization"] = authHeader;
+    } else if (process.env.GRAPHQL_TOKEN || process.env.NEXT_PUBLIC_GRAPHQL_TOKEN) {
+      // Fallback to env token if no auth header from client
+      headers["Authorization"] = `Bearer ${process.env.GRAPHQL_TOKEN || process.env.NEXT_PUBLIC_GRAPHQL_TOKEN}`;
+    }
+
+    // Forward the GraphQL request to the actual endpoint
+    const response = await fetch(graphqlEndpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(req.body),
+    });
+
+    const data = await response.json();
+    
+    // Forward the status code and response
+    res.status(response.status).json(data);
+  } catch (error: any) {
+    console.error("GraphQL proxy error:", error);
+    res.status(500).json({
+      error: `GraphQL proxy failed: ${error.message}`,
+    });
+  }
+});
+
 // --- Server Start ---
 app.listen(PORT, () =>
   console.log(`✅ Backend server running on http://localhost:${PORT}`)
