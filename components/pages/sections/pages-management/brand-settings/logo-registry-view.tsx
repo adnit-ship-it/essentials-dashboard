@@ -413,8 +413,8 @@ export function LogoRegistryView() {
           onSave={(description, file) => handleEditLogo(editingKey, description, file)}
           onClose={() => setEditingKey(null)}
           uploading={uploading}
-          repoOwner={repoOwnerFromLink}
-          repoName={repoNameFromLink}
+          repoOwner={repoOwnerFromLink ?? undefined}
+          repoName={repoNameFromLink ?? undefined}
         />
       )}
     </div>
