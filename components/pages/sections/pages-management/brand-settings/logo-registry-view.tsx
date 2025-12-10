@@ -314,7 +314,7 @@ export function LogoRegistryView() {
               <div className="space-y-2">
                 <div className="h-32 w-full bg-muted rounded-md flex items-center justify-center overflow-hidden border">
                   <img
-                    src={getLogoPreviewUrl(entry.path, repoOwnerFromLink, repoNameFromLink)}
+                    src={getLogoPreviewUrl(entry.path, repoOwnerFromLink ?? undefined, repoNameFromLink ?? undefined)}
                     alt={entry.description}
                     className="max-w-full max-h-full object-contain"
                     onError={(e) => {
@@ -329,13 +329,13 @@ export function LogoRegistryView() {
                             <span>Image not found</span>
                             <span class="text-xs mt-1 break-all">Path: ${entry.path}</span>
                             <span class="text-xs">Repo: ${repoOwnerFromLink || 'N/A'}/${repoNameFromLink || 'N/A'}</span>
-                            <span class="text-xs">URL: ${getLogoPreviewUrl(entry.path, repoOwnerFromLink, repoNameFromLink)}</span>
+                            <span class="text-xs">URL: ${getLogoPreviewUrl(entry.path, repoOwnerFromLink ?? undefined, repoNameFromLink ?? undefined)}</span>
                           </div>
                         `
                       }
                       console.error('❌ Failed to load logo:', {
                         path: entry.path,
-                        url: getLogoPreviewUrl(entry.path, repoOwnerFromLink, repoNameFromLink),
+                        url: getLogoPreviewUrl(entry.path, repoOwnerFromLink ?? undefined, repoNameFromLink ?? undefined),
                         repoOwner: repoOwnerFromLink,
                         repoName: repoNameFromLink
                       })
@@ -343,7 +343,7 @@ export function LogoRegistryView() {
                     onLoad={() => {
                       console.log('✅ Logo loaded successfully:', {
                         path: entry.path,
-                        url: getLogoPreviewUrl(entry.path, repoOwnerFromLink, repoNameFromLink),
+                        url: getLogoPreviewUrl(entry.path, repoOwnerFromLink ?? undefined, repoNameFromLink ?? undefined),
                         repoOwner: repoOwnerFromLink,
                         repoName: repoNameFromLink
                       })
