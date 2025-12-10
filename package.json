@@ -8,7 +8,9 @@
     "dev:frontend": "next dev",
     "dev:backend": "tsx server.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "concurrently \"npm:start:frontend\" \"npm:start:backend\"",
+    "start:frontend": "next start",
+    "start:backend": "tsx server.ts",
     "start:dev": "tsx server.ts",
     "lint": "next lint"
   },
