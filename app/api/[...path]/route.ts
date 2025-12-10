@@ -6,29 +6,33 @@ import { NextRequest, NextResponse } from "next/server"
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  context: { params: Promise<{ path: string[] }> }
 ) {
+  const params = await context.params
   return handleProxyRequest(req, params, "GET")
 }
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  context: { params: Promise<{ path: string[] }> }
 ) {
+  const params = await context.params
   return handleProxyRequest(req, params, "POST")
 }
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  context: { params: Promise<{ path: string[] }> }
 ) {
+  const params = await context.params
   return handleProxyRequest(req, params, "PUT")
 }
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  context: { params: Promise<{ path: string[] }> }
 ) {
+  const params = await context.params
   return handleProxyRequest(req, params, "DELETE")
 }
 

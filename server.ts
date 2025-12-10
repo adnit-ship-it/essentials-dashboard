@@ -43,7 +43,9 @@ app.use(
 );
 
 // --- Configuration Constants ---
-const PORT = process.env.PORT || process.env.SERVER_PORT || 3001;
+// Use SERVER_PORT if set, otherwise use PORT-1 to avoid conflicts with Next.js
+// Next.js will use PORT (usually 10000 on Render), Express uses PORT-1 or 3001
+const PORT = process.env.SERVER_PORT || (process.env.PORT ? parseInt(process.env.PORT) - 1 : 3001);
 
 // Legacy env vars (for backward compatibility during migration)
 const CONTENT_REPO_OWNER = process.env.CONTENT_REPO_OWNER;
