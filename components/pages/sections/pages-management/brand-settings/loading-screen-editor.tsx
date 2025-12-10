@@ -40,8 +40,8 @@ export function LoadingScreenEditor() {
     )
   }
 
-  const loadingScreen = pagesData.loadingScreen || { logo: { src: "", alt: "" }, text: "Loading..." }
-  const logoSizes = pagesData.logoSizes || {}
+  const loadingScreen = (pagesData as any).loadingScreen || { logo: { src: "", alt: "" }, text: "Loading..." }
+  const logoSizes = (pagesData as any).logoSizes || {} as Record<string, LogoSize>
   const loadingScreenLogoSizes: LogoSize = logoSizes.loadingScreen || {
     height: { mobile: "", desktop: "" },
     width: { mobile: "auto", desktop: "auto" },
