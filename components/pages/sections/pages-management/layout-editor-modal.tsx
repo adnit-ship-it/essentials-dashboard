@@ -192,11 +192,11 @@ export function LayoutEditorModal({
   }
 
   const navbarLogoUrl = navbar.logo?.src
-    ? getLogoPreviewUrl(navbar.logo.src, repoOwnerFromLink, repoNameFromLink)
+    ? getLogoPreviewUrl(navbar.logo.src, repoOwnerFromLink ?? undefined, repoNameFromLink ?? undefined)
     : ""
 
   const footerLogoUrl = footer.logo?.src
-    ? getLogoPreviewUrl(footer.logo.src, repoOwnerFromLink, repoNameFromLink)
+    ? getLogoPreviewUrl(footer.logo.src, repoOwnerFromLink ?? undefined, repoNameFromLink ?? undefined)
     : ""
 
   const updateNavbar = (updates: any) => {

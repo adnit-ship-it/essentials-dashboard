@@ -19,12 +19,12 @@ export function PageMetadataEditor() {
     )
   }
 
-  const common = pagesData.common || {}
+  const common = (pagesData as any).common || {}
   const pageTitle = common.pageTitle || ""
   const pageDescription = common.pageDescription || ""
 
   const handlePageTitleChange = (title: string) => {
-    updatePagesData((data) => {
+    updatePagesData(((data: any) => {
       return {
         ...data,
         common: {
@@ -32,11 +32,11 @@ export function PageMetadataEditor() {
           pageTitle: title,
         },
       }
-    })
+    }) as any)
   }
 
   const handlePageDescriptionChange = (description: string) => {
-    updatePagesData((data) => {
+    updatePagesData(((data: any) => {
       return {
         ...data,
         common: {
@@ -44,7 +44,7 @@ export function PageMetadataEditor() {
           pageDescription: description,
         },
       }
-    })
+    }) as any)
   }
 
   return (

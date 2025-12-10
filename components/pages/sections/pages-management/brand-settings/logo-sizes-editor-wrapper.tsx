@@ -4,6 +4,7 @@ import { usePagesStore } from "@/lib/stores/pages-store"
 import { LogoSizesEditor } from "@/components/pages/sections/brand-settings/logo-sizes-editor"
 import { Card, CardContent } from "@/components/ui/card"
 import type { LogoSize } from "@/lib/types/branding"
+import type { PagesData } from "@/lib/types/pages"
 
 // Helper to convert from pages.json format to editor format
 function convertLogoSizes(pagesData: any): {
@@ -60,12 +61,11 @@ export function LogoSizesEditorWrapper() {
   const logoSizes = convertLogoSizes(pagesData)
 
   const handleLogoSizesChange = (newLogoSizes: typeof logoSizes) => {
-    updatePagesData((data) => {
-      return {
-        ...data,
-        logoSizes: newLogoSizes,
-      } as any
-    })
+    updatePagesData(((data: PagesData) => {
+      const updated = { ...data } as any
+      updated.logoSizes = newLogoSizes
+      return updated as PagesData
+    }) as any)
   }
 
   return (

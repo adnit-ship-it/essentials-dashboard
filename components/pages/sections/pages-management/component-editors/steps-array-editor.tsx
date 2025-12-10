@@ -121,6 +121,7 @@ function SortableStepItem({
           <div className="space-y-2">
             <Label>Icon (Upload New)</Label>
             <ImageUpload
+              label="Icon"
               value={item.icon?.src || ""}
               onChange={(path) =>
                 onUpdate({

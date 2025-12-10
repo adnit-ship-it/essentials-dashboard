@@ -99,10 +99,11 @@ export type PageKey = string;
 /**
  * Pages data structure (Pages.json)
  */
-export interface PagesData {
+export type PagesData = {
   iconRegistry?: IconRegistry;
   logoRegistry?: LogoRegistry;
-  [key: PageKey]: Page | IconRegistry | LogoRegistry;
+} & {
+  [key: string]: Page | IconRegistry | LogoRegistry | undefined;
 }
 
 /**

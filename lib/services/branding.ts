@@ -10,6 +10,7 @@ import type {
   LogoHeights,
   LogoLocation,
   LogoSlot,
+  LogoState,
   LogoUpload,
   LogoUploadResult,
   PageKey,
