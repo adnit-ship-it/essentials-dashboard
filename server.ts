@@ -35,7 +35,10 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN || "http://localhost:3000",
+    origin: process.env.FRONTEND_ORIGIN 
+      ? process.env.FRONTEND_ORIGIN.split(",").map(origin => origin.trim())
+      : ["http://localhost:3000", "https://essentials-dashboard.onrender.com"],
+    credentials: true,
   })
 );
 

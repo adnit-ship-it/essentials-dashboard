@@ -25,7 +25,8 @@ import {
   repoPathToAssetSrc,
 } from "@/lib/utils/repo-paths"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+// Use relative URLs in browser to avoid CORS issues
+const API_BASE_URL = typeof window !== "undefined" ? "" : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
 
 const DEFAULT_COLORS: BrandingColors = {
   backgroundColor: "#FDFAF6",

@@ -36,7 +36,8 @@ export function ProductCardEditor({ value, onUpdate }: ProductCardEditorProps) {
 
       setLoadingProducts(true)
       try {
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+        // Use relative URLs in browser to avoid CORS issues
+        const API_BASE_URL = typeof window !== "undefined" ? "" : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
         const response = await fetch(
           `${API_BASE_URL}/api/products?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
         )

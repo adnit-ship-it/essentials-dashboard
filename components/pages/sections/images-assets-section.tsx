@@ -50,8 +50,8 @@ interface PendingAsset {
   base64: string;
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+// Use relative URLs in browser to avoid CORS issues
+const API_BASE_URL = typeof window !== "undefined" ? "" : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001");
 
 const fileToBase64 = (file: File) =>
   new Promise<string>((resolve, reject) => {

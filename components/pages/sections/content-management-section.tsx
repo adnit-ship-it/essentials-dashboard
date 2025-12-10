@@ -309,7 +309,8 @@ function AddItemModal({
         const repoPath = `public/assets/images/clients/${filename}.${extension}`;
 
         // Upload to repository
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+        // Use relative URLs in browser to avoid CORS issues
+        const apiUrl = typeof window !== "undefined" ? "" : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001");
         const url = `${apiUrl}/api/product-images?owner=${encodeURIComponent(repoOwner)}&repo=${encodeURIComponent(repoName)}`;
         const response = await fetch(url, {
           method: "POST",
