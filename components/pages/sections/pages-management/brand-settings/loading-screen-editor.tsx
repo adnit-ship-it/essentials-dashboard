@@ -48,7 +48,7 @@ export function LoadingScreenEditor() {
   }
 
   const logoUrl = loadingScreen.logo?.src
-    ? getLogoPreviewUrl(loadingScreen.logo.src, repoOwnerFromLink, repoNameFromLink)
+    ? getLogoPreviewUrl(loadingScreen.logo.src, repoOwnerFromLink ?? undefined, repoNameFromLink ?? undefined)
     : ""
 
   const handleLogoChange = (path: string) => {
