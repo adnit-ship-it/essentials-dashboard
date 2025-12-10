@@ -324,8 +324,8 @@ export function BrandSettingsSection() {
         logos={settings.logos}
         onLogoUpload={handleLogoUpload}
         onClearPending={handleClearPending}
-        repoOwner={repoOwnerFromLink}
-        repoName={repoNameFromLink}
+        repoOwner={repoOwnerFromLink ?? undefined}
+        repoName={repoNameFromLink ?? undefined}
       />
 
       <ColorPaletteEditor
