@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    /* --- Overrides for Node.js Backend: Use Stable CommonJS --- */
+
+    // 1. Set to CJS for maximum compatibility with Node ecosystem tools and packages
+    "module": "ESNext",
+    "moduleResolution": "node", // Use standard Node resolution logic
+
+    // 2. Target a stable Node version
+    "target": "ES2020",
+    "outDir": "./dist-server",
+
+    // 3. Essential Interop flags
+    "esModuleInterop": true, // Allows 'import express from "express"'
+    "allowSyntheticDefaultImports": true, // Often needed with CJS targets
+    "lib": ["ES2020"],
+
+    // 4. Ensure files can be emitted if needed
+    "noEmit": false
+  },
+
+  "include": ["server.ts", "githubAuth.ts"],
+  "exclude": ["node_modules", ".next", "dist-server"]
+}
