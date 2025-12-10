@@ -1,10 +1,12 @@
 import dotenv from "dotenv";
-console.log("CWD:", process.cwd());
-const result = dotenv.config({ path: ".env.local" });
-if (result.error) {
-  console.error("Error loading .env.local", result.error);
-} else {
-  console.log(".env.local loaded");
+// Only load .env.local in development, not in production
+if (process.env.NODE_ENV !== 'production') {
+  const result = dotenv.config({ path: ".env.local" });
+  if (result.error) {
+    console.warn("Warning: .env.local not found (this is OK in production)");
+  } else {
+    console.log(".env.local loaded");
+  }
 }
 
 import express, { Request, Response } from "express";
@@ -38,7 +40,7 @@ app.use(
 );
 
 // --- Configuration Constants ---
-const PORT = process.env.SERVER_PORT || 3001;
+const PORT = process.env.PORT || process.env.SERVER_PORT || 3001;
 
 // Legacy env vars (for backward compatibility during migration)
 const CONTENT_REPO_OWNER = process.env.CONTENT_REPO_OWNER;
