@@ -216,7 +216,7 @@ export function ComponentsView() {
           }
           
           return (
-            <Card className="overflow-hidden">
+            <Card className="overflow-hidden w-full md:w-1/2">
               <CardContent className="p-0">
                 <div className="relative w-full aspect-video bg-muted overflow-hidden">
                   <img
