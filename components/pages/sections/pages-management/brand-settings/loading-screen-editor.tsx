@@ -2,7 +2,7 @@
 
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
-import { CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { LogoSelector } from "../component-editors/shared/logo-selector"
