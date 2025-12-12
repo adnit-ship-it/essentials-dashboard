@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import React from "react"
-import { Plus, Edit2, Trash2, Image as ImageIcon, Loader2, AlertTriangle } from "lucide-react"
+import { Plus, Edit2, Trash2, Image as ImageIcon, Loader2, AlertTriangle, CheckCircle2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -52,6 +52,7 @@ export function LogoRegistryView() {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const logoRegistry = pagesData?.logoRegistry || {}
@@ -70,6 +71,7 @@ export function LogoRegistryView() {
     const file = fileInputRef.current.files[0]
     setUploading(true)
     setError(null)
+    setSuccess(null)
 
     try {
       // Validate file type
@@ -132,10 +134,13 @@ export function LogoRegistryView() {
         return updated
       })
 
+      setSuccess("Logo added successfully!")
       setIsAddDialogOpen(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ""
       }
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccess(null), 5000)
     } catch (err) {
       setError((err as Error).message || "Failed to add logo")
     } finally {
@@ -282,7 +287,22 @@ export function LogoRegistryView() {
       {error && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="flex-1">{error}</AlertDescription>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => setError(null)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </Alert>
+      )}
+
+      {success && (
+        <Alert className="border-emerald-200 bg-emerald-50 text-emerald-700">
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
 

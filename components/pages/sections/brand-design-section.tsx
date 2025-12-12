@@ -702,6 +702,9 @@ export function BrandDesignSection() {
       if (hasHeroLogoHeightChanges) {
         successMessages.push("hero logo heights")
       }
+      if (heroLogoUploadResult) {
+        successMessages.push("hero logo")
+      }
       if (uploadResults.size > 0) {
         successMessages.push("logo paths")
       }

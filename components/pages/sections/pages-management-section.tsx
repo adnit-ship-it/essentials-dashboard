@@ -61,71 +61,74 @@ export function PagesManagementSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">Pages & Sections</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage pages, sections, and component content for your website.
-          </p>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-background border-b pb-4 pt-4 -mt-8 -mx-8 px-8 mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium">Pages & Sections</h3>
+            <p className="text-sm text-muted-foreground">
+              Manage pages, sections, and component content for your website.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {hasPendingChanges && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={discardChanges}
+                  disabled={isSaving}
+                  className="gap-2"
+                >
+                  <Undo2 className="h-4 w-4" />
+                  Discard
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={saveAll}
+                  disabled={isSaving || !hasPendingChanges}
+                  className="gap-2"
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save Changes
+                </Button>
+              </>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchData}
+              disabled={isLoading || isSaving || !repoOwnerFromLink || !repoNameFromLink}
+              className="gap-2"
+            >
+              <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {hasPendingChanges && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={discardChanges}
-                disabled={isSaving}
-                className="gap-2"
-              >
-                <Undo2 className="h-4 w-4" />
-                Discard
-              </Button>
-              <Button
-                size="sm"
-                onClick={saveAll}
-                disabled={isSaving || !hasPendingChanges}
-                className="gap-2"
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Save Changes
-              </Button>
-            </>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchData}
-            disabled={isLoading || isSaving || !repoOwnerFromLink || !repoNameFromLink}
-            className="gap-2"
-          >
-            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-            Refresh
-          </Button>
-        </div>
-      </div>
 
-      {feedback && (
-        <div
-          className={cn(
-            "flex items-center gap-2 rounded-lg border p-3 text-sm",
-            feedback.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-red-200 bg-red-50 text-red-700"
-          )}
-        >
-          {feedback.type === "success" ? (
-            <CheckCircle2 className="h-4 w-4" />
-          ) : (
-            <AlertTriangle className="h-4 w-4" />
-          )}
-          <span>{feedback.message}</span>
-        </div>
-      )}
+        {feedback && (
+          <div
+            className={cn(
+              "flex items-center gap-2 rounded-lg border p-3 text-sm mt-4",
+              feedback.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-red-200 bg-red-50 text-red-700"
+            )}
+          >
+            {feedback.type === "success" ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <AlertTriangle className="h-4 w-4" />
+            )}
+            <span>{feedback.message}</span>
+          </div>
+        )}
+      </div>
 
       {error && (
         <Card className={hasConflict ? "border-yellow-500 bg-yellow-50" : ""}>

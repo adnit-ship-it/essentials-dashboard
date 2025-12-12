@@ -13,6 +13,12 @@ import { auth } from "@/lib/firebase/client"
 
 const sidebarItems = [
   {
+    title: "Brand Settings",
+    icon: Palette,
+    href: "/brand-settings",
+    id: "brand-settings",
+  },
+  {
     title: "Pages & Sections",
     icon: Layout,
     href: "/pages",
@@ -23,12 +29,6 @@ const sidebarItems = [
     icon: Package,
     href: "/products",
     id: "products",
-  },
-  {
-    title: "Brand Settings",
-    icon: Palette,
-    href: "/brand-settings",
-    id: "brand-settings",
   },
   // Forms temporarily hidden
 ]

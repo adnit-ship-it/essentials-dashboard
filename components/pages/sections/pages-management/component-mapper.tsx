@@ -20,6 +20,7 @@ import { InfoCardEditor } from "./component-editors/info-card-editor"
 import { InfoCardWithBulletpointsEditor } from "./component-editors/info-card-with-bulletpoints-editor"
 import { BadgeEditor } from "./component-editors/badge-editor"
 import { GenericEditor } from "./component-editors/generic-editor"
+import { cn } from "@/lib/utils"
 
 interface ComponentEditorProps {
   component: Component
@@ -28,6 +29,34 @@ interface ComponentEditorProps {
   onUpdate: (path: string[], value: any) => void
   onArrayAdd?: (arrayKey: string, item: any) => void
   onArrayRemove?: (arrayKey: string, itemIndex: number) => void
+}
+
+/**
+ * Determines if a section should use compact grid layout
+ */
+export function shouldUseCompactGrid(sectionName: string): boolean {
+  const compactSections = [
+    "home results",
+    "home products",
+    "home faq",
+    "about hero",
+    "products hero",
+    "about stats",
+  ]
+  
+  const normalized = sectionName.toLowerCase().trim()
+  const normalizedNoSpaces = normalized.replace(/\s+/g, "")
+  
+  return compactSections.some((section) => {
+    const sectionNormalized = section.toLowerCase().trim()
+    const sectionNoSpaces = sectionNormalized.replace(/\s+/g, "")
+    return (
+      normalized.includes(sectionNormalized) ||
+      sectionNormalized.includes(normalized) ||
+      normalizedNoSpaces.includes(sectionNoSpaces) ||
+      sectionNoSpaces.includes(normalizedNoSpaces)
+    )
+  })
 }
 
 /**
@@ -43,9 +72,15 @@ export function ComponentMapper({
 }: ComponentEditorProps) {
   // Get all keys in the component
   const keys = Object.keys(component)
+  const useCompactGrid = shouldUseCompactGrid(sectionName)
+  
+  // Determine grid columns based on section type
+  const gridCols = useCompactGrid 
+    ? "grid-cols-1 md:grid-cols-3 lg:grid-cols-4" 
+    : "grid-cols-1 md:grid-cols-2"
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 [&_[data-slot=card]]:py-4 [&_[data-slot=card]]:gap-4 [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:pb-3 [&_[data-slot=card-content]]:px-4">
+    <div className={cn("grid gap-4", gridCols, "[&_[data-slot=card]]:py-4 [&_[data-slot=card]]:gap-4 [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:pb-3 [&_[data-slot=card-content]]:px-4")}>
       {keys.map((key) => {
         const value = component[key]
         const reactKey = `${componentIndex}-${key}`
@@ -96,7 +131,7 @@ export function ComponentMapper({
             <LogosArrayEditor
               key={reactKey}
               {...editorProps}
-              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { src: "", alt: "" }) : undefined}
+              onArrayAdd={undefined}
               onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
             />
           )

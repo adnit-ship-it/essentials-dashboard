@@ -51,7 +51,7 @@ const PORT = process.env.SERVER_PORT || (process.env.PORT ? parseInt(process.env
 const CONTENT_REPO_OWNER = process.env.CONTENT_REPO_OWNER;
 const CONTENT_REPO_NAME = process.env.CONTENT_REPO_NAME;
 const CONTENT_FILE_PATH = 'data/websiteText.json';
-const PRODUCTS_FILE_PATH = "data/intake-form/products.ts";
+const PRODUCTS_FILE_PATH = "data/intake-form/productsList.ts";
 const TAILWIND_CONFIG_PATH = "tailwind.config.js";
 const BRAND_PRIMARY_LOGO_PATH = "public/assets/images/brand/logo.svg";
 const BRAND_SECONDARY_LOGO_PATH = "public/assets/images/brand/logo-alt.svg";
@@ -86,7 +86,7 @@ function getActiveRepoConfigFromRequest(req: Request): {
   const branch = (q.branch as string) || process.env.CONTENT_REPO_BRANCH || "main";
   const contentFilePath = process.env.CONTENT_FILE_PATH as string;
   const productsFilePath =
-    process.env.CONTENT_PRODUCTS_FILE_PATH || "data/intake-form/products.ts";
+    process.env.CONTENT_PRODUCTS_FILE_PATH || "data/intake-form/productsList.ts";
   const tailwindConfigPath = process.env.CONTENT_TAILWIND_PATH || "tailwind.config.js";
 
   const resolveLogoPath = (value?: string, fallback?: string) => {
@@ -409,15 +409,22 @@ export function getPopularProducts(): Product[] {
 `;
 
 function extractProductsArray(content: string): Product[] {
-  // First, try to find direct export: export const products: Product[] = [...]
+  // First, try to find exported productsData: export const productsData: Product[] = [...]
   let arrayMatch = content.match(
-    /export const products\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
+    /export\s+const\s+productsData\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
   );
 
-  // If not found, try to find productsData array: const productsData: Product[] = [...]
+  // If not found, try non-exported: const productsData: Product[] = [...]
   if (!arrayMatch || arrayMatch.length < 2) {
     arrayMatch = content.match(
-      /const productsData\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
+      /const\s+productsData\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
+    );
+  }
+
+  // If not found, try direct export: export const products: Product[] = [...]
+  if (!arrayMatch || arrayMatch.length < 2) {
+    arrayMatch = content.match(
+      /export\s+const\s+products\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
     );
   }
 
@@ -451,6 +458,115 @@ export const products: Product[] = ${formattedArray};
 
 ${PRODUCTS_FILE_FOOTER}`.trimStart() + "\n"
   );
+}
+
+/**
+ * Replaces only the products array in the original file content, preserving all other code
+ * Prioritizes replacing productsData (the source array) over the exported products
+ */
+function replaceProductsArrayInFile(originalContent: string, products: Product[]): string {
+  const formattedArray = formatProductsArray(products);
+  
+  // First, try to match: export const productsData: Product[] = [...]
+  const exportedProductsDataPattern = /(export\s+const\s+productsData\s*:\s*Product\[\]\s*=\s*)\[[\s\S]*?\](;)/;
+  const exportedProductsDataMatch = originalContent.match(exportedProductsDataPattern);
+  
+  if (exportedProductsDataMatch && exportedProductsDataMatch.index !== undefined) {
+    const declarationStart = exportedProductsDataMatch.index;
+    const arrayStart = declarationStart + exportedProductsDataMatch[1].length;
+    let bracketCount = 0;
+    let arrayEndIndex = arrayStart;
+    let foundStart = false;
+    
+    for (let i = arrayStart; i < originalContent.length; i++) {
+      const char = originalContent[i];
+      if (char === '[') {
+        bracketCount++;
+        foundStart = true;
+      } else if (char === ']') {
+        bracketCount--;
+        if (foundStart && bracketCount === 0) {
+          arrayEndIndex = i + 1;
+          break;
+        }
+      }
+    }
+    
+    if (arrayEndIndex > arrayStart) {
+      // Replace only the array content, preserving declaration and semicolon
+      const before = originalContent.substring(0, arrayStart);
+      const after = originalContent.substring(arrayEndIndex);
+      return `${before}${formattedArray}${after}`;
+    }
+  }
+  
+  // Second, try to match: const productsData: Product[] = [...] (non-exported)
+  const productsDataPattern = /(const\s+productsData\s*:\s*Product\[\]\s*=\s*)\[[\s\S]*?\](;)/;
+  const productsDataMatch = originalContent.match(productsDataPattern);
+  
+  if (productsDataMatch && productsDataMatch.index !== undefined) {
+    const declarationStart = productsDataMatch.index;
+    const arrayStart = declarationStart + productsDataMatch[1].length;
+    let bracketCount = 0;
+    let arrayEndIndex = arrayStart;
+    let foundStart = false;
+    
+    for (let i = arrayStart; i < originalContent.length; i++) {
+      const char = originalContent[i];
+      if (char === '[') {
+        bracketCount++;
+        foundStart = true;
+      } else if (char === ']') {
+        bracketCount--;
+        if (foundStart && bracketCount === 0) {
+          arrayEndIndex = i + 1;
+          break;
+        }
+      }
+    }
+    
+    if (arrayEndIndex > arrayStart) {
+      const before = originalContent.substring(0, arrayStart);
+      const after = originalContent.substring(arrayEndIndex);
+      return `${before}${formattedArray}${after}`;
+    }
+  }
+  
+  // Fallback: Try to match: export const products: Product[] = [...]
+  const exportPattern = /(export\s+const\s+products\s*:\s*Product\[\]\s*=\s*)\[[\s\S]*?\](;)/;
+  const exportMatch = originalContent.match(exportPattern);
+  
+  if (exportMatch && exportMatch.index !== undefined) {
+    const declarationStart = exportMatch.index;
+    const arrayStart = declarationStart + exportMatch[1].length;
+    let bracketCount = 0;
+    let arrayEndIndex = arrayStart;
+    let foundStart = false;
+    
+    for (let i = arrayStart; i < originalContent.length; i++) {
+      const char = originalContent[i];
+      if (char === '[') {
+        bracketCount++;
+        foundStart = true;
+      } else if (char === ']') {
+        bracketCount--;
+        if (foundStart && bracketCount === 0) {
+          arrayEndIndex = i + 1;
+          break;
+        }
+      }
+    }
+    
+    if (arrayEndIndex > arrayStart) {
+      const before = originalContent.substring(0, arrayStart);
+      const after = originalContent.substring(arrayEndIndex);
+      return `${before}${formattedArray}${after}`;
+    }
+  }
+  
+  // If no match found, fall back to the old method (shouldn't happen, but safety net)
+  console.warn("Could not find products array in original content, using fallback serialization");
+  return serializeProductsFile(products);
 }
 
 async function fetchProductsFromRepo(
@@ -536,6 +652,7 @@ async function fetchProductsFromRepo(
     products,
     sha: fileData.sha,
     assets: assetLookup,
+    originalContent: decodedContent, // Preserve original file content
   };
 }
 
@@ -545,6 +662,7 @@ async function updateProductsInRepo({
   sha,
   commitMessage,
   repoConfig,
+  originalContent,
 }: {
   octokit: Awaited<ReturnType<typeof getAuthenticatedClient>>;
   products: Product[];
@@ -556,8 +674,14 @@ async function updateProductsInRepo({
     branch: string;
     productsFilePath: string;
   };
+  originalContent?: string; // Original file content to preserve other code
 }) {
-  const fileContent = serializeProductsFile(products);
+  // If we have original content, replace only the products array
+  // Otherwise, fall back to the old method (for backwards compatibility)
+  const fileContent = originalContent
+    ? replaceProductsArrayInFile(originalContent, products)
+    : serializeProductsFile(products);
+  
   const contentBase64 = Buffer.from(fileContent, "utf8").toString("base64");
 
   const response = await octokit.repos.createOrUpdateFileContents({
@@ -949,7 +1073,7 @@ app.get("/api/products", async (req: Request, res: Response) => {
   try {
     const repoConfig = getActiveRepoConfigFromRequest(req);
     const octokit = await getAuthenticatedClient();
-    const { products, sha, assets } = await fetchProductsFromRepo(octokit, {
+    const { products, sha, assets, originalContent } = await fetchProductsFromRepo(octokit, {
       owner: repoConfig.owner,
       repo: repoConfig.repo,
       branch: repoConfig.branch,
@@ -960,6 +1084,7 @@ app.get("/api/products", async (req: Request, res: Response) => {
       products,
       sha,
       assets,
+      originalContent, // Return original content so frontend can preserve it
     });
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -994,6 +1119,7 @@ interface ProductsUpdateRequest extends Request {
     sha: string;
     commitMessage?: string;
     repoId?: string;
+    originalContent?: string; // Original file content to preserve other code
   };
 }
 
@@ -1038,7 +1164,7 @@ app.put(
   "/api/products",
   async (req: ProductsUpdateRequest, res: Response) => {
     try {
-      const { products, sha, commitMessage, repoId } = req.body;
+      const { products, sha, commitMessage, repoId, originalContent } = req.body;
       const repoConfig = getActiveRepoConfigFromRequest(req);
 
       if (!Array.isArray(products) || !sha) {
@@ -1054,6 +1180,7 @@ app.put(
         products,
         sha,
         commitMessage,
+        originalContent, // Pass original content to preserve other code
         repoConfig: {
           owner: repoConfig.owner,
           repo: repoConfig.repo,
@@ -1621,7 +1748,7 @@ app.post(
         contentFilePath:
           config.contentFilePath || "data/content.json",
         productsFilePath:
-          config.productsFilePath || "data/intake-form/products.ts",
+          config.productsFilePath || "data/intake-form/productsList.ts",
         tailwindConfigPath:
           config.tailwindConfigPath || "tailwind.config.js",
         brandLogoPath:

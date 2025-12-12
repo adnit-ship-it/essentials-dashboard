@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import React from "react"
+import { CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Upload, Loader2, ImageIcon } from "lucide-react"
+import { Upload, Loader2, ImageIcon, X } from "lucide-react"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { fileToPendingUpload } from "@/lib/utils/file-uploads"
 import { uploadLogoFile, getFileSha } from "@/lib/services/logo-registry"
@@ -17,12 +18,21 @@ export function FaviconManager() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [faviconUrl, setFaviconUrl] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const getFaviconUrl = () => {
+  const getFaviconUrl = (cacheBust?: number) => {
     if (!repoOwnerFromLink || !repoNameFromLink) return ""
-    return `https://raw.githubusercontent.com/${repoOwnerFromLink}/${repoNameFromLink}/main/${FAVICON_PATH}`
+    const baseUrl = `https://raw.githubusercontent.com/${repoOwnerFromLink}/${repoNameFromLink}/main/${FAVICON_PATH}`
+    return cacheBust ? `${baseUrl}?t=${cacheBust}` : baseUrl
   }
+
+  // Initialize favicon URL
+  React.useEffect(() => {
+    if (repoOwnerFromLink && repoNameFromLink) {
+      setFaviconUrl(getFaviconUrl())
+    }
+  }, [repoOwnerFromLink, repoNameFromLink])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -75,6 +85,8 @@ export function FaviconManager() {
         existingSha || undefined
       )
 
+      // Update favicon URL with cache-busting to force preview refresh
+      setFaviconUrl(getFaviconUrl(Date.now()))
       setSuccess("Favicon updated successfully!")
       setTimeout(() => setSuccess(null), 5000)
     } catch (err: any) {
@@ -90,14 +102,7 @@ export function FaviconManager() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Favicon</CardTitle>
-        <CardDescription>
-          Upload or replace the site favicon (public/favicon.ico)
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <CardContent className="space-y-4">
         <div className="flex items-center gap-4">
           <Input
             type="file"
@@ -130,8 +135,16 @@ export function FaviconManager() {
         </div>
 
         {error && (
-          <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
-            {error}
+          <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 p-2 rounded">
+            <span className="flex-1">{error}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setError(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         )}
 
@@ -141,13 +154,14 @@ export function FaviconManager() {
           </div>
         )}
 
-        {getFaviconUrl() && (
+        {faviconUrl && (
           <div className="space-y-2">
             <Label>Current Favicon Preview</Label>
             <div className="w-16 h-16 border rounded bg-muted flex items-center justify-center overflow-hidden">
               <img
-                src={getFaviconUrl()}
+                src={faviconUrl}
                 alt="Favicon"
+                key={faviconUrl}
                 className="max-w-full max-h-full object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
@@ -160,8 +174,7 @@ export function FaviconManager() {
             </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+    </CardContent>
   )
 }
 

@@ -1,11 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Save, Loader2 } from "lucide-react"
+import { Save, Loader2, X } from "lucide-react"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { saveBrandingColors } from "@/lib/services/branding"
 import { isValidHex, normalizeHexForSave } from "@/lib/utils/colors"
@@ -115,41 +114,53 @@ export function BrandColorsEditor() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Brand Colors</CardTitle>
-        <CardDescription>
-          Adjust the brand colors used throughout the product. These are saved to tailwind.config.js
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
         <div className="grid gap-6 md:grid-cols-2">
-          {(Object.keys(colors) as Array<keyof BrandingColors>).map((key) => (
-            <div key={key} className="space-y-2">
-              <Label className="uppercase text-xs text-muted-foreground">
-                {key.replace(/([A-Z])/g, " $1")}
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  type="color"
-                  value={colors[key]}
-                  onChange={(event) => handleColorPickerChange(key, event.target.value)}
-                  className="h-10 w-12 cursor-pointer p-1"
-                />
-                <Input
-                  value={colorInputs[key]}
-                  onChange={(event) => handleColorTextChange(key, event.target.value)}
-                  onBlur={() => handleColorTextBlur(key)}
-                  placeholder="#FFFFFF"
-                />
+          {(Object.keys(colors) as Array<keyof BrandingColors>).map((key) => {
+            const descriptions: Record<keyof BrandingColors, string> = {
+              accentColor1: "The primary color",
+              accentColor2: "The secondary color",
+              bodyColor: "Default text color",
+              backgroundColor: "Background color",
+            }
+            return (
+              <div key={key} className="space-y-2">
+                <div>
+                  <Label className="uppercase text-xs text-muted-foreground">
+                    {key.replace(/([A-Z])/g, " $1")}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">{descriptions[key]}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={colors[key]}
+                    onChange={(event) => handleColorPickerChange(key, event.target.value)}
+                    className="h-10 w-12 cursor-pointer p-1"
+                  />
+                  <Input
+                    value={colorInputs[key]}
+                    onChange={(event) => handleColorTextChange(key, event.target.value)}
+                    onBlur={() => handleColorTextBlur(key)}
+                    placeholder="#FFFFFF"
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {error && (
-          <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
-            {error}
+          <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 p-2 rounded">
+            <span className="flex-1">{error}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setError(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         )}
 
@@ -172,8 +183,7 @@ export function BrandColorsEditor() {
             </>
           )}
         </Button>
-      </CardContent>
-    </Card>
+    </div>
   )
 }
 

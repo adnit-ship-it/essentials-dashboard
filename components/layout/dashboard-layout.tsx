@@ -13,7 +13,7 @@ import { useOrganizationStore } from "@/lib/stores/organization-store"
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeSection, setActiveSection] = useState("pages")
+  const [activeSection, setActiveSection] = useState("brand-settings")
   const [showRepoModal, setShowRepoModal] = useState(false)
   const [showOrgConfig, setShowOrgConfig] = useState(false)
   const router = useRouter()
@@ -61,15 +61,17 @@ export function DashboardLayout() {
 
         {/* Content area */}
         <main className="flex-1 overflow-auto">
-          <div className="flex-1 space-y-4 p-8 pt-6">
-            <div className="flex items-center justify-between space-y-2">
-              <h2 className="text-3xl font-bold tracking-tight">
-                {organizations.length === 0 ? "Welcome" : getCurrentSectionTitle()}
-              </h2>
+          <div className="flex-1">
+            {/* Sticky Header */}
+            <div className="sticky top-0 z-10 bg-background border-b pb-4 pt-6 px-8">
+              <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-bold tracking-tight">
+                  {organizations.length === 0 ? "Welcome" : getCurrentSectionTitle()}
+                </h2>
+              </div>
             </div>
-            <div className="space-y-4">
-              {/* Render all sections simultaneously, hide inactive ones with CSS */}
-              {/* This prevents remounting and preserves state across tab switches */}
+            {/* Content */}
+            <div className="p-8 space-y-4">
               <div className={activeSection === "pages" ? "" : "hidden"}>
                 <PagesManagementSection />
               </div>

@@ -2,7 +2,7 @@
 
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { LogoSelector } from "../component-editors/shared/logo-selector"
@@ -106,19 +106,14 @@ export function LoadingScreenEditor() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Loading Screen</CardTitle>
-        <CardDescription>Configure the logo and text shown during page load.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Logo Selection */}
+    <CardContent className="space-y-6">
+        {/* Logo Selection with Alt Text and Loading Text on same row */}
         <div className="space-y-4">
           <Label>Logo</Label>
           <div className="flex items-start gap-4">
             {logoUrl ? (
               <div className="flex-shrink-0">
-                <div className="h-24 w-32 bg-muted rounded-lg flex items-center justify-center overflow-hidden border">
+                <div className="h-20 w-24 bg-muted rounded-lg flex items-center justify-center overflow-hidden border">
                   <img
                     src={logoUrl}
                     alt={loadingScreen.logo?.alt || "Loading screen logo"}
@@ -141,52 +136,51 @@ export function LoadingScreenEditor() {
                 </div>
               </div>
             ) : (
-              <div className="flex-shrink-0 h-24 w-32 bg-muted rounded-lg flex items-center justify-center border border-dashed">
+              <div className="flex-shrink-0 h-20 w-24 bg-muted rounded-lg flex items-center justify-center border border-dashed">
                 <span className="text-xs text-muted-foreground">No logo</span>
               </div>
             )}
-            <div className="flex-1">
-              <LogoSelector
-                label="Select from Registry"
-                value={loadingScreen.logo?.src || ""}
-                onChange={handleLogoChange}
-              />
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <LogoSelector
+                  label="Select from Registry"
+                  value={loadingScreen.logo?.src || ""}
+                  onChange={handleLogoChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Alt Text</Label>
+                <Input
+                  value={loadingScreen.logo?.alt || ""}
+                  onChange={(e) => handleAltChange(e.target.value)}
+                  placeholder="Loading screen logo"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Loading Text</Label>
+                <Input
+                  value={loadingScreen.text || "Loading..."}
+                  onChange={(e) => handleTextChange(e.target.value)}
+                  placeholder="Loading..."
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Alt Text */}
-        <div className="space-y-2">
-          <Label>Alt Text</Label>
-          <Input
-            value={loadingScreen.logo?.alt || ""}
-            onChange={(e) => handleAltChange(e.target.value)}
-            placeholder="Loading screen logo"
-          />
-        </div>
-
-        {/* Loading Text */}
-        <div className="space-y-2">
-          <Label>Loading Text</Label>
-          <Input
-            value={loadingScreen.text || "Loading..."}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Loading..."
-          />
-        </div>
-
-        {/* Logo Sizes */}
+        {/* Logo Sizes - More Compact */}
         <div className="space-y-4">
           <Label>Logo Sizes</Label>
-          <LogoSizeEditor
-            label="Loading Screen Logo"
-            description="Size of logo on loading screen"
-            size={loadingScreenLogoSizes}
-            onSizeChange={handleLogoSizesChange}
-          />
+          <div className="max-w-2xl">
+            <LogoSizeEditor
+              label="Loading Screen Logo"
+              description="Size of logo on loading screen"
+              size={loadingScreenLogoSizes}
+              onSizeChange={handleLogoSizesChange}
+            />
+          </div>
         </div>
-      </CardContent>
-    </Card>
+    </CardContent>
   )
 }
 

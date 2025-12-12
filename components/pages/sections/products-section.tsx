@@ -475,6 +475,7 @@ export function ProductsSection() {
   const originalProductsRef = useRef<Record<string, Product>>({})
   const originalOrderRef = useRef<Product[]>([])
   const assetLookupRef = useRef<AssetLookup>({})
+  const originalContentRef = useRef<string | null>(null) // Store original file content
   const quizNameById = useMemo(() => {
     return quizOptions.reduce<Record<string, string>>((acc, option) => {
       acc[option.id] = option.name
@@ -553,7 +554,7 @@ export function ProductsSection() {
       if (!response.ok) {
         throw new Error(`Request failed with status ${response.status}`)
       }
-      const data: { products: Product[]; sha: string; assets?: AssetLookup } = await response.json()
+      const data: { products: Product[]; sha: string; assets?: AssetLookup; originalContent?: string } = await response.json()
       const normalizedProducts = (data.products || []).map((product) => normalizeProduct(product))
       const assetLookup = data.assets ?? {}
       assetLookupRef.current = assetLookup
@@ -572,6 +573,11 @@ export function ProductsSection() {
 
       setDraftProducts(drafts)
       setSha(data.sha)
+      
+      // Store original content to preserve other code when saving
+      if (data.originalContent) {
+        originalContentRef.current = data.originalContent
+      }
     } catch (err) {
       setError((err as Error).message || "Failed to load products.")
       setDraftProducts([])
@@ -1012,6 +1018,7 @@ export function ProductsSection() {
           body: JSON.stringify({
             products: payloadProducts,
             sha,
+            originalContent: originalContentRef.current, // Pass original content to preserve other code
             commitMessage: `CMS: Update products (${new Date().toISOString()})`,
           }),
         })
@@ -1738,15 +1745,17 @@ export function ProductsSection() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <h3 className="text-lg font-semibold">Products</h3>
-            <p className="text-sm text-muted-foreground">
-              Manage the product catalog backed by the content repository. Stage edits here and push
-              them in a single commit.
-            </p>
-          </div>
-          <div className="flex flex-row items-center gap-2 flex-nowrap">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-10 bg-background border-b pb-4 pt-4 -mt-8 -mx-8 px-8 mb-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold">Products</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage the product catalog backed by the content repository. Stage edits here and push
+                them in a single commit.
+              </p>
+            </div>
+            <div className="flex flex-row items-center gap-2 flex-nowrap">
             <Button
               variant="outline"
               size="sm"
@@ -1791,6 +1800,7 @@ export function ProductsSection() {
               Fetch Product Bundles
             </Button>
           </div>
+        </div>
         </div>
 
         {hasProductsWithMissingFields && (

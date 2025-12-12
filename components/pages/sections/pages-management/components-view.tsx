@@ -5,12 +5,61 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { findSectionInSections } from "@/lib/utils/pages-helpers"
-import { ComponentMapper } from "./component-mapper"
+import { ComponentMapper, shouldUseCompactGrid } from "./component-mapper"
 import {
   updateComponentNestedProperty,
   addArrayItem,
   removeArrayItem,
 } from "@/lib/utils/pages-helpers"
+import { cn } from "@/lib/utils"
+
+/**
+ * Maps section names to preview image paths
+ */
+function getSectionPreviewImage(sectionName: string): string | null {
+  // Normalize section name: convert to lowercase, replace spaces with hyphens
+  const normalized = sectionName.toLowerCase().trim().replace(/\s+/g, "-")
+  
+  // Map of section names to image file names
+  const imageMap: Record<string, string> = {
+    "home-results": "home-results.png",
+    "home-products": "home-products.png",
+    "home-faq": "home-faq.png",
+    "about-hero": "about-hero.png",
+    "products-hero": "products-hero.png",
+    "about-stats": "about-stats.png",
+    "home-hero": "home-hero.png",
+    "home-discover": "home-discover.png",
+    "home-journey": "home-journey.png",
+    "home-form": "home-form.png",
+    "before-after": "before-after.png",
+    "trusted-by": "trusted-by.png",
+    "contact-hero": "contact-hero.png",
+  }
+  
+  // Try exact match first
+  if (imageMap[normalized]) {
+    return `/section-screenshots/${imageMap[normalized]}`
+  }
+  
+  // Try partial match - check if normalized name contains any key or vice versa
+  for (const [key, value] of Object.entries(imageMap)) {
+    // Remove hyphens for more flexible matching
+    const normalizedNoHyphens = normalized.replace(/-/g, "")
+    const keyNoHyphens = key.replace(/-/g, "")
+    
+    if (
+      normalized.includes(key) || 
+      key.includes(normalized) ||
+      normalizedNoHyphens.includes(keyNoHyphens) ||
+      keyNoHyphens.includes(normalizedNoHyphens)
+    ) {
+      return `/section-screenshots/${value}`
+    }
+  }
+  
+  return null
+}
 
 export function ComponentsView() {
   const {
@@ -61,7 +110,8 @@ export function ComponentsView() {
   const handleArrayAdd = (
     componentIndex: number,
     arrayKey: string,
-    item: any
+    item: any,
+    addAtTop: boolean = false
   ) => {
     // Parse the array key
     // Direct array key (e.g., "logos", "steps", "faq")
@@ -83,11 +133,11 @@ export function ComponentsView() {
         // Nested array (e.g., bulletPoints.items)
         const parent = component[mainKey] || {}
         const array = Array.isArray(parent[subKey]) ? [...parent[subKey]] : []
-        component[mainKey] = { ...parent, [subKey]: [...array, item] }
+        component[mainKey] = { ...parent, [subKey]: addAtTop ? [item, ...array] : [...array, item] }
       } else {
         // Direct array (e.g., logos, steps, faq)
         const array = Array.isArray(component[mainKey]) ? [...component[mainKey]] : []
-        component[mainKey] = [...array, item]
+        component[mainKey] = addAtTop ? [item, ...array] : [...array, item]
       }
 
       components[componentIndex] = component
@@ -156,6 +206,35 @@ export function ComponentsView() {
       </div>
 
       <div className="space-y-6">
+        {/* Preview Image - Show once at section level */}
+        {(() => {
+          const previewImage = getSectionPreviewImage(selectedSectionName)
+          const useCompactGrid = shouldUseCompactGrid(selectedSectionName)
+          
+          if (!previewImage) {
+            return null
+          }
+          
+          return (
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="relative w-full aspect-video bg-muted overflow-hidden">
+                  <img
+                    src={previewImage}
+                    alt={`${selectedSectionName} preview`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.style.display = "none"
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })()}
+        
+        {/* Components */}
         {section.components.map((component, index) => (
           <div key={index}>
             <ComponentMapper
