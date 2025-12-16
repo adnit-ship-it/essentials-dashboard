@@ -51,7 +51,7 @@ const PORT = process.env.SERVER_PORT || (process.env.PORT ? parseInt(process.env
 const CONTENT_REPO_OWNER = process.env.CONTENT_REPO_OWNER;
 const CONTENT_REPO_NAME = process.env.CONTENT_REPO_NAME;
 const CONTENT_FILE_PATH = 'data/websiteText.json';
-const PRODUCTS_FILE_PATH = "data/intake-form/productsList.ts";
+const PRODUCTS_FILE_PATH = "data/intake-form/productsList.json";
 const TAILWIND_CONFIG_PATH = "tailwind.config.js";
 const BRAND_PRIMARY_LOGO_PATH = "public/assets/images/brand/logo.svg";
 const BRAND_SECONDARY_LOGO_PATH = "public/assets/images/brand/logo-alt.svg";
@@ -86,7 +86,7 @@ function getActiveRepoConfigFromRequest(req: Request): {
   const branch = (q.branch as string) || process.env.CONTENT_REPO_BRANCH || "main";
   const contentFilePath = process.env.CONTENT_FILE_PATH as string;
   const productsFilePath =
-    process.env.CONTENT_PRODUCTS_FILE_PATH || "data/intake-form/productsList.ts";
+    process.env.CONTENT_PRODUCTS_FILE_PATH || "data/intake-form/productsList.json";
   const tailwindConfigPath = process.env.CONTENT_TAILWIND_PATH || "tailwind.config.js";
 
   const resolveLogoPath = (value?: string, fallback?: string) => {
@@ -391,181 +391,28 @@ async function fetchAssetMetadata(
   }
 }
 
-const PRODUCTS_FILE_HEADER = `import type { Product } from "~/types/intake-form/checkout";
-
-// --- PRODUCT DATA ---
-
-// This is the master list of all available products.
-`;
-
-const PRODUCTS_FILE_FOOTER = `
-export function getProductById(id: string): Product | undefined {
-  return products.find((product) => product.id === id);
-}
-
-export function getPopularProducts(): Product[] {
-  return products.filter((product) => product.popular);
-}
-`;
-
 function extractProductsArray(content: string): Product[] {
-  // First, try to find exported productsData: export const productsData: Product[] = [...]
-  let arrayMatch = content.match(
-    /export\s+const\s+productsData\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
-  );
-
-  // If not found, try non-exported: const productsData: Product[] = [...]
-  if (!arrayMatch || arrayMatch.length < 2) {
-    arrayMatch = content.match(
-      /const\s+productsData\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
-    );
-  }
-
-  // If not found, try direct export: export const products: Product[] = [...]
-  if (!arrayMatch || arrayMatch.length < 2) {
-    arrayMatch = content.match(
-      /export\s+const\s+products\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
-    );
-  }
-
-  if (!arrayMatch || arrayMatch.length < 2) {
-    throw new Error(
-      "Unable to locate products array in products file content."
-    );
-  }
-
-  const arrayLiteral = arrayMatch[1];
-
   try {
-    const productArray = new Function(`"use strict"; return (${arrayLiteral});`)();
-    return productArray as Product[];
+    const trimmed = content.trim();
+    // Parse as JSON array
+    return JSON.parse(trimmed) as Product[];
   } catch (error) {
-    console.error("Failed to parse products array literal:", error);
-    throw new Error("Failed to parse products array from content file.");
+    console.error("Failed to parse products JSON:", error);
+    throw new Error("Failed to parse products array from JSON file. Expected a valid JSON array.");
   }
-}
-
-function formatProductsArray(products: Product[]): string {
-  const json = JSON.stringify(products, null, 2);
-  return json.replace(/"([^"]+)":/g, "$1:");
 }
 
 function serializeProductsFile(products: Product[]): string {
-  const formattedArray = formatProductsArray(products);
-  return (
-    `${PRODUCTS_FILE_HEADER}
-export const products: Product[] = ${formattedArray};
-
-${PRODUCTS_FILE_FOOTER}`.trimStart() + "\n"
-  );
+  // Return formatted JSON array
+  return JSON.stringify(products, null, 2) + "\n";
 }
 
 /**
- * Replaces only the products array in the original file content, preserving all other code
- * Prioritizes replacing productsData (the source array) over the exported products
+ * Replaces the products array in the JSON file content
+ * For JSON files: replaces the entire JSON array
  */
 function replaceProductsArrayInFile(originalContent: string, products: Product[]): string {
-  const formattedArray = formatProductsArray(products);
-  
-  // First, try to match: export const productsData: Product[] = [...]
-  const exportedProductsDataPattern = /(export\s+const\s+productsData\s*:\s*Product\[\]\s*=\s*)\[[\s\S]*?\](;)/;
-  const exportedProductsDataMatch = originalContent.match(exportedProductsDataPattern);
-  
-  if (exportedProductsDataMatch && exportedProductsDataMatch.index !== undefined) {
-    const declarationStart = exportedProductsDataMatch.index;
-    const arrayStart = declarationStart + exportedProductsDataMatch[1].length;
-    let bracketCount = 0;
-    let arrayEndIndex = arrayStart;
-    let foundStart = false;
-    
-    for (let i = arrayStart; i < originalContent.length; i++) {
-      const char = originalContent[i];
-      if (char === '[') {
-        bracketCount++;
-        foundStart = true;
-      } else if (char === ']') {
-        bracketCount--;
-        if (foundStart && bracketCount === 0) {
-          arrayEndIndex = i + 1;
-          break;
-        }
-      }
-    }
-    
-    if (arrayEndIndex > arrayStart) {
-      // Replace only the array content, preserving declaration and semicolon
-      const before = originalContent.substring(0, arrayStart);
-      const after = originalContent.substring(arrayEndIndex);
-      return `${before}${formattedArray}${after}`;
-    }
-  }
-  
-  // Second, try to match: const productsData: Product[] = [...] (non-exported)
-  const productsDataPattern = /(const\s+productsData\s*:\s*Product\[\]\s*=\s*)\[[\s\S]*?\](;)/;
-  const productsDataMatch = originalContent.match(productsDataPattern);
-  
-  if (productsDataMatch && productsDataMatch.index !== undefined) {
-    const declarationStart = productsDataMatch.index;
-    const arrayStart = declarationStart + productsDataMatch[1].length;
-    let bracketCount = 0;
-    let arrayEndIndex = arrayStart;
-    let foundStart = false;
-    
-    for (let i = arrayStart; i < originalContent.length; i++) {
-      const char = originalContent[i];
-      if (char === '[') {
-        bracketCount++;
-        foundStart = true;
-      } else if (char === ']') {
-        bracketCount--;
-        if (foundStart && bracketCount === 0) {
-          arrayEndIndex = i + 1;
-          break;
-        }
-      }
-    }
-    
-    if (arrayEndIndex > arrayStart) {
-      const before = originalContent.substring(0, arrayStart);
-      const after = originalContent.substring(arrayEndIndex);
-      return `${before}${formattedArray}${after}`;
-    }
-  }
-  
-  // Fallback: Try to match: export const products: Product[] = [...]
-  const exportPattern = /(export\s+const\s+products\s*:\s*Product\[\]\s*=\s*)\[[\s\S]*?\](;)/;
-  const exportMatch = originalContent.match(exportPattern);
-  
-  if (exportMatch && exportMatch.index !== undefined) {
-    const declarationStart = exportMatch.index;
-    const arrayStart = declarationStart + exportMatch[1].length;
-    let bracketCount = 0;
-    let arrayEndIndex = arrayStart;
-    let foundStart = false;
-    
-    for (let i = arrayStart; i < originalContent.length; i++) {
-      const char = originalContent[i];
-      if (char === '[') {
-        bracketCount++;
-        foundStart = true;
-      } else if (char === ']') {
-        bracketCount--;
-        if (foundStart && bracketCount === 0) {
-          arrayEndIndex = i + 1;
-          break;
-        }
-      }
-    }
-    
-    if (arrayEndIndex > arrayStart) {
-      const before = originalContent.substring(0, arrayStart);
-      const after = originalContent.substring(arrayEndIndex);
-      return `${before}${formattedArray}${after}`;
-    }
-  }
-  
-  // If no match found, fall back to the old method (shouldn't happen, but safety net)
-  console.warn("Could not find products array in original content, using fallback serialization");
+  // For JSON files, just replace the entire content with the new JSON array
   return serializeProductsFile(products);
 }
 
@@ -674,10 +521,9 @@ async function updateProductsInRepo({
     branch: string;
     productsFilePath: string;
   };
-  originalContent?: string; // Original file content to preserve other code
+  originalContent?: string; // Original file content (for JSON, we replace entire content)
 }) {
-  // If we have original content, replace only the products array
-  // Otherwise, fall back to the old method (for backwards compatibility)
+  // For JSON files, we always replace the entire file content
   const fileContent = originalContent
     ? replaceProductsArrayInFile(originalContent, products)
     : serializeProductsFile(products);
@@ -1748,7 +1594,7 @@ app.post(
         contentFilePath:
           config.contentFilePath || "data/content.json",
         productsFilePath:
-          config.productsFilePath || "data/intake-form/productsList.ts",
+          config.productsFilePath || "data/intake-form/productsList.json",
         tailwindConfigPath:
           config.tailwindConfigPath || "tailwind.config.js",
         brandLogoPath:
