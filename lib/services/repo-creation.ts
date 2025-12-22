@@ -28,13 +28,29 @@ export async function createRepoFromTemplate(
 ): Promise<CreateRepoResult> {
   const octokit = await getAuthenticatedClient();
 
+  console.log(`🚀 Starting repository creation from template`);
+  console.log(`📦 Template: ${templateRepo.id} (${templateRepo.name})`);
+  console.log(`📝 New repository name: ${newRepoName}`);
+  console.log(`🔒 Private: ${isPrivate}`);
+  console.log(`📄 Description: ${description || "None"}`);
+
   // 1. Validate template repo exists and is accessible
+  console.log(`\n📋 Step 1: Validating template repository...`);
   try {
-    await octokit.repos.get({
+    console.log(`   Checking template: ${templateRepo.owner}/${templateRepo.repo}`);
+    const templateCheck = await octokit.repos.get({
       owner: templateRepo.owner,
       repo: templateRepo.repo,
     });
+    console.log(`   ✅ Template repository is accessible`);
+    console.log(`   Template default branch: ${templateCheck.data.default_branch || "main"}`);
+    console.log(`   Template is template: ${templateCheck.data.is_template || false}`);
   } catch (error: any) {
+    console.error(`   ❌ Template validation failed:`, {
+      status: error.status,
+      message: error.message,
+      response: error.response?.data,
+    });
     if (error.status === 404) {
       throw new Error(`Template repository "${templateRepo.id}" not found or not accessible`);
     }
@@ -42,6 +58,7 @@ export async function createRepoFromTemplate(
   }
 
   // 2. Get installation info to verify account and determine endpoint
+  console.log(`\n📋 Step 2: Checking GitHub App installation...`);
   let installationAccount: { login: string; type: string } | null = null;
   try {
     const { App } = await import("@octokit/app");
@@ -72,6 +89,17 @@ export async function createRepoFromTemplate(
       
       console.log(`📋 Installation account: ${installationAccount.login} (${installationAccount.type})`);
       
+      // Log the actual permissions granted to this installation
+      console.log(`🔐 Installation permissions:`, JSON.stringify(installation.permissions, null, 2));
+      
+      // Check if administration permission is granted
+      const adminPermission = installation.permissions?.administration;
+      if (adminPermission !== "write") {
+        console.warn(`⚠️  Administration permission is "${adminPermission}" but needs to be "write"`);
+        console.warn(`   To fix: Go to https://github.com/settings/apps, select your app, click "Install App",`);
+        console.warn(`   then "Configure" on the ${installationAccount.login} installation, and accept updated permissions.`);
+      }
+      
       // Verify installation is on the correct account
       if (installationAccount.login !== DEFAULT_ORG) {
         throw new Error(
@@ -90,164 +118,133 @@ export async function createRepoFromTemplate(
   }
 
   // 3. Check if repository already exists in adnit-ship-it
+  console.log(`\n📋 Step 3: Checking if repository name is available...`);
   try {
+    console.log(`   Checking: ${DEFAULT_ORG}/${newRepoName}`);
     await octokit.repos.get({
       owner: DEFAULT_ORG,
       repo: newRepoName,
     });
     // If we get here, repo exists
+    console.error(`   ❌ Repository "${newRepoName}" already exists!`);
     throw new Error(
       `Repository "${newRepoName}" already exists in the ${DEFAULT_ORG} account. Please choose a different name.`
     );
   } catch (error: any) {
     if (error.status === 404) {
       // Repo doesn't exist, proceed with creation
+      console.log(`   ✅ Repository name "${newRepoName}" is available`);
     } else if (error.message?.includes("already exists")) {
       // Re-throw our custom error
       throw error;
     } else {
       // Some other error accessing the repo, log and continue
-      console.warn(`Could not check if repo exists: ${error.message}`);
+      console.warn(`   ⚠️  Could not check if repo exists: ${error.message}`);
+      console.warn(`   Continuing anyway...`);
     }
   }
 
-  // 4. Create the new repository
-  // Use /user/repos for personal accounts, /orgs/{org}/repos for organizations
+  // 4. Create the new repository using template endpoint
+  // The template endpoint works for both personal accounts and organizations
+  // It automatically copies all files from the template, so no manual copying needed
+  console.log(`\n📋 Step 4: Creating repository from template...`);
   let newRepo;
   try {
-    // Log installation account info for debugging
-    console.log(`🔍 Installation account:`, {
-      login: installationAccount?.login || "unknown",
-      type: installationAccount?.type || "unknown",
-      isOrganization: installationAccount?.type === "Organization"
-    });
-    
     const isOrganization = installationAccount?.type === "Organization";
+    const accountType = isOrganization ? "organization" : "personal account";
     
-    // Default to user endpoint if we can't determine account type (safer for personal accounts)
-    // Only use org endpoint if we're CERTAIN it's an organization
-    if (isOrganization && installationAccount !== null) {
-      // For organizations, use org endpoint
-      console.log(`🏢 Creating repository in organization "${DEFAULT_ORG}"`);
-      const { data } = await octokit.request("POST /orgs/{org}/repos", {
-        org: DEFAULT_ORG,
-        name: newRepoName,
-        description: description || `Created from template ${templateRepo.name}`,
-        private: isPrivate,
-        auto_init: false,
-      });
-      newRepo = data;
-    } else {
-      // For personal accounts OR if we can't determine, use user endpoint
-      // The repo will be created under the authenticated user (installation account)
-      console.log(`👤 Creating repository in personal account "${DEFAULT_ORG}" (using /user/repos endpoint)`);
-      const { data } = await octokit.request("POST /user/repos", {
-        name: newRepoName,
-        description: description || `Created from template ${templateRepo.name}`,
-        private: isPrivate,
-        auto_init: false,
-      });
-      newRepo = data;
-      
-      // Verify the repo was created under the correct account
-      if (newRepo.owner.login !== DEFAULT_ORG) {
-        throw new Error(
-          `Repository was created under "${newRepo.owner.login}" instead of "${DEFAULT_ORG}". ` +
-          `Please verify your GitHub App installation is on the correct account.`
-        );
-      }
+    console.log(`   Account type: ${accountType} (${installationAccount?.login || "unknown"})`);
+    console.log(`   Using template endpoint: POST /repos/{template_owner}/{template_repo}/generate`);
+    console.log(`   Template: ${templateRepo.owner}/${templateRepo.repo}`);
+    console.log(`   Target owner: ${DEFAULT_ORG}`);
+    console.log(`   New repo name: ${newRepoName}`);
+    
+    const requestParams = {
+      template_owner: templateRepo.owner,
+      template_repo: templateRepo.repo,
+      owner: DEFAULT_ORG,
+      name: newRepoName,
+      description: description || `Created from template ${templateRepo.name}`,
+      private: isPrivate,
+    };
+    
+    console.log(`   Request parameters:`, JSON.stringify(requestParams, null, 2));
+    console.log(`   Making API request...`);
+    
+    const { data } = await octokit.request("POST /repos/{template_owner}/{template_repo}/generate", requestParams);
+    newRepo = data;
+    
+    console.log(`   ✅ Repository created successfully!`);
+    console.log(`   Repository: ${newRepo.full_name}`);
+    console.log(`   URL: ${newRepo.html_url}`);
+    console.log(`   Default branch: ${newRepo.default_branch}`);
+    console.log(`   Private: ${newRepo.private}`);
+    console.log(`   Created at: ${newRepo.created_at}`);
+    
+    // Verify the repo was created under the correct account
+    if (newRepo.owner.login !== DEFAULT_ORG) {
+      console.error(`   ⚠️  WARNING: Repository created under "${newRepo.owner.login}" instead of "${DEFAULT_ORG}"`);
+      throw new Error(
+        `Repository was created under "${newRepo.owner.login}" instead of "${DEFAULT_ORG}". ` +
+        `Please verify your GitHub App installation is on the correct account.`
+      );
     }
     
-    console.log(`✅ Repository created: ${newRepo.full_name}`);
+    console.log(`   ✅ Verified: Repository is under correct account (${DEFAULT_ORG})`);
+    
   } catch (error: any) {
-    // If we got a 404 on org endpoint and account type is not Organization, try user endpoint as fallback
-    if (error.status === 404 && installationAccount?.type !== "Organization") {
-      console.log(`⚠️  Org endpoint failed with 404, trying user endpoint as fallback...`);
-      try {
-        const { data } = await octokit.request("POST /user/repos", {
-          name: newRepoName,
-          description: description || `Created from template ${templateRepo.name}`,
-          private: isPrivate,
-          auto_init: false,
-        });
-        newRepo = data;
-        
-        if (newRepo.owner.login !== DEFAULT_ORG) {
-          throw new Error(
-            `Repository was created under "${newRepo.owner.login}" instead of "${DEFAULT_ORG}". ` +
-            `Please verify your GitHub App installation is on the correct account.`
-          );
-        }
-        
-        console.log(`✅ Repository created via fallback: ${newRepo.full_name}`);
-      } catch (fallbackError: any) {
-        // If fallback also fails, throw with helpful error
-        if (fallbackError.status === 403) {
-          throw new Error(
-            `GitHub App installation does not have permission to create repositories. ` +
-            `Please go to https://github.com/settings/apps, select your app, click "Install App", ` +
-            `then "Configure" on your installation, and ensure "Administration: Read and write" permission is granted.`
-          );
-        }
-        throw fallbackError;
-      }
-    } else if (error.status === 403) {
-      // If creation fails with 403, provide helpful error
+    console.error(`\n   ❌ Repository creation failed!`);
+    console.error(`   Error status: ${error.status}`);
+    console.error(`   Error message: ${error.message}`);
+    console.error(`   Full error response:`, JSON.stringify({
+      status: error.status,
+      message: error.message,
+      response: error.response?.data,
+      headers: error.response?.headers,
+    }, null, 2));
+    
+    if (error.status === 403) {
+      const githubMessage = error.response?.data?.message || error.message;
+      console.error(`   GitHub API Error: ${githubMessage}`);
       throw new Error(
         `GitHub App installation does not have permission to create repositories. ` +
+        `Error: ${githubMessage}. ` +
         `Please go to https://github.com/settings/apps, select your app, click "Install App", ` +
         `then "Configure" on your installation, and ensure "Administration: Read and write" permission is granted.`
       );
-    } else if (error.status === 404) {
+    }
+    if (error.status === 404) {
+      const githubMessage = error.response?.data?.message || error.message;
+      console.error(`   GitHub API Error: ${githubMessage}`);
       throw new Error(
-        `Account "${DEFAULT_ORG}" not found or you don't have permission to create repos there. ` +
-        `Please verify the GitHub App is installed on "${DEFAULT_ORG}" and has the correct permissions.`
-      );
-    } else if (error.status === 422 && error.message?.includes("already exists")) {
-      // Check if it's a name conflict (422 status)
-      throw new Error(
-        `Repository "${newRepoName}" already exists in the ${DEFAULT_ORG} account. Please choose a different name.`
-      );
-    } else {
-      throw new Error(
-        `Failed to create repository in "${DEFAULT_ORG}": ${error.message || "Unknown error"}`
+        `Template repository "${templateRepo.id}" not found or account "${DEFAULT_ORG}" not accessible. ` +
+        `Error: ${githubMessage}. ` +
+        `Please verify the template repository exists and the GitHub App is installed on "${DEFAULT_ORG}".`
       );
     }
-  }
-
-  // 2. Get default branch from template repo
-  let templateBranch = "main";
-  try {
-    const { data: templateRepoData } = await octokit.repos.get({
-      owner: templateRepo.owner,
-      repo: templateRepo.repo,
-    });
-    templateBranch = templateRepoData.default_branch || "main";
-  } catch (error: any) {
-    console.warn(`Could not fetch template repo default branch, using 'main': ${error.message}`);
-  }
-
-  // 3. Copy files from template to new repo
-  try {
-    await copyRepoContents(
-      octokit,
-      templateRepo.owner,
-      templateRepo.repo,
-      newRepo.owner.login,
-      newRepo.name,
-      "",
-      "",
-      templateBranch
-    );
-  } catch (error: any) {
-    // If copying fails, we should ideally delete the created repo
-    // But for now, just throw the error with more context
-    console.error("Error copying files, but repository was created:", error);
-    const repoFullName = newRepo.full_name || `${newRepo.owner.login}/${newRepo.name}`;
+    // Check if it's a name conflict (422 status)
+    if (error.status === 422) {
+      const githubMessage = error.response?.data?.message || error.message;
+      console.error(`   GitHub API Error: ${githubMessage}`);
+      if (githubMessage?.includes("already exists") || error.message?.includes("already exists")) {
+        throw new Error(
+          `Repository "${newRepoName}" already exists in the ${DEFAULT_ORG} account. Please choose a different name.`
+        );
+      }
+      throw new Error(
+        `Failed to create repository: ${githubMessage || error.message}`
+      );
+    }
     throw new Error(
-      `Repository created but failed to copy files: ${error.message || "Unknown error"}. The repository "${repoFullName}" was created but may be incomplete.`
+      `Failed to create repository from template: ${error.message || "Unknown error"}`
     );
   }
+
+  // Note: The template endpoint automatically copies all files from the template,
+  // so we don't need to manually copy files. The repository is ready to use!
+  console.log(`\n✅ Repository creation complete!`);
+  console.log(`   Repository: ${newRepo.full_name}`);
+  console.log(`   All template files have been automatically copied.`);
 
   return {
     owner: newRepo.owner.login,
