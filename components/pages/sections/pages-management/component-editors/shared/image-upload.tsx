@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Upload, Loader2, Image as ImageIcon, CheckCircle2, X } from "lucide-react"
+import { Upload, Loader2, Image as ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -28,25 +28,22 @@ export function ImageUpload({
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [imageTimestamp, setImageTimestamp] = useState(Date.now())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Convert relative path to GitHub raw URL for preview with cache-busting
+  // Convert relative path to GitHub raw URL for preview
   const getImagePreviewUrl = (path: string): string => {
     if (!path) return ""
     
-    // If already a full URL, add cache-busting parameter
+    // If already a full URL, return as-is
     if (path.startsWith("http://") || path.startsWith("https://")) {
-      const separator = path.includes("?") ? "&" : "?"
-      return `${path}${separator}t=${imageTimestamp}`
+      return path
     }
     
-    // If we have repo info, convert to GitHub raw URL with cache-busting
+    // If we have repo info, convert to GitHub raw URL
     if (repoOwnerFromLink && repoNameFromLink) {
       const cleanPath = path.startsWith("/") ? path.slice(1) : path
       const repoPath = cleanPath.startsWith("public/") ? cleanPath : `public/${cleanPath}`
-      return `https://raw.githubusercontent.com/${repoOwnerFromLink}/${repoNameFromLink}/main/${repoPath}?t=${imageTimestamp}`
+      return `https://raw.githubusercontent.com/${repoOwnerFromLink}/${repoNameFromLink}/main/${repoPath}`
     }
     
     // Fallback: return as-is (might work if served from public folder)
@@ -77,7 +74,6 @@ export function ImageUpload({
 
     setUploading(true)
     setError(null)
-    setSuccess(null)
 
     try {
       // Convert to base64
@@ -136,9 +132,6 @@ export function ImageUpload({
         : `/${filePath}`
       
       onChange(websitePath)
-      setImageTimestamp(Date.now()) // Update timestamp to force preview refresh
-      setSuccess("Image uploaded successfully!")
-      setTimeout(() => setSuccess(null), 5000)
     } catch (err: any) {
       const errorMessage = err?.response?.data?.error || err?.message || "Failed to upload image"
       setError(errorMessage)
@@ -193,23 +186,7 @@ export function ImageUpload({
         />
       </div>
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 p-2 rounded">
-          <span className="flex-1">{error}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => setError(null)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-      {success && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700">
-          <CheckCircle2 className="h-4 w-4" />
-          <span>{success}</span>
-        </div>
+        <p className="text-sm text-red-500">{error}</p>
       )}
       {value && (
         <div className="mt-2 h-32 w-full max-w-xs bg-muted rounded-md flex items-center justify-center overflow-hidden">

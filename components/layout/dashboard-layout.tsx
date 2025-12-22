@@ -7,16 +7,19 @@ import { Menu } from "lucide-react"
 import { FormsSection, ProductsSection, ReviewsSection, PagesManagementSection } from "@/components/pages"
 import { BrandSettingsView } from "@/components/pages/sections/pages-management/brand-settings/brand-settings-view"
 import { OrganizationConfigModal } from "@/components/features/organization"
-import { RepositorySetupModal } from "@/components/features/repository"
+import { RepositorySetupModal, RepositoryCreateModal } from "@/components/features/repository"
 import { Sidebar } from "./sidebar"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useRepositoryStore } from "@/lib/stores/repository-store"
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeSection, setActiveSection] = useState("brand-settings")
+  const [activeSection, setActiveSection] = useState("pages")
   const [showRepoModal, setShowRepoModal] = useState(false)
+  const [showCreateRepoModal, setShowCreateRepoModal] = useState(false)
   const [showOrgConfig, setShowOrgConfig] = useState(false)
   const router = useRouter()
+  const { fetchAvailableRepos } = useRepositoryStore()
   
   const { organizations, fetchOrganizations, isLoading, hasFetched } = useOrganizationStore()
 
@@ -44,6 +47,7 @@ export function DashboardLayout() {
         activeSection={activeSection}
         setActiveSection={setActiveSection}
         onConfigureRepository={() => setShowRepoModal(true)}
+        onCreateRepository={() => setShowCreateRepoModal(true)}
         showOrgConfig={showOrgConfig}
         setShowOrgConfig={setShowOrgConfig}
       />
@@ -61,17 +65,15 @@ export function DashboardLayout() {
 
         {/* Content area */}
         <main className="flex-1 overflow-auto">
-          <div className="flex-1">
-            {/* Sticky Header */}
-            <div className="sticky top-0 z-10 bg-background border-b pb-4 pt-6 px-8">
-              <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold tracking-tight">
-                  {organizations.length === 0 ? "Welcome" : getCurrentSectionTitle()}
-                </h2>
-              </div>
+          <div className="flex-1 space-y-4 p-8 pt-6">
+            <div className="flex items-center justify-between space-y-2">
+              <h2 className="text-3xl font-bold tracking-tight">
+                {organizations.length === 0 ? "Welcome" : getCurrentSectionTitle()}
+              </h2>
             </div>
-            {/* Content */}
-            <div className="p-8 space-y-4">
+            <div className="space-y-4">
+              {/* Render all sections simultaneously, hide inactive ones with CSS */}
+              {/* This prevents remounting and preserves state across tab switches */}
               <div className={activeSection === "pages" ? "" : "hidden"}>
                 <PagesManagementSection />
               </div>
@@ -100,6 +102,17 @@ export function DashboardLayout() {
           setShowRepoModal(false)
           // Force reload of all sections by triggering a state update
           // The sections will automatically reload when repo changes
+        }}
+      />
+
+      {/* Repository Create Modal */}
+      <RepositoryCreateModal
+        isOpen={showCreateRepoModal}
+        onClose={() => setShowCreateRepoModal(false)}
+        onRepositoryCreated={() => {
+          setShowCreateRepoModal(false)
+          // Refresh the repository list
+          fetchAvailableRepos()
         }}
       />
 

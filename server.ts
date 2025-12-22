@@ -27,6 +27,8 @@ import {
   createDefaultRepoConfig,
   updateLastAccessed,
 } from "./lib/services/repo-config";
+import { createRepoFromTemplate } from "./lib/services/repo-creation";
+import { TEMPLATE_REPOS } from "./lib/services/template-repos";
 import type { RepoConfig } from "./lib/types/repository";
 
 const app = express();
@@ -35,23 +37,21 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN 
-      ? process.env.FRONTEND_ORIGIN.split(",").map(origin => origin.trim())
-      : ["http://localhost:3000", "https://essentials-dashboard.onrender.com"],
-    credentials: true,
+    origin: process.env.FRONTEND_ORIGIN || "http://localhost:3000",
   })
 );
 
 // --- Configuration Constants ---
-// Use SERVER_PORT if set, otherwise use PORT-1 to avoid conflicts with Next.js
-// Next.js will use PORT (usually 10000 on Render), Express uses PORT-1 or 3001
-const PORT = process.env.SERVER_PORT || (process.env.PORT ? parseInt(process.env.PORT) - 1 : 3001);
+const PORT = process.env.PORT || process.env.SERVER_PORT || 3001;
+
+// Default organization for repository creation
+const DEFAULT_REPO_ORG = "adnit-ship-it";
 
 // Legacy env vars (for backward compatibility during migration)
 const CONTENT_REPO_OWNER = process.env.CONTENT_REPO_OWNER;
 const CONTENT_REPO_NAME = process.env.CONTENT_REPO_NAME;
 const CONTENT_FILE_PATH = 'data/websiteText.json';
-const PRODUCTS_FILE_PATH = "data/intake-form/productsList.json";
+const PRODUCTS_FILE_PATH = "data/intake-form/products.ts";
 const TAILWIND_CONFIG_PATH = "tailwind.config.js";
 const BRAND_PRIMARY_LOGO_PATH = "public/assets/images/brand/logo.svg";
 const BRAND_SECONDARY_LOGO_PATH = "public/assets/images/brand/logo-alt.svg";
@@ -86,7 +86,7 @@ function getActiveRepoConfigFromRequest(req: Request): {
   const branch = (q.branch as string) || process.env.CONTENT_REPO_BRANCH || "main";
   const contentFilePath = process.env.CONTENT_FILE_PATH as string;
   const productsFilePath =
-    process.env.CONTENT_PRODUCTS_FILE_PATH || "data/intake-form/productsList.json";
+    process.env.CONTENT_PRODUCTS_FILE_PATH || "data/intake-form/products.ts";
   const tailwindConfigPath = process.env.CONTENT_TAILWIND_PATH || "tailwind.config.js";
 
   const resolveLogoPath = (value?: string, fallback?: string) => {
@@ -391,29 +391,66 @@ async function fetchAssetMetadata(
   }
 }
 
+const PRODUCTS_FILE_HEADER = `import type { Product } from "~/types/intake-form/checkout";
+
+// --- PRODUCT DATA ---
+
+// This is the master list of all available products.
+`;
+
+const PRODUCTS_FILE_FOOTER = `
+export function getProductById(id: string): Product | undefined {
+  return products.find((product) => product.id === id);
+}
+
+export function getPopularProducts(): Product[] {
+  return products.filter((product) => product.popular);
+}
+`;
+
 function extractProductsArray(content: string): Product[] {
+  // First, try to find direct export: export const products: Product[] = [...]
+  let arrayMatch = content.match(
+    /export const products\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
+  );
+
+  // If not found, try to find productsData array: const productsData: Product[] = [...]
+  if (!arrayMatch || arrayMatch.length < 2) {
+    arrayMatch = content.match(
+      /const productsData\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
+    );
+  }
+
+  if (!arrayMatch || arrayMatch.length < 2) {
+    throw new Error(
+      "Unable to locate products array in products file content."
+    );
+  }
+
+  const arrayLiteral = arrayMatch[1];
+
   try {
-    const trimmed = content.trim();
-    // Parse as JSON array
-    return JSON.parse(trimmed) as Product[];
+    const productArray = new Function(`"use strict"; return (${arrayLiteral});`)();
+    return productArray as Product[];
   } catch (error) {
-    console.error("Failed to parse products JSON:", error);
-    throw new Error("Failed to parse products array from JSON file. Expected a valid JSON array.");
+    console.error("Failed to parse products array literal:", error);
+    throw new Error("Failed to parse products array from content file.");
   }
 }
 
-function serializeProductsFile(products: Product[]): string {
-  // Return formatted JSON array
-  return JSON.stringify(products, null, 2) + "\n";
+function formatProductsArray(products: Product[]): string {
+  const json = JSON.stringify(products, null, 2);
+  return json.replace(/"([^"]+)":/g, "$1:");
 }
 
-/**
- * Replaces the products array in the JSON file content
- * For JSON files: replaces the entire JSON array
- */
-function replaceProductsArrayInFile(originalContent: string, products: Product[]): string {
-  // For JSON files, just replace the entire content with the new JSON array
-  return serializeProductsFile(products);
+function serializeProductsFile(products: Product[]): string {
+  const formattedArray = formatProductsArray(products);
+  return (
+    `${PRODUCTS_FILE_HEADER}
+export const products: Product[] = ${formattedArray};
+
+${PRODUCTS_FILE_FOOTER}`.trimStart() + "\n"
+  );
 }
 
 async function fetchProductsFromRepo(
@@ -499,7 +536,6 @@ async function fetchProductsFromRepo(
     products,
     sha: fileData.sha,
     assets: assetLookup,
-    originalContent: decodedContent, // Preserve original file content
   };
 }
 
@@ -509,7 +545,6 @@ async function updateProductsInRepo({
   sha,
   commitMessage,
   repoConfig,
-  originalContent,
 }: {
   octokit: Awaited<ReturnType<typeof getAuthenticatedClient>>;
   products: Product[];
@@ -521,13 +556,8 @@ async function updateProductsInRepo({
     branch: string;
     productsFilePath: string;
   };
-  originalContent?: string; // Original file content (for JSON, we replace entire content)
 }) {
-  // For JSON files, we always replace the entire file content
-  const fileContent = originalContent
-    ? replaceProductsArrayInFile(originalContent, products)
-    : serializeProductsFile(products);
-  
+  const fileContent = serializeProductsFile(products);
   const contentBase64 = Buffer.from(fileContent, "utf8").toString("base64");
 
   const response = await octokit.repos.createOrUpdateFileContents({
@@ -919,7 +949,7 @@ app.get("/api/products", async (req: Request, res: Response) => {
   try {
     const repoConfig = getActiveRepoConfigFromRequest(req);
     const octokit = await getAuthenticatedClient();
-    const { products, sha, assets, originalContent } = await fetchProductsFromRepo(octokit, {
+    const { products, sha, assets } = await fetchProductsFromRepo(octokit, {
       owner: repoConfig.owner,
       repo: repoConfig.repo,
       branch: repoConfig.branch,
@@ -930,7 +960,6 @@ app.get("/api/products", async (req: Request, res: Response) => {
       products,
       sha,
       assets,
-      originalContent, // Return original content so frontend can preserve it
     });
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -965,7 +994,6 @@ interface ProductsUpdateRequest extends Request {
     sha: string;
     commitMessage?: string;
     repoId?: string;
-    originalContent?: string; // Original file content to preserve other code
   };
 }
 
@@ -1010,7 +1038,7 @@ app.put(
   "/api/products",
   async (req: ProductsUpdateRequest, res: Response) => {
     try {
-      const { products, sha, commitMessage, repoId, originalContent } = req.body;
+      const { products, sha, commitMessage, repoId } = req.body;
       const repoConfig = getActiveRepoConfigFromRequest(req);
 
       if (!Array.isArray(products) || !sha) {
@@ -1026,7 +1054,6 @@ app.put(
         products,
         sha,
         commitMessage,
-        originalContent, // Pass original content to preserve other code
         repoConfig: {
           owner: repoConfig.owner,
           repo: repoConfig.repo,
@@ -1594,7 +1621,7 @@ app.post(
         contentFilePath:
           config.contentFilePath || "data/content.json",
         productsFilePath:
-          config.productsFilePath || "data/intake-form/productsList.json",
+          config.productsFilePath || "data/intake-form/products.ts",
         tailwindConfigPath:
           config.tailwindConfigPath || "tailwind.config.js",
         brandLogoPath:
@@ -1700,9 +1727,82 @@ app.post(
   }
 );
 
+// IMPORTANT: Specific routes must come BEFORE wildcard routes
+// GET /api/repositories/templates - List available template repositories
+app.get("/api/repositories/templates", async (_req: Request, res: Response) => {
+  try {
+    res.json({ templates: TEMPLATE_REPOS });
+  } catch (error) {
+    console.error("Error fetching template repositories:", error);
+    res.status(500).json({
+      error: `Failed to fetch templates: ${(error as Error).message}`,
+    });
+  }
+});
+
+// POST /api/repositories/create-from-template - Create a new repository from a template
+app.post("/api/repositories/create-from-template", async (req: Request, res: Response) => {
+  try {
+    const { templateRepoId, newRepoName, description, isPrivate } = req.body;
+
+    if (!templateRepoId || !newRepoName) {
+      return res.status(400).json({
+        error: "Missing required fields: templateRepoId, newRepoName",
+      });
+    }
+
+    // Find template repo
+    const templateRepo = TEMPLATE_REPOS.find((t) => t.id === templateRepoId);
+    if (!templateRepo) {
+      return res.status(404).json({ error: "Template repository not found" });
+    }
+
+    // Validate repo name format
+    if (!/^[a-zA-Z0-9._-]+$/.test(newRepoName)) {
+      return res.status(400).json({
+        error: "Invalid repository name. Only alphanumeric characters, dots, hyphens, and underscores are allowed.",
+      });
+    }
+
+    // Create repo from template (always uses DEFAULT_REPO_ORG)
+    const newRepo = await createRepoFromTemplate(
+      templateRepo,
+      newRepoName,
+      description,
+      isPrivate || false
+    );
+
+    // Auto-configure the new repo with default paths
+    const defaultConfig = createDefaultRepoConfig(
+      newRepo.owner,
+      newRepo.repo,
+      "main",
+      newRepoName
+    );
+
+    // Mark as configured since we just created it
+    defaultConfig.isConfigured = true;
+    defaultConfig.updatedAt = new Date().toISOString();
+
+    // Save the configuration
+    saveRepoConfig(defaultConfig);
+
+    res.json({
+      message: "Repository created successfully",
+      repository: newRepo,
+      config: defaultConfig,
+    });
+  } catch (error) {
+    console.error("Error creating repository:", error);
+    res.status(500).json({
+      error: `Failed to create repository: ${(error as Error).message}`,
+    });
+  }
+});
+
 // GET /api/repositories/:repoId - Get specific repository configuration
 // Handle repoId with slashes by URL encoding (frontend encodes, backend decodes)
-// Must come AFTER specific routes (/configure, /test)
+// Must come AFTER specific routes (/configure, /test, /templates, /create-from-template)
 // Use regex route to match any characters including URL-encoded slashes
 app.get(
   /^\/api\/repositories\/(.+)$/,
@@ -1743,7 +1843,7 @@ app.get(
 
 // DELETE /api/repositories/:repoId - Delete repository configuration
 // Handle repoId with slashes by URL encoding (frontend encodes, backend decodes)
-// Must come AFTER specific routes (/configure, /test)
+// Must come AFTER specific routes (/configure, /test, /templates, /create-from-template)
 // Use regex route to match any characters including URL-encoded slashes
 app.delete(
   /^\/api\/repositories\/(.+)$/,
@@ -2504,47 +2604,6 @@ app.delete(
     }
   }
 )
-
-// --- GraphQL Proxy Endpoint (to avoid CORS issues) ---
-app.post("/api/graphql", async (req: Request, res: Response) => {
-  try {
-    const graphqlEndpoint = process.env.GRAPHQL_ENDPOINT || process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT;
-    if (!graphqlEndpoint) {
-      return res.status(500).json({
-        error: "GraphQL endpoint is not configured. Set GRAPHQL_ENDPOINT or NEXT_PUBLIC_GRAPHQL_ENDPOINT.",
-      });
-    }
-
-    // Forward the authorization header from the client request
-    const authHeader = req.headers.authorization;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (authHeader) {
-      headers["Authorization"] = authHeader;
-    } else if (process.env.GRAPHQL_TOKEN || process.env.NEXT_PUBLIC_GRAPHQL_TOKEN) {
-      // Fallback to env token if no auth header from client
-      headers["Authorization"] = `Bearer ${process.env.GRAPHQL_TOKEN || process.env.NEXT_PUBLIC_GRAPHQL_TOKEN}`;
-    }
-
-    // Forward the GraphQL request to the actual endpoint
-    const response = await fetch(graphqlEndpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(req.body),
-    });
-
-    const data = await response.json();
-    
-    // Forward the status code and response
-    res.status(response.status).json(data);
-  } catch (error: any) {
-    console.error("GraphQL proxy error:", error);
-    res.status(500).json({
-      error: `GraphQL proxy failed: ${error.message}`,
-    });
-  }
-});
 
 // --- Server Start ---
 app.listen(PORT, () =>

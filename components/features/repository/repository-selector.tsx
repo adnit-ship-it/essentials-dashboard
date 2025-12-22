@@ -4,15 +4,16 @@ import { useEffect, useState } from "react"
 import { useRepositoryStore } from "@/lib/stores/repository-store"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { GitBranch, Plus, Loader2, Trash2 } from "lucide-react"
+import { GitBranch, Plus, Loader2, Trash2, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface RepositorySelectorProps {
   onConfigureRepository: () => void
+  onCreateRepository?: () => void
   isCollapsed?: boolean
 }
 
-export function RepositorySelector({ onConfigureRepository, isCollapsed = false }: RepositorySelectorProps) {
+export function RepositorySelector({ onConfigureRepository, onCreateRepository, isCollapsed = false }: RepositorySelectorProps) {
   const { 
     configuredRepos, 
     selectedRepoId, 
@@ -85,6 +86,15 @@ export function RepositorySelector({ onConfigureRepository, isCollapsed = false 
         >
           <Plus className="h-4 w-4" />
         </Button>
+        {onCreateRepository && (
+          <Button
+            onClick={onCreateRepository}
+            className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-accent-color hover:text-background-color justify-center p-2"
+            title="Create Repository"
+          >
+            <Sparkles className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     )
   }
@@ -154,6 +164,15 @@ export function RepositorySelector({ onConfigureRepository, isCollapsed = false 
         <Plus className="h-4 w-4" />
         Configure Repository
       </Button>
+      {onCreateRepository && (
+        <Button
+          onClick={onCreateRepository}
+          className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-accent-color hover:text-background-color justify-start gap-3"
+        >
+          <Sparkles className="h-4 w-4" />
+          Create Repository
+        </Button>
+      )}
     </div>
   )
 }

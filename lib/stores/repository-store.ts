@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import type { GitHubRepo, RepoConfig } from '@/lib/types/repository';
 
+export interface TemplateRepo {
+  id: string;
+  name: string;
+  description: string;
+  owner: string;
+  repo: string;
+}
+
 interface RepositoryStore {
   // State
   availableRepos: GitHubRepo[];
@@ -16,6 +24,8 @@ interface RepositoryStore {
   selectRepo: (repoId: string | null) => void;
   testRepoConnection: (repoId: string, paths: Record<string, string>, repoInfo?: { owner: string; repo: string; branch: string }) => Promise<{ status: string; results: any[] }>;
   deleteRepoConfig: (repoId: string) => Promise<void>;
+  createRepoFromTemplate: (templateRepoId: string, newRepoName: string, description?: string, isPrivate?: boolean) => Promise<{ repository: any; config: RepoConfig }>;
+  fetchTemplateRepos: () => Promise<TemplateRepo[]>;
   clearError: () => void;
 }
 
@@ -222,6 +232,70 @@ export const useRepositoryStore = create<RepositoryStore>((set, get) => ({
         error: error instanceof Error ? error.message : 'Failed to delete repository configuration',
         isLoading: false 
       });
+      throw error;
+    }
+  },
+
+  createRepoFromTemplate: async (
+    templateRepoId,
+    newRepoName,
+    description,
+    isPrivate
+  ) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/repositories/create-from-template`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateRepoId,
+          newRepoName,
+          description,
+          isPrivate,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to create repository: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // Add to configured repos
+      const { configuredRepos } = get();
+      const updated = [...configuredRepos, data.config];
+      set({
+        configuredRepos: updated,
+        isLoading: false,
+      });
+
+      // Save to localStorage
+      localStorage.setItem(STORAGE_KEYS.CONFIGURED_REPOS, JSON.stringify(updated));
+
+      // Auto-select the new repo
+      get().selectRepo(data.config.id);
+
+      return data;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : "Failed to create repository",
+        isLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  fetchTemplateRepos: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/repositories/templates`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch templates: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data.templates;
+    } catch (error) {
+      console.error("Error fetching template repos:", error);
       throw error;
     }
   },

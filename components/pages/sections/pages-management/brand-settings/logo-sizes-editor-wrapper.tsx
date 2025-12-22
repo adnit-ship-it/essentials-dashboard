@@ -2,6 +2,7 @@
 
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { LogoSizesEditor } from "@/components/pages/sections/brand-settings/logo-sizes-editor"
+import { Card, CardContent } from "@/components/ui/card"
 import type { LogoSize } from "@/lib/types/branding"
 import type { PagesData } from "@/lib/types/pages"
 
@@ -49,9 +50,11 @@ export function LogoSizesEditorWrapper() {
 
   if (!pagesData) {
     return (
-      <div className="p-6">
-        <p className="text-sm text-muted-foreground">Loading logo sizes...</p>
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">Loading logo sizes...</p>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -66,9 +69,11 @@ export function LogoSizesEditorWrapper() {
   }
 
   return (
-    <div className="p-6">
-      <LogoSizesEditor logoSizes={logoSizes} onLogoSizesChange={handleLogoSizesChange} />
-    </div>
+    <Card>
+      <CardContent className="p-6">
+        <LogoSizesEditor logoSizes={logoSizes} onLogoSizesChange={handleLogoSizesChange} />
+      </CardContent>
+    </Card>
   )
 }
 

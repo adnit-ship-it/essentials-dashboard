@@ -1,6 +1,7 @@
 "use client"
 
 import { usePagesStore } from "@/lib/stores/pages-store"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -10,9 +11,11 @@ export function PageMetadataEditor() {
 
   if (!pagesData) {
     return (
-      <div className="p-6">
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -45,25 +48,31 @@ export function PageMetadataEditor() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Page Title</Label>
-        <Input
-          value={pageTitle}
-          onChange={(e) => handlePageTitleChange(e.target.value)}
-          placeholder="Your Site Name"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Page Description</Label>
-        <Textarea
-          value={pageDescription}
-          onChange={(e) => handlePageDescriptionChange(e.target.value)}
-          placeholder="A brief description of your site"
-          rows={3}
-        />
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Page Metadata</CardTitle>
+        <CardDescription>Global page title and description used across the site.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label>Page Title</Label>
+          <Input
+            value={pageTitle}
+            onChange={(e) => handlePageTitleChange(e.target.value)}
+            placeholder="Your Site Name"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Page Description</Label>
+          <Textarea
+            value={pageDescription}
+            onChange={(e) => handlePageDescriptionChange(e.target.value)}
+            placeholder="A brief description of your site"
+            rows={3}
+          />
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

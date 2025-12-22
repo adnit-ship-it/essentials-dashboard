@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette } from "lucide-react"
+import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette, GitBranch, Plus, Sparkles } from "lucide-react"
 
 import { OrganizationConfigModal, OrganizationDropdown } from "@/components/features/organization"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
@@ -12,12 +12,6 @@ import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase/client"
 
 const sidebarItems = [
-  {
-    title: "Brand Settings",
-    icon: Palette,
-    href: "/brand-settings",
-    id: "brand-settings",
-  },
   {
     title: "Pages & Sections",
     icon: Layout,
@@ -30,6 +24,12 @@ const sidebarItems = [
     href: "/products",
     id: "products",
   },
+  {
+    title: "Brand Settings",
+    icon: Palette,
+    href: "/brand-settings",
+    id: "brand-settings",
+  },
   // Forms temporarily hidden
 ]
 
@@ -39,6 +39,7 @@ interface SidebarProps {
   activeSection: string
   setActiveSection: (section: string) => void
   onConfigureRepository: () => void
+  onCreateRepository?: () => void
   showOrgConfig: boolean
   setShowOrgConfig: (show: boolean) => void
 }
@@ -49,6 +50,7 @@ export function Sidebar({
   activeSection,
   setActiveSection,
   onConfigureRepository,
+  onCreateRepository,
   showOrgConfig,
   setShowOrgConfig,
 }: SidebarProps) {
@@ -125,6 +127,57 @@ export function Sidebar({
               onEditClick={() => setShowOrgConfig(true)}
             />
           </div>
+
+          {/* Repository Management Section */}
+          {!isCollapsed && (
+            <div className="mt-4 space-y-2">
+              <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider px-3">
+                Repositories
+              </div>
+              <Button
+                onClick={onConfigureRepository}
+                className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] active:bg-gradient-to-r active:from-[#DDF0E3] active:to-[#D3EBEB] hover:text-black active:text-black transition-all duration-200 justify-start gap-3 px-3"
+              >
+                <Plus className="h-4 w-4 flex-shrink-0" />
+                <span className="transition-opacity duration-300 whitespace-nowrap">
+                  Configure Repository
+                </span>
+              </Button>
+              {onCreateRepository && (
+                <Button
+                  onClick={onCreateRepository}
+                  className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] active:bg-gradient-to-r active:from-[#DDF0E3] active:to-[#D3EBEB] hover:text-black active:text-black transition-all duration-200 justify-start gap-3 px-3"
+                >
+                  <Sparkles className="h-4 w-4 flex-shrink-0" />
+                  <span className="transition-opacity duration-300 whitespace-nowrap">
+                    Create Repository
+                  </span>
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Collapsed Repository Buttons */}
+          {isCollapsed && (
+            <div className="mt-4 space-y-2 px-2">
+              <Button
+                onClick={onConfigureRepository}
+                className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-accent-color hover:text-background-color justify-center p-2"
+                title="Configure Repository"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              {onCreateRepository && (
+                <Button
+                  onClick={onCreateRepository}
+                  className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-accent-color hover:text-background-color justify-center p-2"
+                  title="Create Repository"
+                >
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Divider */}
           <div className="my-6 h-px bg-gray-300 w-full"></div>
