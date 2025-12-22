@@ -26,6 +26,7 @@ interface RepositoryStore {
   deleteRepoConfig: (repoId: string) => Promise<void>;
   createRepoFromTemplate: (templateRepoId: string, newRepoName: string, description?: string, isPrivate?: boolean) => Promise<{ repository: any; config: RepoConfig }>;
   fetchTemplateRepos: () => Promise<TemplateRepo[]>;
+  ensureRepoConfigured: (owner: string, repo: string, defaultBranch?: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -297,6 +298,55 @@ export const useRepositoryStore = create<RepositoryStore>((set, get) => ({
     } catch (error) {
       console.error("Error fetching template repos:", error);
       throw error;
+    }
+  },
+
+  ensureRepoConfigured: async (owner: string, repo: string, defaultBranch: string = "main") => {
+    const repoId = `${owner}/${repo}`;
+    const { configuredRepos } = get();
+    
+    // Check if repo is already configured
+    const existingConfig = configuredRepos.find(c => c.id === repoId);
+    if (existingConfig) {
+      // Repo is configured, select it if not already selected
+      if (get().selectedRepoId !== repoId) {
+        get().selectRepo(repoId);
+      }
+      return;
+    }
+
+    // Repo is not configured, create a default config
+    try {
+      // First, fetch available repos to get the default branch if not provided
+      await get().fetchAvailableRepos();
+      const { availableRepos } = get();
+      const availableRepo = availableRepos.find(r => r.id === repoId);
+      const branch = availableRepo?.defaultBranch || defaultBranch;
+
+      // Create default config
+      const defaultConfig: RepoConfig = {
+        id: repoId,
+        owner,
+        repo,
+        defaultBranch: branch,
+        displayName: repo,
+        contentFilePath: "data/websiteText.json",
+        productsFilePath: "data/intake-form/productsList.ts",
+        tailwindConfigPath: "tailwind.config.js",
+        brandLogoPath: "public/assets/images/brand/logo.svg",
+        brandAltLogoPath: "public/assets/images/brand/logo-alt.svg",
+        pagesFilePath: "data/pages.json",
+        sectionsFilePath: "data/sections.json",
+        isConfigured: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save the config
+      await get().saveRepoConfig(defaultConfig);
+    } catch (error) {
+      console.error(`Error ensuring repo ${repoId} is configured:`, error);
+      // Don't throw - we'll just continue without auto-configuring
     }
   },
 

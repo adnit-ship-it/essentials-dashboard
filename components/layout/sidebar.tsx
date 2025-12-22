@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette, GitBranch, Plus, Sparkles } from "lucide-react"
 
-import { OrganizationConfigModal, OrganizationDropdown } from "@/components/features/organization"
+import { OrganizationDropdown } from "@/components/features/organization"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase/client"
@@ -40,8 +40,6 @@ interface SidebarProps {
   setActiveSection: (section: string) => void
   onConfigureRepository: () => void
   onCreateRepository?: () => void
-  showOrgConfig: boolean
-  setShowOrgConfig: (show: boolean) => void
 }
 
 export function Sidebar({
@@ -51,18 +49,16 @@ export function Sidebar({
   setActiveSection,
   onConfigureRepository,
   onCreateRepository,
-  showOrgConfig,
-  setShowOrgConfig,
 }: SidebarProps) {
   const router = useRouter()
   const { organizations, isLoading, needsRepoConfig } = useOrganizationStore()
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   useEffect(() => {
-    if (needsRepoConfig && !isCollapsed) {
-      setShowOrgConfig(true)
+    if (needsRepoConfig && !isCollapsed && onCreateRepository) {
+      onCreateRepository()
     }
-  }, [needsRepoConfig, isCollapsed, setShowOrgConfig])
+  }, [needsRepoConfig, isCollapsed, onCreateRepository])
 
   const handleLogout = async () => {
     try {
@@ -124,7 +120,7 @@ export function Sidebar({
           <div className={cn(isCollapsed ? "h-16" : "")}>
             <OrganizationDropdown
               isCollapsed={isCollapsed}
-              onEditClick={() => setShowOrgConfig(true)}
+              onEditClick={onCreateRepository}
             />
           </div>
 
@@ -134,15 +130,7 @@ export function Sidebar({
               <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider px-3">
                 Repositories
               </div>
-              <Button
-                onClick={onConfigureRepository}
-                className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] active:bg-gradient-to-r active:from-[#DDF0E3] active:to-[#D3EBEB] hover:text-black active:text-black transition-all duration-200 justify-start gap-3 px-3"
-              >
-                <Plus className="h-4 w-4 flex-shrink-0" />
-                <span className="transition-opacity duration-300 whitespace-nowrap">
-                  Configure Repository
-                </span>
-              </Button>
+             
               {onCreateRepository && (
                 <Button
                   onClick={onCreateRepository}

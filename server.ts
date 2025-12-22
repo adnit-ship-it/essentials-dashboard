@@ -1773,11 +1773,12 @@ app.post("/api/repositories/create-from-template", async (req: Request, res: Res
     );
 
     // Auto-configure the new repo with default paths
+    // Use newRepo.repo (which includes the "store-" prefix) instead of newRepoName
     const defaultConfig = createDefaultRepoConfig(
       newRepo.owner,
       newRepo.repo,
       "main",
-      newRepoName
+      newRepo.repo // Use the actual repo name with prefix
     );
 
     // Mark as configured since we just created it

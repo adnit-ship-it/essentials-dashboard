@@ -4,20 +4,29 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
+import { toast } from "sonner"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 
 interface OrganizationConfigModalProps {
 	isOpen: boolean
 	onClose: () => void
+	initialRepoOwner?: string
+	initialRepoName?: string
+	initialLinkName?: string
 }
 
-export function OrganizationConfigModal({ isOpen, onClose }: OrganizationConfigModalProps) {
+export function OrganizationConfigModal({ 
+	isOpen, 
+	onClose,
+	initialRepoOwner,
+	initialRepoName,
+	initialLinkName,
+}: OrganizationConfigModalProps) {
 	const { repoOwnerFromLink, repoNameFromLink, linkNameFromLink, organizationBrandInfo, updatePartnerIntegrationBillOfRights, isLoading, selectedOrgId, fetchOrganizationBrandInfo } = useOrganizationStore()
-	const [repoOwner, setRepoOwner] = useState<string>(repoOwnerFromLink || "")
-	const [repoName, setRepoName] = useState<string>(repoNameFromLink || "")
+	const [repoOwner, setRepoOwner] = useState<string>("")
+	const [repoName, setRepoName] = useState<string>("")
 	const [linkName, setLinkName] = useState<string>("")
 	
-	// Refresh organization data when modal opens to ensure we have the latest values
 	useEffect(() => {
 		if (isOpen && selectedOrgId) {
 			fetchOrganizationBrandInfo(selectedOrgId).catch(() => {})
@@ -26,24 +35,28 @@ export function OrganizationConfigModal({ isOpen, onClose }: OrganizationConfigM
 	
 	useEffect(() => {
 		if (isOpen) {
-			setRepoOwner(repoOwnerFromLink || "")
-			setRepoName(repoNameFromLink || "")
-			// Initialize linkName from store (from URL) or from organizationBrandInfo
-			const storedLinkName = linkNameFromLink || organizationBrandInfo?.partnerIntegrationInfo?.linkName || ""
+			setRepoOwner(initialRepoOwner || repoOwnerFromLink || "")
+			setRepoName(initialRepoName || repoNameFromLink || "")
+			const storedLinkName = initialLinkName || linkNameFromLink || organizationBrandInfo?.partnerIntegrationInfo?.linkName || ""
 			setLinkName(storedLinkName)
 		}
-	}, [isOpen, repoOwnerFromLink, repoNameFromLink, linkNameFromLink, organizationBrandInfo])
+	}, [isOpen, initialRepoOwner, initialRepoName, initialLinkName, repoOwnerFromLink, repoNameFromLink, linkNameFromLink, organizationBrandInfo])
 
 	if (!isOpen) return null
 
 	const onSave = async () => {
 		if (!repoOwner || !repoName) return
-		await updatePartnerIntegrationBillOfRights({ 
-			repoOwner, 
-			repoName, 
-			linkName: linkName.trim() || undefined 
-		})
-		onClose()
+		try {
+			await updatePartnerIntegrationBillOfRights({ 
+				repoOwner, 
+				repoName, 
+				linkName: linkName.trim() || undefined 
+			})
+			toast.success(`Repository "${repoName}" linked to organization successfully!`)
+			onClose()
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Failed to link repository to organization")
+		}
 	}
 
 	return (
@@ -94,5 +107,4 @@ export function OrganizationConfigModal({ isOpen, onClose }: OrganizationConfigM
 		</div>
 	)
 }
-
 
