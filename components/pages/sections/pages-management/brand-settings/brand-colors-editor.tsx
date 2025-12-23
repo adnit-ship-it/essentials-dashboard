@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { ChevronDown } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,6 +10,7 @@ import { Save, Loader2 } from "lucide-react"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { saveBrandingColors } from "@/lib/services/branding"
 import { isValidHex, normalizeHexForSave } from "@/lib/utils/colors"
+import { cn } from "@/lib/utils"
 
 type BrandingColors = {
   backgroundColor: string
@@ -32,6 +34,7 @@ export function BrandColorsEditor() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [tailwindSha, setTailwindSha] = useState<string | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
 
   // Load colors and tailwind SHA on mount
   useEffect(() => {
@@ -116,13 +119,27 @@ export function BrandColorsEditor() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Brand Colors</CardTitle>
-        <CardDescription>
-          Adjust the brand colors used throughout the product. These are saved to tailwind.config.js
-        </CardDescription>
+      <CardHeader 
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Brand Colors</CardTitle>
+            <CardDescription>
+              Adjust the brand colors used throughout the product. These are saved to tailwind.config.js
+            </CardDescription>
+          </div>
+          <ChevronDown 
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform",
+              isOpen && "rotate-180"
+            )}
+          />
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      {isOpen && (
+        <CardContent className="space-y-4">
         <div className="grid gap-6 md:grid-cols-2">
           {(Object.keys(colors) as Array<keyof BrandingColors>).map((key) => (
             <div key={key} className="space-y-2">
@@ -172,7 +189,8 @@ export function BrandColorsEditor() {
             </>
           )}
         </Button>
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   )
 }

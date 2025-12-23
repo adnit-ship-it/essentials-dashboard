@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -7,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { LogoSelector } from "../component-editors/shared/logo-selector"
 import { LogoSizeEditor } from "@/components/pages/sections/brand-settings/logo-sizes-editor"
+import { cn } from "@/lib/utils"
 import type { LogoSize } from "@/lib/types/branding"
 
 // Convert relative path to GitHub raw URL for preview
@@ -29,6 +32,7 @@ function getLogoPreviewUrl(path: string, repoOwner?: string, repoName?: string):
 export function LoadingScreenEditor() {
   const { pagesData, updatePagesData } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
+  const [isOpen, setIsOpen] = useState(false)
 
   if (!pagesData) {
     return (
@@ -107,11 +111,25 @@ export function LoadingScreenEditor() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Loading Screen</CardTitle>
-        <CardDescription>Configure the logo and text shown during page load.</CardDescription>
+      <CardHeader 
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Loading Screen</CardTitle>
+            <CardDescription>Configure the logo and text shown during page load.</CardDescription>
+          </div>
+          <ChevronDown 
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform",
+              isOpen && "rotate-180"
+            )}
+          />
+        </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      {isOpen && (
+        <CardContent className="space-y-6">
         {/* Logo Selection */}
         <div className="space-y-4">
           <Label>Logo</Label>
@@ -185,7 +203,8 @@ export function LoadingScreenEditor() {
             onSizeChange={handleLogoSizesChange}
           />
         </div>
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   )
 }

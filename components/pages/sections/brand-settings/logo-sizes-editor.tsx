@@ -223,9 +223,10 @@ interface LogoSizesEditorProps {
     products: LogoSize
   }
   onLogoSizesChange: (logoSizes: LogoSizesEditorProps["logoSizes"]) => void
+  hideHeader?: boolean
 }
 
-export function LogoSizesEditor({ logoSizes, onLogoSizesChange }: LogoSizesEditorProps) {
+export function LogoSizesEditor({ logoSizes, onLogoSizesChange, hideHeader = false }: LogoSizesEditorProps) {
   const updateSize = (key: keyof typeof logoSizes, size: LogoSize) => {
     onLogoSizesChange({
       ...logoSizes,
@@ -235,12 +236,14 @@ export function LogoSizesEditor({ logoSizes, onLogoSizesChange }: LogoSizesEdito
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-sm font-medium mb-2">Logo Sizes</h3>
-        <p className="text-xs text-muted-foreground mb-4">
-          Configure heights and widths for logos in different contexts.
-        </p>
-      </div>
+      {!hideHeader && (
+        <div>
+          <h3 className="text-sm font-medium mb-2">Logo Sizes</h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            Configure heights and widths for logos in different contexts.
+          </p>
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <LogoSizeEditor
           label="Navbar Logo"

@@ -1,14 +1,15 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { ChevronDown, Upload, Loader2, ImageIcon } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Upload, Loader2, ImageIcon } from "lucide-react"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { fileToPendingUpload } from "@/lib/utils/file-uploads"
 import { uploadLogoFile, getFileSha } from "@/lib/services/logo-registry"
+import { cn } from "@/lib/utils"
 
 const FAVICON_PATH = "public/favicon.ico"
 
@@ -17,6 +18,7 @@ export function FaviconManager() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const getFaviconUrl = () => {
@@ -91,13 +93,27 @@ export function FaviconManager() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Favicon</CardTitle>
-        <CardDescription>
-          Upload or replace the site favicon (public/favicon.ico)
-        </CardDescription>
+      <CardHeader 
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Favicon</CardTitle>
+            <CardDescription>
+              Upload or replace the site favicon (public/favicon.ico)
+            </CardDescription>
+          </div>
+          <ChevronDown 
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform",
+              isOpen && "rotate-180"
+            )}
+          />
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      {isOpen && (
+        <CardContent className="space-y-4">
         <div className="flex items-center gap-4">
           <Input
             type="file"
@@ -160,7 +176,8 @@ export function FaviconManager() {
             </p>
           </div>
         )}
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   )
 }

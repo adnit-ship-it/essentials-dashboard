@@ -1,8 +1,11 @@
 "use client"
 
+import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { LogoSizesEditor } from "@/components/pages/sections/brand-settings/logo-sizes-editor"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 import type { LogoSize } from "@/lib/types/branding"
 import type { PagesData } from "@/lib/types/pages"
 
@@ -47,6 +50,7 @@ function convertLogoSizes(pagesData: any): {
 
 export function LogoSizesEditorWrapper() {
   const { pagesData, updatePagesData } = usePagesStore()
+  const [isOpen, setIsOpen] = useState(false)
 
   if (!pagesData) {
     return (
@@ -70,9 +74,30 @@ export function LogoSizesEditorWrapper() {
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <LogoSizesEditor logoSizes={logoSizes} onLogoSizesChange={handleLogoSizesChange} />
-      </CardContent>
+      <CardHeader 
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Logo Sizes</CardTitle>
+            <CardDescription>
+              Configure heights and widths for logos in different contexts.
+            </CardDescription>
+          </div>
+          <ChevronDown 
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform",
+              isOpen && "rotate-180"
+            )}
+          />
+        </div>
+      </CardHeader>
+      {isOpen && (
+        <CardContent className="p-6">
+          <LogoSizesEditor logoSizes={logoSizes} onLogoSizesChange={handleLogoSizesChange} hideHeader={true} />
+        </CardContent>
+      )}
     </Card>
   )
 }

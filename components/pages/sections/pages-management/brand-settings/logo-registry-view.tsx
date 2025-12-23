@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect } from "react"
 import React from "react"
-import { Plus, Edit2, Trash2, Image as ImageIcon, Loader2, AlertTriangle } from "lucide-react"
+import { Plus, Edit2, Trash2, Image as ImageIcon, Loader2, AlertTriangle, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,6 @@ import { fileToPendingUpload } from "@/lib/utils/file-uploads"
 import { uploadLogoFile, getFileSha } from "@/lib/services/logo-registry"
 import { generateNextLogoKey, generateLogoFileName, isLogoInUse } from "@/lib/utils/logo-registry"
 import type { LogoRegistryEntry } from "@/lib/types/pages"
-import { cn } from "@/lib/utils"
 
 // Convert relative path to GitHub raw URL for preview
 function getLogoPreviewUrl(path: string, repoOwner?: string, repoName?: string): string {
@@ -52,6 +52,7 @@ export function LogoRegistryView() {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const logoRegistry = pagesData?.logoRegistry || {}
@@ -260,24 +261,44 @@ export function LogoRegistryView() {
   }, [repoOwnerFromLink, repoNameFromLink])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">Logo Registry</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage logos that can be used across pages, sections, and layouts.
-          </p>
-          {(!repoOwnerFromLink || !repoNameFromLink) && (
-            <p className="text-xs text-yellow-600 mt-1">
-              ⚠️ Repository not configured. Logo previews may not work. Please configure organization settings.
-            </p>
-          )}
+    <Card>
+      <CardHeader 
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <CardTitle>Logo Registry</CardTitle>
+            <CardDescription>
+              Manage logos that can be used across pages, sections, and layouts.
+            </CardDescription>
+            {(!repoOwnerFromLink || !repoNameFromLink) && (
+              <p className="text-xs text-yellow-600 mt-1">
+                ⚠️ Repository not configured. Logo previews may not work. Please configure organization settings.
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsAddDialogOpen(true)
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Logo
+            </Button>
+            <ChevronDown 
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform",
+                isOpen && "rotate-180"
+              )}
+            />
+          </div>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Logo
-        </Button>
-      </div>
+      </CardHeader>
+      {isOpen && (
+        <CardContent className="space-y-6">
 
       {error && (
         <Alert variant="destructive">
@@ -404,20 +425,22 @@ export function LogoRegistryView() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
-      {editingKey && logoRegistry[editingKey] && (
-        <EditLogoDialog
-          key={editingKey}
-          logoKey={editingKey}
-          entry={logoRegistry[editingKey]}
-          onSave={(description, file) => handleEditLogo(editingKey, description, file)}
-          onClose={() => setEditingKey(null)}
-          uploading={uploading}
-          repoOwner={repoOwnerFromLink ?? undefined}
-          repoName={repoNameFromLink ?? undefined}
-        />
+          {/* Edit Dialog */}
+          {editingKey && logoRegistry[editingKey] && (
+            <EditLogoDialog
+              key={editingKey}
+              logoKey={editingKey}
+              entry={logoRegistry[editingKey]}
+              onSave={(description, file) => handleEditLogo(editingKey, description, file)}
+              onClose={() => setEditingKey(null)}
+              uploading={uploading}
+              repoOwner={repoOwnerFromLink ?? undefined}
+              repoName={repoNameFromLink ?? undefined}
+            />
+          )}
+        </CardContent>
       )}
-    </div>
+    </Card>
   )
 }
 
