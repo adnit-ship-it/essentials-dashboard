@@ -8,7 +8,6 @@ import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette, GitBran
 
 import { OrganizationDropdown } from "@/components/features/organization"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
-import { useRepositoryStore } from "@/lib/stores/repository-store"
 import { Card, CardContent } from "@/components/ui/card"
 import { ExternalLink } from "lucide-react"
 import { signOut } from "firebase/auth"
@@ -55,26 +54,78 @@ export function Sidebar({
 }: SidebarProps) {
   const router = useRouter()
   const { organizations, isLoading, repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
-  const { fetchTemplateRepos } = useRepositoryStore()
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [templateName, setTemplateName] = useState<string | null>(null)
+  const [hostTemplateInfo, setHostTemplateInfo] = useState<{ hostedAt: string; templateName: string } | null>(null)
+  const [isNewlyCreated, setIsNewlyCreated] = useState(false)
 
-  // Fetch template info when repo is available
+  // Check if this repo was recently created (within last 5 minutes)
   useEffect(() => {
-    if (repoNameFromLink && !isCollapsed) {
-      // Try to determine template from repo name or fetch templates
-      // For now, we'll fetch templates and try to match, but this is a placeholder
-      fetchTemplateRepos().then((templates) => {
-        // This is a simple heuristic - in the future, template info should be stored
-        // For now, we'll show "Unknown" or try to infer from repo name patterns
-        setTemplateName(null) // Will be implemented properly later
-      }).catch(() => {
-        setTemplateName(null)
-      })
+    if (repoOwnerFromLink && repoNameFromLink) {
+      const repoKey = `${repoOwnerFromLink}/${repoNameFromLink}`
+      const createdRepos = sessionStorage.getItem("newlyCreatedRepos")
+      
+      if (createdRepos) {
+        try {
+          const repos = JSON.parse(createdRepos) as Record<string, number>
+          const createdAt = repos[repoKey]
+          
+          if (createdAt) {
+            const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
+            setIsNewlyCreated(createdAt > fiveMinutesAgo)
+            
+            // Clean up old entries (older than 5 minutes)
+            if (createdAt <= fiveMinutesAgo) {
+              delete repos[repoKey]
+              sessionStorage.setItem("newlyCreatedRepos", JSON.stringify(repos))
+            }
+          } else {
+            setIsNewlyCreated(false)
+          }
+        } catch {
+          setIsNewlyCreated(false)
+        }
+      } else {
+        setIsNewlyCreated(false)
+      }
     } else {
-      setTemplateName(null)
+      setIsNewlyCreated(false)
     }
-  }, [repoNameFromLink, isCollapsed, fetchTemplateRepos])
+  }, [repoOwnerFromLink, repoNameFromLink])
+
+  // Fetch hostTemplate.json when repo is available
+  useEffect(() => {
+    if (repoOwnerFromLink && repoNameFromLink && !isCollapsed) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+      const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
+      
+      fetch(url)
+        .then((res) => {
+          if (res.ok) {
+            return res.json()
+          }
+          if (res.status === 404) {
+            return null // File doesn't exist yet
+          }
+          throw new Error(`Failed to fetch host template: ${res.status}`)
+        })
+        .then((data) => {
+          if (data) {
+            setHostTemplateInfo({
+              hostedAt: data.hostedAt || "",
+              templateName: data.templateName || "Unknown",
+            })
+          } else {
+            setHostTemplateInfo(null)
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching host template:", error)
+          setHostTemplateInfo(null)
+        })
+    } else {
+      setHostTemplateInfo(null)
+    }
+  }, [repoOwnerFromLink, repoNameFromLink, isCollapsed])
 
   const handleLogout = async () => {
     try {
@@ -181,24 +232,37 @@ export function Sidebar({
                             Template
                           </div>
                           <div className="text-sm text-sidebar-foreground/80">
-                            {templateName || "Unknown"}
+                            {hostTemplateInfo?.templateName || "Unknown"}
                           </div>
                         </div>
                       </div>
 
-                      <div className="pt-1 border-t border-sidebar-border/50">
-                        <a
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            // Placeholder - will be implemented later
-                            console.log("Navigate to page - to be implemented")
-                          }}
-                          className="flex items-center gap-1.5 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors group"
-                        >
-                          <span>View Page</span>
-                          <ExternalLink className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" />
-                        </a>
+                      {hostTemplateInfo?.hostedAt && (
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1">
+                              Hosted At
+                            </div>
+                            <a
+                              href={hostTemplateInfo.hostedAt}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline transition-colors group"
+                            >
+                              <span className="truncate">{hostTemplateInfo.hostedAt}</span>
+                              <ExternalLink className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="pt-1 border-t border-sidebar-border/50 space-y-1">
+                     
+                        {hostTemplateInfo?.hostedAt && isNewlyCreated && (
+                          <div className="text-xs text-amber-600 dark:text-amber-500 italic">
+                            Note: The hosted link will show 404 until the first commit is complete(2-3 minutes).
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>

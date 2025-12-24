@@ -14,7 +14,7 @@ import { toast } from "sonner"
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeSection, setActiveSection] = useState("pages")
+  const [activeSection, setActiveSection] = useState("brand-settings")
   const [showRepoModal, setShowRepoModal] = useState(false)
   const [showCreateRepoModal, setShowCreateRepoModal] = useState(false)
   

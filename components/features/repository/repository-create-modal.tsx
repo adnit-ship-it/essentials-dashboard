@@ -98,6 +98,17 @@ export function RepositoryCreateModal({
       const actualRepoName = result.repository?.name || result.config?.repo || `store-${newRepoName.trim()}`
       const actualRepoOwner = result.repository?.owner?.login || result.config?.owner || "adnit-ship-it"
       
+      // Track this as a newly created repository in sessionStorage
+      const repoKey = `${actualRepoOwner}/${actualRepoName}`
+      try {
+        const existingRepos = sessionStorage.getItem("newlyCreatedRepos")
+        const repos = existingRepos ? JSON.parse(existingRepos) : {}
+        repos[repoKey] = Date.now()
+        sessionStorage.setItem("newlyCreatedRepos", JSON.stringify(repos))
+      } catch (error) {
+        console.warn("Failed to track newly created repo:", error)
+      }
+      
       // Show success toast
       toast.success(`Repository '${actualRepoName}' created successfully!`)
       

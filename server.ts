@@ -2606,6 +2606,56 @@ app.delete(
   }
 )
 
+// GET /api/host-template - Fetch hostTemplate.json
+app.get("/api/host-template", async (req: Request, res: Response) => {
+  try {
+    const repoConfig = getActiveRepoConfigFromRequest(req);
+    const octokit = await getAuthenticatedClient();
+    
+    try {
+      const response = await octokit.repos.getContent({
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        path: "data/hostTemplate.json",
+        ref: repoConfig.branch,
+      });
+
+      const fileData = response.data as GitHubFileResponse;
+
+      if (!fileData.content || fileData.type !== "file") {
+        return res.status(404).json({
+          error: "hostTemplate.json not found",
+        });
+      }
+
+      const contentString = Buffer.from(fileData.content, "base64").toString("utf8");
+      const hostTemplate = JSON.parse(contentString);
+
+      res.status(200).json({
+        hostedAt: hostTemplate.hostedAt || "",
+        templateName: hostTemplate.templateName || "",
+      });
+    } catch (error: any) {
+      if (error.status === 404) {
+        return res.status(404).json({
+          error: "hostTemplate.json not found",
+        });
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error("Error fetching host template:", error);
+    const q: any = req.query || {};
+    res.status(500).json({
+      error: `Failed to fetch host template.`,
+      details: (error as Error).message,
+      repo: (q.owner ?? q["repo-owner"] ?? q.repoOwner) && (q.repo ?? q["repo-name"] ?? q.repoName) 
+        ? { owner: q.owner ?? q["repo-owner"] ?? q.repoOwner, repo: q.repo ?? q["repo-name"] ?? q.repoName } 
+        : null,
+    });
+  }
+});
+
 // --- Server Start ---
 app.listen(PORT, () =>
   console.log(`✅ Backend server running on http://localhost:${PORT}`)
