@@ -35,10 +35,10 @@ export function EmptyStateView({
               size="lg"
             >
               <Sparkles className="h-4 w-4 mr-2" />
-              Create Repository
+              Link Repository
             </Button>
           )}
-          {onConfigureRepository && (
+          {/* {onConfigureRepository && (
             <Button
               onClick={onConfigureRepository}
               variant="outline"
@@ -48,7 +48,7 @@ export function EmptyStateView({
               <Plus className="h-4 w-4 mr-2" />
               Configure Repository
             </Button>
-          )}
+          )} */}
         </CardContent>
       </Card>
     </div>

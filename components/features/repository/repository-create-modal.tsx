@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { X, Loader2, AlertCircle, GitBranch, Sparkles, Link2 } from "lucide-react"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { X, Loader2, AlertCircle, GitBranch, Sparkles, Link2, Check } from "lucide-react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import type { TemplateRepo } from "@/lib/stores/repository-store"
 
 interface RepositoryCreateModalProps {
@@ -236,7 +238,7 @@ export function RepositoryCreateModal({
 
           {mode === "create" ? (
             <form onSubmit={handleCreate} className="space-y-6">
-              {/* Template Selection */}
+              {/* Template Selection - Card Based */}
               <div className="space-y-2">
                 <Label htmlFor="template-select">Template Repository</Label>
                 {loadingTemplates ? (
@@ -244,33 +246,65 @@ export function RepositoryCreateModal({
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading templates...
                   </div>
+                ) : templates.length === 0 ? (
+                  <div className="text-sm text-muted-foreground p-4 border rounded-md">
+                    No templates available
+                  </div>
                 ) : (
-                  <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                    <SelectTrigger id="template-select">
-                      <SelectValue placeholder="Select a template..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {templates.length === 0 ? (
-                        <SelectItem value="" disabled>
-                          No templates available
-                        </SelectItem>
-                      ) : (
-                        templates.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            <div>
-                              <div className="font-medium">{template.name}</div>
-                              <div className="text-xs text-muted-foreground">{template.id}</div>
-                              {template.description && (
-                                <div className="text-xs text-muted-foreground mt-0.5">
-                                  {template.description}
+                  <RadioGroup
+                    value={selectedTemplateId}
+                    onValueChange={setSelectedTemplateId}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                  >
+                    {templates.map((template) => {
+                      const isSelected = selectedTemplateId === template.id
+                      return (
+                        <div key={template.id} className="relative">
+                          <RadioGroupItem
+                            value={template.id}
+                            id={template.id}
+                            className="peer sr-only"
+                          />
+                          <label
+                            htmlFor={template.id}
+                            className={cn(
+                              "block cursor-pointer rounded-lg border-2 p-4 transition-all",
+                              "bg-card hover:bg-accent",
+                              isSelected
+                                ? "border-[#DDF0E3] bg-gradient-to-r from-[#DDF0E3] to-[#D3EBEB]"
+                                : "border-border hover:border-[#DDF0E3]/50"
+                            )}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className={cn(
+                                  "font-medium mb-1",
+                                  isSelected ? "text-black" : "text-foreground"
+                                )}>
+                                  {template.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground mb-2">
+                                  {template.id}
+                                </div>
+                                {template.description && (
+                                  <div className="text-sm text-muted-foreground">
+                                    {template.description}
+                                  </div>
+                                )}
+                              </div>
+                              {isSelected && (
+                                <div className="ml-2 flex-shrink-0">
+                                  <div className="rounded-full bg-gradient-to-r from-[#DDF0E3] to-[#D3EBEB] p-1 border border-black/10">
+                                    <Check className="h-3 w-3 text-black" />
+                                  </div>
                                 </div>
                               )}
                             </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                          </label>
+                        </div>
+                      )
+                    })}
+                  </RadioGroup>
                 )}
               </div>
 

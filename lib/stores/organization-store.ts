@@ -78,7 +78,8 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
         hasFetched: true,
       })
       const { selectedOrgId } = get()
-      if (!selectedOrgId && orgs.length > 0) {
+      // Only auto-select if there's exactly one organization
+      if (!selectedOrgId && orgs.length === 1) {
         set({ selectedOrgId: orgs[0].id })
         // Prime brand info for the first org
         get().fetchOrganizationBrandInfo(orgs[0].id).catch(() => {})

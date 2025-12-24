@@ -1,6 +1,5 @@
 "use client"
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 
@@ -18,7 +17,6 @@ export function DashboardLayout() {
   const [activeSection, setActiveSection] = useState("pages")
   const [showRepoModal, setShowRepoModal] = useState(false)
   const [showCreateRepoModal, setShowCreateRepoModal] = useState(false)
-  const router = useRouter()
   
   const { 
     fetchAvailableRepos, 
@@ -50,13 +48,6 @@ export function DashboardLayout() {
     }
   }, [selectedOrgId, repoOwnerFromLink, repoNameFromLink, ensureRepoConfigured])
 
-  // When an organization is selected without a linked repo, open the create/link modal
-  useEffect(() => {
-    if (selectedOrgId && !repoOwnerFromLink && !repoNameFromLink && !showCreateRepoModal) {
-      setShowCreateRepoModal(true)
-    }
-  }, [selectedOrgId, repoOwnerFromLink, repoNameFromLink, showCreateRepoModal])
-
   const getCurrentSectionTitle = () => {
     const sections = [
       { id: "pages", title: "Pages & Sections" },
@@ -68,32 +59,25 @@ export function DashboardLayout() {
   }
 
   // Determine if we should show the empty state
-  // Show empty state only if:
-  // - An organization is selected AND it has no linked repository
-  // - OR no organization is selected AND no repository is selected/configured
   const showEmptyState = useMemo(() => {
     if (selectedOrgId) {
-      // If an org is selected, check if it has a linked repo
       const hasLinkedRepo = !!(repoOwnerFromLink && repoNameFromLink)
-      // Show empty state only if the selected org has no linked repo
       return !hasLinkedRepo
     }
-    // No org selected - show empty state if no repo is selected/configured
     return !selectedRepoId && configuredRepos.length === 0
   }, [selectedOrgId, repoOwnerFromLink, repoNameFromLink, selectedRepoId, configuredRepos])
 
   const handleRepositoryCreated = async (owner: string | null, repo: string | null) => {
     setShowCreateRepoModal(false)
-    fetchAvailableRepos() // Refresh repos after creation
+    fetchAvailableRepos()
 
     if (owner && repo && selectedOrgId) {
-      // Link the repository directly to the organization
       const { updatePartnerIntegrationBillOfRights } = useOrganizationStore.getState()
       try {
         await updatePartnerIntegrationBillOfRights({
           repoOwner: owner,
           repoName: repo,
-          linkName: undefined, // Will use existing linkName if any
+          linkName: undefined,
         })
         toast.success(`Repository '${repo}' linked to organization successfully!`)
       } catch (error) {
@@ -123,7 +107,7 @@ export function DashboardLayout() {
             <Menu className="h-4 w-4" />
           </Button>
           <h1 className="text-lg font-semibold">CRM Dashboard</h1>
-          <div className="w-8" /> {/* Spacer */}
+          <div className="w-8" />
         </div>
 
         {/* Content area */}
@@ -143,8 +127,6 @@ export function DashboardLayout() {
                 </h2>
               </div>
               <div className="space-y-4">
-                {/* Render all sections simultaneously, hide inactive ones with CSS */}
-                {/* This prevents remounting and preserves state across tab switches */}
                 <div className={activeSection === "pages" ? "" : "hidden"}>
                   <PagesManagementSection />
                 </div>
@@ -169,11 +151,11 @@ export function DashboardLayout() {
       {/* Repository Setup Modal */}
       <RepositorySetupModal
         isOpen={showRepoModal}
-        onClose={() => setShowRepoModal(false)}
+        onClose={() => {
+          setShowRepoModal(false)
+        }}
         onRepositoryConfigured={() => {
           setShowRepoModal(false)
-          // Force reload of all sections by triggering a state update
-          // The sections will automatically reload when repo changes
         }}
       />
 

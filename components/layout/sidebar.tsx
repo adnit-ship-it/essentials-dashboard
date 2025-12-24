@@ -8,6 +8,9 @@ import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette, GitBran
 
 import { OrganizationDropdown } from "@/components/features/organization"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useRepositoryStore } from "@/lib/stores/repository-store"
+import { Card, CardContent } from "@/components/ui/card"
+import { ExternalLink } from "lucide-react"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase/client"
 
@@ -51,14 +54,27 @@ export function Sidebar({
   onCreateRepository,
 }: SidebarProps) {
   const router = useRouter()
-  const { organizations, isLoading, needsRepoConfig } = useOrganizationStore()
+  const { organizations, isLoading, repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
+  const { fetchTemplateRepos } = useRepositoryStore()
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [templateName, setTemplateName] = useState<string | null>(null)
 
+  // Fetch template info when repo is available
   useEffect(() => {
-    if (needsRepoConfig && !isCollapsed && onCreateRepository) {
-      onCreateRepository()
+    if (repoNameFromLink && !isCollapsed) {
+      // Try to determine template from repo name or fetch templates
+      // For now, we'll fetch templates and try to match, but this is a placeholder
+      fetchTemplateRepos().then((templates) => {
+        // This is a simple heuristic - in the future, template info should be stored
+        // For now, we'll show "Unknown" or try to infer from repo name patterns
+        setTemplateName(null) // Will be implemented properly later
+      }).catch(() => {
+        setTemplateName(null)
+      })
+    } else {
+      setTemplateName(null)
     }
-  }, [needsRepoConfig, isCollapsed, onCreateRepository])
+  }, [repoNameFromLink, isCollapsed, fetchTemplateRepos])
 
   const handleLogout = async () => {
     try {
@@ -141,6 +157,52 @@ export function Sidebar({
                     Create Repository
                   </span>
                 </Button>
+              )}
+
+              {/* Repository Info Card */}
+              {repoNameFromLink && (
+                <Card className="bg-sidebar border-sidebar-border mt-2">
+                  <CardContent className="p-3 space-y-2">
+                    <div className="space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1">
+                            Current Repository
+                          </div>
+                          <div className="text-sm font-medium text-sidebar-foreground truncate">
+                            {repoNameFromLink}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1">
+                            Template
+                          </div>
+                          <div className="text-sm text-sidebar-foreground/80">
+                            {templateName || "Unknown"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-1 border-t border-sidebar-border/50">
+                        <a
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            // Placeholder - will be implemented later
+                            console.log("Navigate to page - to be implemented")
+                          }}
+                          className="flex items-center gap-1.5 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors group"
+                        >
+                          <span>View Page</span>
+                          <ExternalLink className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+                        </a>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           )}
