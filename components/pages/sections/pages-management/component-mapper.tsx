@@ -20,11 +20,13 @@ import { InfoCardEditor } from "./component-editors/info-card-editor"
 import { InfoCardWithBulletpointsEditor } from "./component-editors/info-card-with-bulletpoints-editor"
 import { BadgeEditor } from "./component-editors/badge-editor"
 import { GenericEditor } from "./component-editors/generic-editor"
+import { SectionPreviewEditor } from "./component-editors/section-preview-editor"
 
 interface ComponentEditorProps {
   component: Component
   componentIndex: number
   sectionName: string
+  templateName?: string | null
   onUpdate: (path: string[], value: any) => void
   onArrayAdd?: (arrayKey: string, item: any) => void
   onArrayRemove?: (arrayKey: string, itemIndex: number) => void
@@ -37,6 +39,7 @@ export function ComponentMapper({
   component,
   componentIndex,
   sectionName,
+  templateName,
   onUpdate,
   onArrayAdd,
   onArrayRemove,
@@ -46,6 +49,9 @@ export function ComponentMapper({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 [&_[data-slot=card]]:py-4 [&_[data-slot=card]]:gap-4 [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:pb-3 [&_[data-slot=card-content]]:px-4">
+      {/* Section Preview - appears as a grid item */}
+      <SectionPreviewEditor sectionName={sectionName} templateName={templateName ?? null} />
+      
       {keys.map((key) => {
         const value = component[key]
         const reactKey = `${componentIndex}-${key}`

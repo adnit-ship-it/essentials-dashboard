@@ -1,9 +1,11 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePagesStore } from "@/lib/stores/pages-store"
+import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { findSectionInSections } from "@/lib/utils/pages-helpers"
 import { ComponentMapper } from "./component-mapper"
 import {
@@ -21,6 +23,39 @@ export function ComponentsView() {
     goBack,
     updateSectionsData,
   } = usePagesStore()
+  
+  const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
+  const [templateName, setTemplateName] = useState<string | null>(null)
+
+  // Fetch template name from hostTemplate.json
+  useEffect(() => {
+    if (repoOwnerFromLink && repoNameFromLink) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+      const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
+      
+      fetch(url)
+        .then((res) => {
+          if (res.ok) {
+            return res.json()
+          }
+          if (res.status === 404) {
+            return null // File doesn't exist yet
+          }
+          throw new Error(`Failed to fetch host template: ${res.status}`)
+        })
+        .then((data) => {
+          if (data?.templateName) {
+            setTemplateName(data.templateName)
+          } else {
+            setTemplateName(null)
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching host template:", error)
+          setTemplateName(null)
+        })
+    }
+  }, [repoOwnerFromLink, repoNameFromLink])
 
   if (!pagesData || !selectedPageKey || !selectedSectionName || !sectionsData) {
     goBack()
@@ -162,6 +197,7 @@ export function ComponentsView() {
               component={component}
               componentIndex={index}
               sectionName={selectedSectionName}
+              templateName={templateName}
               onUpdate={(path, value) => handleComponentUpdate(index, path, value)}
               onArrayAdd={(arrayKey, item) => handleArrayAdd(index, arrayKey, item)}
               onArrayRemove={(arrayKey, itemIndex) =>
