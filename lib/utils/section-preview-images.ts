@@ -51,3 +51,37 @@ export function getSectionPreviewImagePath(
   return `/section-screenshots/${normalizedTemplate}/${normalizedSection}.png`
 }
 
+/**
+ * Gets the preview image path for a logo based on its type and template
+ * 
+ * @param logoType - The type of logo (e.g., "navbar", "hero", "contact", "products", "loadingScreen")
+ * @param templateName - The name of the template (e.g., "Serenova Template")
+ * @returns The image path or null if template is not available
+ * 
+ * @example
+ * getLogoPreviewImagePath("navbar", "Serenova Template")
+ * // Returns: "/section-screenshots/serenova-template/navbar.png"
+ */
+export function getLogoPreviewImagePath(
+  logoType: "navbar" | "footer" | "loadingScreen" | "hero" | "contact" | "products",
+  templateName: string | null
+): string | null {
+  if (!templateName) return null
+  
+  const normalizedTemplate = normalizeTemplateName(templateName)
+  
+  // Map logo types to their corresponding screenshot section names
+  const sectionMap: Record<typeof logoType, string> = {
+    navbar: "navbar",
+    footer: "footer",
+    loadingScreen: "loading-screen",
+    hero: "home-hero",
+    contact: "contact-hero",
+    products: "products-hero",
+  }
+  
+  const sectionName = sectionMap[logoType]
+  
+  return `/section-screenshots/${normalizedTemplate}/${sectionName}.png`
+}
+

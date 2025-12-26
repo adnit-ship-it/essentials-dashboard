@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChevronDown } from "lucide-react"
 import { usePagesStore } from "@/lib/stores/pages-store"
+import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { LogoSizesEditor } from "@/components/pages/sections/brand-settings/logo-sizes-editor"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -50,7 +51,39 @@ function convertLogoSizes(pagesData: any): {
 
 export function LogoSizesEditorWrapper() {
   const { pagesData, updatePagesData } = usePagesStore()
+  const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [isOpen, setIsOpen] = useState(false)
+  const [templateName, setTemplateName] = useState<string | null>(null)
+
+  // Fetch template name from hostTemplate.json
+  useEffect(() => {
+    if (repoOwnerFromLink && repoNameFromLink) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+      const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
+      
+      fetch(url)
+        .then((res) => {
+          if (res.ok) {
+            return res.json()
+          }
+          if (res.status === 404) {
+            return null // File doesn't exist yet
+          }
+          throw new Error(`Failed to fetch host template: ${res.status}`)
+        })
+        .then((data) => {
+          if (data?.templateName) {
+            setTemplateName(data.templateName)
+          } else {
+            setTemplateName(null)
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching host template:", error)
+          setTemplateName(null)
+        })
+    }
+  }, [repoOwnerFromLink, repoNameFromLink])
 
   if (!pagesData) {
     return (
@@ -95,7 +128,12 @@ export function LogoSizesEditorWrapper() {
       </CardHeader>
       {isOpen && (
         <CardContent className="p-6">
-          <LogoSizesEditor logoSizes={logoSizes} onLogoSizesChange={handleLogoSizesChange} hideHeader={true} />
+          <LogoSizesEditor 
+            logoSizes={logoSizes} 
+            onLogoSizesChange={handleLogoSizesChange} 
+            hideHeader={true}
+            templateName={templateName}
+          />
         </CardContent>
       )}
     </Card>

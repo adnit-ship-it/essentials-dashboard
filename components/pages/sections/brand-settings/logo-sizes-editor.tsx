@@ -6,12 +6,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import type { LogoSize } from "@/lib/types/branding"
+import { getLogoPreviewImagePath } from "@/lib/utils/section-preview-images"
 
 interface LogoSizeEditorProps {
   label: string
   description: string
   size: LogoSize
   onSizeChange: (size: LogoSize) => void
+  logoType?: "navbar" | "footer" | "loadingScreen" | "hero" | "contact" | "products"
+  templateName?: string | null
 }
 
 // Helper to strip "px" from value for display
@@ -28,11 +31,16 @@ function addPx(value: string): string {
   return `${numValue}px`
 }
 
-export function LogoSizeEditor({ label, description, size, onSizeChange }: LogoSizeEditorProps) {
+export function LogoSizeEditor({ label, description, size, onSizeChange, logoType, templateName }: LogoSizeEditorProps) {
   const [widthAuto, setWidthAuto] = useState<Record<string, boolean>>({
     mobile: size.width.mobile === "auto",
     desktop: size.width.desktop === "auto",
   })
+  const [imageError, setImageError] = useState(false)
+  
+  const previewImagePath = logoType && templateName 
+    ? getLogoPreviewImagePath(logoType, templateName)
+    : null
 
   const handleWidthToggle = (breakpoint: "mobile" | "desktop", isAuto: boolean) => {
     setWidthAuto((prev) => ({ ...prev, [breakpoint]: isAuto }))
@@ -74,6 +82,22 @@ export function LogoSizeEditor({ label, description, size, onSizeChange }: LogoS
         <CardDescription className="text-xs">{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Preview Image */}
+        {previewImagePath && !imageError && (
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Preview</Label>
+            <div className="relative overflow-hidden rounded-md border bg-muted aspect-video">
+              <img
+                src={previewImagePath}
+                alt={`${label} preview`}
+                className="w-full h-full object-cover"
+                onError={() => {
+                  setImageError(true)
+                }}
+              />
+            </div>
+          </div>
+        )}
         {/* Heights */}
         <div className="space-y-2">
           <Label className="text-xs font-medium">Heights</Label>
@@ -224,9 +248,10 @@ interface LogoSizesEditorProps {
   }
   onLogoSizesChange: (logoSizes: LogoSizesEditorProps["logoSizes"]) => void
   hideHeader?: boolean
+  templateName?: string | null
 }
 
-export function LogoSizesEditor({ logoSizes, onLogoSizesChange, hideHeader = false }: LogoSizesEditorProps) {
+export function LogoSizesEditor({ logoSizes, onLogoSizesChange, hideHeader = false, templateName = null }: LogoSizesEditorProps) {
   const updateSize = (key: keyof typeof logoSizes, size: LogoSize) => {
     onLogoSizesChange({
       ...logoSizes,
@@ -250,36 +275,48 @@ export function LogoSizesEditor({ logoSizes, onLogoSizesChange, hideHeader = fal
           description="Logo in navigation bar"
           size={logoSizes.navbar}
           onSizeChange={(size) => updateSize("navbar", size)}
+          logoType="navbar"
+          templateName={templateName}
         />
         <LogoSizeEditor
           label="Footer Logo"
           description="Logo in footer"
           size={logoSizes.footer}
           onSizeChange={(size) => updateSize("footer", size)}
+          logoType="footer"
+          templateName={templateName}
         />
         <LogoSizeEditor
           label="Loading Screen"
           description="Logo on loading screen"
           size={logoSizes.loadingScreen}
           onSizeChange={(size) => updateSize("loadingScreen", size)}
+          logoType="loadingScreen"
+          templateName={templateName}
         />
         <LogoSizeEditor
           label="Hero Logo"
           description="Logo in hero section"
           size={logoSizes.hero}
           onSizeChange={(size) => updateSize("hero", size)}
+          logoType="hero"
+          templateName={templateName}
         />
         <LogoSizeEditor
           label="Contact Logo"
           description="Logo on contact page"
           size={logoSizes.contact}
           onSizeChange={(size) => updateSize("contact", size)}
+          logoType="contact"
+          templateName={templateName}
         />
         <LogoSizeEditor
           label="Products Logo"
           description="Logo on products page"
           size={logoSizes.products}
           onSizeChange={(size) => updateSize("products", size)}
+          logoType="products"
+          templateName={templateName}
         />
       </div>
     </div>
