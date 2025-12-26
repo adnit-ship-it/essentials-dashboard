@@ -42,7 +42,9 @@ app.use(
 );
 
 // --- Configuration Constants ---
-const PORT = process.env.PORT || process.env.SERVER_PORT || 3001;
+// On Render, Next.js uses PORT, so Express should use PORT+1 to avoid conflicts
+// Or use SERVER_PORT if explicitly set
+const PORT = process.env.SERVER_PORT || (process.env.PORT ? parseInt(process.env.PORT) + 1 : 3001);
 
 // Default organization for repository creation
 const DEFAULT_REPO_ORG = "adnit-ship-it";

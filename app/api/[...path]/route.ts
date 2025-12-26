@@ -49,8 +49,8 @@ async function handleProxyRequest(
     
     if (!apiBaseUrl) {
       // Calculate the Express server port
-      // If SERVER_PORT is set, use it; otherwise use PORT-1 (Next.js uses PORT, Express uses PORT-1)
-      const expressPort = process.env.SERVER_PORT || (process.env.PORT ? parseInt(process.env.PORT) - 1 : 3001)
+      // Express uses PORT+1 (Next.js uses PORT) or SERVER_PORT if explicitly set
+      const expressPort = process.env.SERVER_PORT || (process.env.PORT ? parseInt(process.env.PORT) + 1 : 3001)
       // Default to localhost with calculated port - works when both services run together
       // In production (Render), if both run in the same service, they can communicate via localhost
       apiBaseUrl = `http://localhost:${expressPort}`
