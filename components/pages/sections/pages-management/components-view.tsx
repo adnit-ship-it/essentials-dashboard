@@ -194,7 +194,7 @@ export function ComponentsView() {
       {/* Section Preview and Component Editors in a flex layout */}
       <div className="flex flex-wrap gap-4 [&_[data-slot=card]]:py-4 [&_[data-slot=card]]:gap-4 [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:pb-3 [&_[data-slot=card-content]]:px-4">
         {/* Section Preview - shown once for the entire section */}
-        <div className="w-full md:w-[calc(50%-0.5rem)]">
+        <div className="w-full md:w-[calc(50%-0.5rem)] max-w-md">
           <SectionPreviewEditor sectionName={selectedSectionName} templateName={templateName} />
         </div>
 

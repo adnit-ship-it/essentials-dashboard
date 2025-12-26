@@ -86,7 +86,7 @@ export function LogoSizeEditor({ label, description, size, onSizeChange, logoTyp
         {previewImagePath && !imageError && (
           <div className="space-y-2">
             <Label className="text-xs font-medium">Preview</Label>
-            <div className="relative overflow-hidden rounded-md border bg-muted aspect-video">
+            <div className="relative overflow-hidden rounded-md border bg-muted aspect-video max-w-full">
               <img
                 src={previewImagePath}
                 alt={`${label} preview`}

@@ -23,7 +23,7 @@ export function SectionPreviewEditor({ sectionName, templateName }: SectionPrevi
         <CardTitle className="text-sm">Section Preview</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="relative overflow-hidden rounded-md border bg-muted aspect-video">
+        <div className="relative overflow-hidden rounded-md border bg-muted aspect-video max-w-full">
           <img
             src={previewImagePath}
             alt={`${sectionName} preview`}
