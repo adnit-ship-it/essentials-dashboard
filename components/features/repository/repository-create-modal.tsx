@@ -17,7 +17,7 @@ import type { TemplateRepo } from "@/lib/stores/repository-store"
 interface RepositoryCreateModalProps {
   isOpen: boolean
   onClose: () => void
-  onRepositoryCreated: (owner: string | null, repo: string | null) => void
+  onRepositoryCreated: (owner: string | null, repo: string | null, isNewlyCreated?: boolean) => void
 }
 
 type Mode = "create" | "link"
@@ -98,17 +98,6 @@ export function RepositoryCreateModal({
       const actualRepoName = result.repository?.name || result.config?.repo || `store-${newRepoName.trim()}`
       const actualRepoOwner = result.repository?.owner?.login || result.config?.owner || "adnit-ship-it"
       
-      // Track this as a newly created repository in sessionStorage
-      const repoKey = `${actualRepoOwner}/${actualRepoName}`
-      try {
-        const existingRepos = sessionStorage.getItem("newlyCreatedRepos")
-        const repos = existingRepos ? JSON.parse(existingRepos) : {}
-        repos[repoKey] = Date.now()
-        sessionStorage.setItem("newlyCreatedRepos", JSON.stringify(repos))
-      } catch (error) {
-        console.warn("Failed to track newly created repo:", error)
-      }
-      
       // Show success toast
       toast.success(`Repository '${actualRepoName}' created successfully!`)
       
@@ -118,6 +107,9 @@ export function RepositoryCreateModal({
       setDescription("")
       setIsPrivate(false)
       
+      // Check if deployment URL exists (indicates new repo was created)
+      const hasDeploymentUrl = !!(result.repository?.deploymentUrl || result.config?.deploymentUrl)
+      
       // Link to organization if one is selected
       if (selectedOrgId) {
         try {
@@ -126,16 +118,16 @@ export function RepositoryCreateModal({
             repoName: actualRepoName,
           })
           toast.success(`Repository linked to organization successfully!`)
-          onRepositoryCreated(actualRepoOwner, actualRepoName)
+          onRepositoryCreated(actualRepoOwner, actualRepoName, hasDeploymentUrl)
           onClose()
         } catch (linkError) {
           console.error("Error linking repository:", linkError)
           // Still notify parent about creation, but don't link
-          onRepositoryCreated(actualRepoOwner, actualRepoName)
+          onRepositoryCreated(actualRepoOwner, actualRepoName, hasDeploymentUrl)
           onClose()
         }
       } else {
-        onRepositoryCreated(actualRepoOwner, actualRepoName)
+        onRepositoryCreated(actualRepoOwner, actualRepoName, hasDeploymentUrl)
         onClose()
       }
     } catch (err) {

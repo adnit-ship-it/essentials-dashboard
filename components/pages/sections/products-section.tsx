@@ -1738,58 +1738,60 @@ export function ProductsSection() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <h3 className="text-lg font-semibold">Products</h3>
-            <p className="text-sm text-muted-foreground">
-              Manage the product catalog backed by the content repository. Stage edits here and push
-              them in a single commit.
-            </p>
-          </div>
-          <div className="flex flex-row items-center gap-2 flex-nowrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchProducts}
-              disabled={loading || !repoOwnerFromLink || !repoNameFromLink}
-              className="gap-2 flex-1"
-            >
-              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-              Refresh
-            </Button>
-            <Button
-              className="bg-transparent text-muted-foreground hover:bg-muted flex-1"
-              onClick={handleDiscardAll}
-              disabled={!hasPendingChanges || headerActionsDisabled}
-            >
-              <Undo2 className="mr-2 h-4 w-4" />
-              Discard All Changes
-            </Button>
-            <Button
-              onClick={handleSaveAll}
-              disabled={!hasPendingChanges || saving || hasProductsWithMissingFields}
-              className="bg-accent-color text-background-color hover:bg-accent-color/90 flex-1"
-            >
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              Save Changes
-            </Button>
-            <Button onClick={handleNewProduct} disabled={headerActionsDisabled} className="flex-1">
-              <Plus className="mr-2 h-4 w-4" />
-              New Product
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLinkNameModalOpen(true)}
-              disabled={headerActionsDisabled}
-              className="flex-1"
-            >
-              Fetch Product Bundles
-            </Button>
+        <div className="sticky top-0 z-10 bg-background border-b pb-4 pt-2 -mx-8 px-8 mb-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold">Products</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage the product catalog backed by the content repository. Stage edits here and push
+                them in a single commit.
+              </p>
+            </div>
+            <div className="flex flex-row items-center gap-2 flex-nowrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchProducts}
+                disabled={loading || !repoOwnerFromLink || !repoNameFromLink}
+                className="gap-2 flex-1"
+              >
+                <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+                Refresh
+              </Button>
+              <Button
+                className="bg-transparent text-muted-foreground hover:bg-muted flex-1"
+                onClick={handleDiscardAll}
+                disabled={!hasPendingChanges || headerActionsDisabled}
+              >
+                <Undo2 className="mr-2 h-4 w-4" />
+                Discard All Changes
+              </Button>
+              <Button
+                onClick={handleSaveAll}
+                disabled={!hasPendingChanges || saving || hasProductsWithMissingFields}
+                className="bg-accent-color text-background-color hover:bg-accent-color/90 flex-1"
+              >
+                {saving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Save Changes
+              </Button>
+              <Button onClick={handleNewProduct} disabled={headerActionsDisabled} className="flex-1">
+                <Plus className="mr-2 h-4 w-4" />
+                New Product
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLinkNameModalOpen(true)}
+                disabled={headerActionsDisabled}
+                className="flex-1"
+              >
+                Fetch Product Bundles
+              </Button>
+            </div>
           </div>
         </div>
 

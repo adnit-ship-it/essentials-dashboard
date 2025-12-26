@@ -1,7 +1,8 @@
 "use client"
 import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Menu } from "lucide-react"
+import { Menu, X, AlertTriangle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 import { FormsSection, ProductsSection, ReviewsSection, PagesManagementSection } from "@/components/pages"
 import { BrandSettingsView } from "@/components/pages/sections/pages-management/brand-settings/brand-settings-view"
@@ -17,6 +18,7 @@ export function DashboardLayout() {
   const [activeSection, setActiveSection] = useState("brand-settings")
   const [showRepoModal, setShowRepoModal] = useState(false)
   const [showCreateRepoModal, setShowCreateRepoModal] = useState(false)
+  const [show404Alert, setShow404Alert] = useState(false)
   
   const { 
     fetchAvailableRepos, 
@@ -67,7 +69,7 @@ export function DashboardLayout() {
     return !selectedRepoId && configuredRepos.length === 0
   }, [selectedOrgId, repoOwnerFromLink, repoNameFromLink, selectedRepoId, configuredRepos])
 
-  const handleRepositoryCreated = async (owner: string | null, repo: string | null) => {
+  const handleRepositoryCreated = async (owner: string | null, repo: string | null, isNewlyCreated?: boolean) => {
     setShowCreateRepoModal(false)
     fetchAvailableRepos()
 
@@ -85,7 +87,22 @@ export function DashboardLayout() {
         toast.error("Failed to link repository to organization")
       }
     }
+
+    // Show 404 alert if this is a newly created repository
+    if (isNewlyCreated) {
+      setShow404Alert(true)
+    }
   }
+
+  // Auto-dismiss 404 alert after 10 seconds
+  useEffect(() => {
+    if (show404Alert) {
+      const timer = setTimeout(() => {
+        setShow404Alert(false)
+      }, 10000)
+      return () => clearTimeout(timer)
+    }
+  }, [show404Alert])
 
   return (
     <div className="flex h-screen bg-background-color">
@@ -126,6 +143,25 @@ export function DashboardLayout() {
                   {organizations.length === 0 ? "Welcome" : getCurrentSectionTitle()}
                 </h2>
               </div>
+              
+              {/* 404 Alert for newly created repos */}
+              {show404Alert && (
+                <Alert className="border-amber-200 bg-amber-50 text-amber-700 relative">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-sm pr-8">
+                    Note: The hosted link will show 404 until the first commit is complete (2-3 minutes).
+                  </AlertDescription>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-4 right-4 h-6 w-6 text-amber-700 hover:text-amber-900 hover:bg-amber-100"
+                    onClick={() => setShow404Alert(false)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Alert>
+              )}
+
               <div className="space-y-4">
                 <div className={activeSection === "pages" ? "" : "hidden"}>
                   <PagesManagementSection />

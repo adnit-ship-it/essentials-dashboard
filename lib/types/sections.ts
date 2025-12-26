@@ -56,5 +56,13 @@ export type ComponentType =
   | "infoCard"
   | "infoCard with bulletpoint"
   | "product-card-badge"
-  | "title-bar";
+  | "title-bar"
+  | "features"
+  | "reviews"
+  | "statistics"
+  | "background"
+  | "reverse"
+  | "shippingInfo"
+  | "providerText"
+  | "marqueePauseOnHover";
 

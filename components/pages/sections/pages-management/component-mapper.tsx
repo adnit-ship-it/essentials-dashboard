@@ -19,6 +19,12 @@ import { StatsEditor } from "./component-editors/stats-editor"
 import { InfoCardEditor } from "./component-editors/info-card-editor"
 import { InfoCardWithBulletpointsEditor } from "./component-editors/info-card-with-bulletpoints-editor"
 import { BadgeEditor } from "./component-editors/badge-editor"
+import { BooleanEditor } from "./component-editors/boolean-editor"
+import { SimpleTextEditor } from "./component-editors/simple-text-editor"
+import { BackgroundEditor } from "./component-editors/background-editor"
+import { FeaturesArrayEditor } from "./component-editors/features-array-editor"
+import { ReviewsArrayEditor } from "./component-editors/reviews-array-editor"
+import { StatisticsArrayEditor } from "./component-editors/statistics-array-editor"
 import { GenericEditor } from "./component-editors/generic-editor"
 import { SectionPreviewEditor } from "./component-editors/section-preview-editor"
 
@@ -174,6 +180,51 @@ export function ComponentMapper({
 
         if (key === "product-card-badge" || key === "title-bar") {
           return <BadgeEditor key={reactKey} {...editorProps} />
+        }
+
+        if (key === "features") {
+          return (
+            <FeaturesArrayEditor
+              key={reactKey}
+              {...editorProps}
+              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { text: "", iconType: "checkmark-star", iconColor: "#AA992C" }) : undefined}
+              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+            />
+          )
+        }
+
+        if (key === "reviews") {
+          return (
+            <ReviewsArrayEditor
+              key={reactKey}
+              {...editorProps}
+              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { name: "", stars: 5, review: "", order: 1 }) : undefined}
+              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+            />
+          )
+        }
+
+        if (key === "statistics") {
+          return (
+            <StatisticsArrayEditor
+              key={reactKey}
+              {...editorProps}
+              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { value: "", description: "", order: 1, icon: { src: "", alt: "", type: "svg-image", color: "#337168" }, showBulletpoint: false }) : undefined}
+              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+            />
+          )
+        }
+
+        if (key === "background") {
+          return <BackgroundEditor key={reactKey} {...editorProps} />
+        }
+
+        if (key === "reverse" || key === "marqueePauseOnHover") {
+          return <BooleanEditor key={reactKey} {...editorProps} />
+        }
+
+        if (key === "shippingInfo" || key === "providerText") {
+          return <SimpleTextEditor key={reactKey} {...editorProps} />
         }
 
         // Fallback to generic editor

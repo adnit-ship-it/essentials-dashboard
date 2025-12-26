@@ -1,6 +1,3 @@
-/**
- * Utility functions for section preview image path resolution
- */
 
 /**
  * Normalizes a template name to kebab-case for use in file paths

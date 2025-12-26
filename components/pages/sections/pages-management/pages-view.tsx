@@ -115,8 +115,13 @@ function SortablePageCard({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onToggleShow(pageKey)}
-                className={cn("gap-2", !page.show && "text-muted-foreground")}
+                onClick={() => !isHomePage && onToggleShow(pageKey)}
+                disabled={isHomePage}
+                className={cn(
+                  "gap-2",
+                  !page.show && "text-muted-foreground",
+                  isHomePage && "cursor-not-allowed opacity-50"
+                )}
               >
                 {page.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               </Button>
@@ -188,6 +193,10 @@ export function PagesView({ pages }: PagesViewProps) {
   const handleToggleShow = (pageKey: PageKey) => {
     const page = pagesData[pageKey] as any
     if (!page) return
+
+    // Prevent hiding the home page
+    const isHomePage = pageKey.toLowerCase() === "home" || page.title?.toLowerCase() === "home"
+    if (isHomePage) return
 
     updatePagesData((data) =>
       updatePage(data, pageKey, { show: !page.show })

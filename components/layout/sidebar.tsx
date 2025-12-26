@@ -56,41 +56,6 @@ export function Sidebar({
   const { organizations, isLoading, repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [hostTemplateInfo, setHostTemplateInfo] = useState<{ hostedAt: string; templateName: string } | null>(null)
-  const [isNewlyCreated, setIsNewlyCreated] = useState(false)
-
-  // Check if this repo was recently created (within last 5 minutes)
-  useEffect(() => {
-    if (repoOwnerFromLink && repoNameFromLink) {
-      const repoKey = `${repoOwnerFromLink}/${repoNameFromLink}`
-      const createdRepos = sessionStorage.getItem("newlyCreatedRepos")
-      
-      if (createdRepos) {
-        try {
-          const repos = JSON.parse(createdRepos) as Record<string, number>
-          const createdAt = repos[repoKey]
-          
-          if (createdAt) {
-            const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
-            setIsNewlyCreated(createdAt > fiveMinutesAgo)
-            
-            // Clean up old entries (older than 5 minutes)
-            if (createdAt <= fiveMinutesAgo) {
-              delete repos[repoKey]
-              sessionStorage.setItem("newlyCreatedRepos", JSON.stringify(repos))
-            }
-          } else {
-            setIsNewlyCreated(false)
-          }
-        } catch {
-          setIsNewlyCreated(false)
-        }
-      } else {
-        setIsNewlyCreated(false)
-      }
-    } else {
-      setIsNewlyCreated(false)
-    }
-  }, [repoOwnerFromLink, repoNameFromLink])
 
   // Fetch hostTemplate.json when repo is available
   useEffect(() => {
@@ -255,15 +220,6 @@ export function Sidebar({
                           </div>
                         </div>
                       )}
-
-                      <div className="pt-1 border-t border-sidebar-border/50 space-y-1">
-                     
-                        {hostTemplateInfo?.hostedAt && isNewlyCreated && (
-                          <div className="text-xs text-amber-600 dark:text-amber-500 italic">
-                            Note: The hosted link will show 404 until the first commit is complete(2-3 minutes).
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </CardContent>
                 </Card>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ImageUpload } from "./shared/image-upload"
+import { ColorInput } from "./shared/color-input"
 
 interface MediaEditorProps {
   componentKey: string
@@ -70,7 +71,122 @@ export function MediaEditor({ value, onUpdate }: MediaEditorProps) {
             directory="public/assets/images/"
           />
         )}
-        {!value?.background && !value?.foreground && !value?.image && !value?.src && (
+        {value?.product && (
+          <>
+            <ImageUpload
+              label="Product Image"
+              value={typeof value.product === "string" ? value.product : value.product?.src || ""}
+              onChange={(path) => {
+                if (typeof value.product === "string") {
+                  onUpdate(["product"], path)
+                } else {
+                  onUpdate(["product", "src"], path)
+                }
+              }}
+              directory="public/assets/images/"
+            />
+            {value.product?.heights && (
+              <div className="space-y-2">
+                <Label>Heights</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {value.product.heights.mobile && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Mobile</Label>
+                      <Input
+                        value={value.product.heights.mobile}
+                        onChange={(e) => onUpdate(["product", "heights", "mobile"], e.target.value)}
+                        placeholder="e.g., 222px"
+                      />
+                    </div>
+                  )}
+                  {value.product.heights.desktop && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Desktop</Label>
+                      <Input
+                        value={value.product.heights.desktop}
+                        onChange={(e) => onUpdate(["product", "heights", "desktop"], e.target.value)}
+                        placeholder="e.g., auto"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        {value?.avatar && (
+          <>
+            <ImageUpload
+              label="Avatar Image"
+              value={typeof value.avatar === "string" ? value.avatar : value.avatar?.src || ""}
+              onChange={(path) => {
+                if (typeof value.avatar === "string") {
+                  onUpdate(["avatar"], path)
+                } else {
+                  onUpdate(["avatar", "src"], path)
+                }
+              }}
+              directory="public/assets/images/"
+            />
+            {value.avatar?.color && (
+              <ColorInput
+                label="Avatar Color"
+                value={value.avatar.color}
+                onChange={(color) => onUpdate(["avatar", "color"], color)}
+              />
+            )}
+          </>
+        )}
+        {value?.star && (
+          <>
+            <ImageUpload
+              label="Star Image"
+              value={typeof value.star === "string" ? value.star : value.star?.src || ""}
+              onChange={(path) => {
+                if (typeof value.star === "string") {
+                  onUpdate(["star"], path)
+                } else {
+                  onUpdate(["star", "src"], path)
+                }
+              }}
+              directory="public/assets/images/"
+            />
+            {value.star?.color && (
+              <ColorInput
+                label="Star Color"
+                value={value.star.color}
+                onChange={(color) => onUpdate(["star", "color"], color)}
+              />
+            )}
+          </>
+        )}
+        {value?.progressLine && (
+          <ColorInput
+            label="Progress Line Color"
+            value={typeof value.progressLine === "string" ? value.progressLine : value.progressLine?.color || ""}
+            onChange={(color) => {
+              if (typeof value.progressLine === "string") {
+                onUpdate(["progressLine"], color)
+              } else {
+                onUpdate(["progressLine", "color"], color)
+              }
+            }}
+          />
+        )}
+        {value?.progressDots && (
+          <ColorInput
+            label="Progress Dots Color"
+            value={typeof value.progressDots === "string" ? value.progressDots : value.progressDots?.color || ""}
+            onChange={(color) => {
+              if (typeof value.progressDots === "string") {
+                onUpdate(["progressDots"], color)
+              } else {
+                onUpdate(["progressDots", "color"], color)
+              }
+            }}
+          />
+        )}
+        {!value?.background && !value?.foreground && !value?.image && !value?.src && !value?.product && !value?.avatar && !value?.star && !value?.progressLine && !value?.progressDots && (
           <div className="text-sm text-muted-foreground">
             <p>No media properties found. This component may use a different structure.</p>
             <p className="mt-2">Available properties: {Object.keys(value || {}).join(", ") || "none"}</p>
