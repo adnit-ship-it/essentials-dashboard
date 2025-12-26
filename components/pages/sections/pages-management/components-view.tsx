@@ -8,6 +8,7 @@ import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { findSectionInSections } from "@/lib/utils/pages-helpers"
 import { ComponentMapper } from "./component-mapper"
+import { SectionPreviewEditor } from "./component-editors/section-preview-editor"
 import {
   updateComponentNestedProperty,
   addArrayItem,
@@ -190,21 +191,27 @@ export function ComponentsView() {
         </div>
       </div>
 
-      <div className="space-y-6">
+      {/* Section Preview and Component Editors in a flex layout */}
+      <div className="flex flex-wrap gap-4 [&_[data-slot=card]]:py-4 [&_[data-slot=card]]:gap-4 [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:pb-3 [&_[data-slot=card-content]]:px-4">
+        {/* Section Preview - shown once for the entire section */}
+        <div className="w-full md:w-[calc(50%-0.5rem)]">
+          <SectionPreviewEditor sectionName={selectedSectionName} templateName={templateName} />
+        </div>
+
+        {/* Component Editors */}
         {section.components.map((component, index) => (
-          <div key={index}>
-            <ComponentMapper
-              component={component}
-              componentIndex={index}
-              sectionName={selectedSectionName}
-              templateName={templateName}
-              onUpdate={(path, value) => handleComponentUpdate(index, path, value)}
-              onArrayAdd={(arrayKey, item) => handleArrayAdd(index, arrayKey, item)}
-              onArrayRemove={(arrayKey, itemIndex) =>
-                handleArrayRemove(index, arrayKey, itemIndex)
-              }
-            />
-          </div>
+          <ComponentMapper
+            key={index}
+            component={component}
+            componentIndex={index}
+            sectionName={selectedSectionName}
+            templateName={templateName}
+            onUpdate={(path, value) => handleComponentUpdate(index, path, value)}
+            onArrayAdd={(arrayKey, item) => handleArrayAdd(index, arrayKey, item)}
+            onArrayRemove={(arrayKey, itemIndex) =>
+              handleArrayRemove(index, arrayKey, itemIndex)
+            }
+          />
         ))}
       </div>
     </div>

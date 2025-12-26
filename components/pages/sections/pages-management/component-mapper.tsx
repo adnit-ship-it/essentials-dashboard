@@ -26,7 +26,6 @@ import { FeaturesArrayEditor } from "./component-editors/features-array-editor"
 import { ReviewsArrayEditor } from "./component-editors/reviews-array-editor"
 import { StatisticsArrayEditor } from "./component-editors/statistics-array-editor"
 import { GenericEditor } from "./component-editors/generic-editor"
-import { SectionPreviewEditor } from "./component-editors/section-preview-editor"
 
 interface ComponentEditorProps {
   component: Component
@@ -54,10 +53,7 @@ export function ComponentMapper({
   const keys = Object.keys(component)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 [&_[data-slot=card]]:py-4 [&_[data-slot=card]]:gap-4 [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:pb-3 [&_[data-slot=card-content]]:px-4">
-      {/* Section Preview - appears as a grid item */}
-      <SectionPreviewEditor sectionName={sectionName} templateName={templateName ?? null} />
-      
+    <div className="flex flex-wrap gap-4 [&_[data-slot=card]]:py-4 [&_[data-slot=card]]:gap-4 [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:pb-3 [&_[data-slot=card-content]]:px-4">
       {keys.map((key) => {
         const value = component[key]
         const reactKey = `${componentIndex}-${key}`
@@ -79,7 +75,7 @@ export function ComponentMapper({
 
         // Route to appropriate editor based on key
         if (key === "heading" || key === "subheading" || key === "paragraph") {
-          return <TextEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><TextEditor {...editorProps} /></div>
         }
 
         if (
@@ -88,147 +84,155 @@ export function ComponentMapper({
           key === "button1" ||
           key === "button2"
         ) {
-          return <ButtonEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><ButtonEditor {...editorProps} /></div>
         }
 
         if (key === "logo") {
-          return <LogoEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><LogoEditor {...editorProps} /></div>
         }
 
         if (key === "media") {
-          return <MediaEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><MediaEditor {...editorProps} /></div>
         }
 
         if (key === "bulletPoints") {
-          return <BulletPointsEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><BulletPointsEditor {...editorProps} /></div>
         }
 
         if (key === "logos") {
           return (
-            <LogosArrayEditor
-              key={reactKey}
-              {...editorProps}
-              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { src: "", alt: "" }) : undefined}
-              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
-            />
+            <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]">
+              <LogosArrayEditor
+                {...editorProps}
+                onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { src: "", alt: "" }) : undefined}
+                onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+              />
+            </div>
           )
         }
 
         if (key === "steps") {
           return (
-            <StepsArrayEditor
-              key={reactKey}
-              {...editorProps}
-              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { title: "", subtext: "", icon: { src: "", alt: "", type: "svg-image", color: "accentColor1" } }) : undefined}
-              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
-            />
+            <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]">
+              <StepsArrayEditor
+                {...editorProps}
+                onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { title: "", subtext: "", icon: { src: "", alt: "", type: "svg-image", color: "accentColor1" } }) : undefined}
+                onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+              />
+            </div>
           )
         }
 
         if (key === "faq") {
           return (
-            <FAQArrayEditor
-              key={reactKey}
-              {...editorProps}
-              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { question: "", answer: "" }) : undefined}
-              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
-            />
+            <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]">
+              <FAQArrayEditor
+                {...editorProps}
+                onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { question: "", answer: "" }) : undefined}
+                onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+              />
+            </div>
           )
         }
 
         if (key === "before-after") {
           return (
-            <BeforeAfterArrayEditor
-              key={reactKey}
-              {...editorProps}
-              onArrayAdd={onArrayAdd ? (item: any) => onArrayAdd(key, item) : undefined}
-              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
-            />
+            <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]">
+              <BeforeAfterArrayEditor
+                {...editorProps}
+                onArrayAdd={onArrayAdd ? (item: any) => onArrayAdd(key, item) : undefined}
+                onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+              />
+            </div>
           )
         }
 
         if (key === "buttons") {
           return (
-            <ButtonsArrayEditor
-              key={reactKey}
-              {...editorProps}
-              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { text: "", type: "button", color: "accentColor1", backgroundColor: "accentColor1", show: true }) : undefined}
-              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
-            />
+            <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]">
+              <ButtonsArrayEditor
+                {...editorProps}
+                onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { text: "", type: "button", color: "accentColor1", backgroundColor: "accentColor1", show: true }) : undefined}
+                onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+              />
+            </div>
           )
         }
 
         if (key === "marqueeSpeed") {
-          return <NumberEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><NumberEditor {...editorProps} /></div>
         }
 
         if (key === "productCard") {
-          return <ProductCardEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><ProductCardEditor {...editorProps} /></div>
         }
 
         if (key === "stats") {
-          return <StatsEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><StatsEditor {...editorProps} /></div>
         }
 
         if (key === "infoCard") {
-          return <InfoCardEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><InfoCardEditor {...editorProps} /></div>
         }
 
         if (key === "infoCard with bulletpoint") {
-          return <InfoCardWithBulletpointsEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><InfoCardWithBulletpointsEditor {...editorProps} /></div>
         }
 
         if (key === "product-card-badge" || key === "title-bar") {
-          return <BadgeEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><BadgeEditor {...editorProps} /></div>
         }
 
         if (key === "features") {
           return (
-            <FeaturesArrayEditor
-              key={reactKey}
-              {...editorProps}
-              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { text: "", iconType: "checkmark-star", iconColor: "#AA992C" }) : undefined}
-              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
-            />
+            <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]">
+              <FeaturesArrayEditor
+                {...editorProps}
+                onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { text: "", iconType: "checkmark-star", iconColor: "#AA992C" }) : undefined}
+                onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+              />
+            </div>
           )
         }
 
         if (key === "reviews") {
           return (
-            <ReviewsArrayEditor
-              key={reactKey}
-              {...editorProps}
-              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { name: "", stars: 5, review: "", order: 1 }) : undefined}
-              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
-            />
+            <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]">
+              <ReviewsArrayEditor
+                {...editorProps}
+                onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { name: "", stars: 5, review: "", order: 1 }) : undefined}
+                onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+              />
+            </div>
           )
         }
 
         if (key === "statistics") {
           return (
-            <StatisticsArrayEditor
-              key={reactKey}
-              {...editorProps}
-              onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { value: "", description: "", order: 1, icon: { src: "", alt: "", type: "svg-image", color: "#337168" }, showBulletpoint: false }) : undefined}
-              onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
-            />
+            <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]">
+              <StatisticsArrayEditor
+                {...editorProps}
+                onArrayAdd={onArrayAdd ? () => onArrayAdd(key, { value: "", description: "", order: 1, icon: { src: "", alt: "", type: "svg-image", color: "#337168" }, showBulletpoint: false }) : undefined}
+                onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(key, index) : undefined}
+              />
+            </div>
           )
         }
 
         if (key === "background") {
-          return <BackgroundEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><BackgroundEditor {...editorProps} /></div>
         }
 
         if (key === "reverse" || key === "marqueePauseOnHover") {
-          return <BooleanEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><BooleanEditor {...editorProps} /></div>
         }
 
         if (key === "shippingInfo" || key === "providerText") {
-          return <SimpleTextEditor key={reactKey} {...editorProps} />
+          return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><SimpleTextEditor {...editorProps} /></div>
         }
 
         // Fallback to generic editor
-        return <GenericEditor key={reactKey} {...editorProps} />
+        return <div key={reactKey} className="w-full md:w-[calc(50%-0.5rem)]"><GenericEditor {...editorProps} /></div>
       })}
     </div>
   )

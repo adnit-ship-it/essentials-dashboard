@@ -1,17 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRepositoryStore } from "@/lib/stores/repository-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { X, Loader2, AlertCircle, GitBranch, Sparkles, Link2, Check } from "lucide-react"
+import { X, Loader2, AlertCircle, GitBranch, Sparkles, Link2, Check, Search, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
 import type { TemplateRepo } from "@/lib/stores/repository-store"
 
 interface RepositoryCreateModalProps {
@@ -41,6 +41,11 @@ export function RepositoryCreateModal({
   const [linking, setLinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingTemplates, setLoadingTemplates] = useState(false)
+  const [repoDropdownOpen, setRepoDropdownOpen] = useState(false)
+  const [repoSearchQuery, setRepoSearchQuery] = useState("")
+  const [highlightedRepoIndex, setHighlightedRepoIndex] = useState(-1)
+  const repoSearchInputRef = useRef<HTMLInputElement>(null)
+  const repoListRef = useRef<HTMLDivElement>(null)
 
   // Load data when modal opens
   useEffect(() => {
@@ -57,6 +62,83 @@ export function RepositoryCreateModal({
       }
     }
   }, [isOpen, repoOwnerFromLink, repoNameFromLink, fetchAvailableRepos])
+
+  // Filter repos to only show those from adnit-ship-it
+  const adnitRepos = availableRepos.filter(repo => repo.owner === "adnit-ship-it")
+
+  // Filter repositories based on search query
+  const filteredRepos = adnitRepos.filter(repo => {
+    if (!repoSearchQuery.trim()) return true
+    const query = repoSearchQuery.toLowerCase()
+    return (
+      repo.repo.toLowerCase().includes(query) ||
+      repo.id.toLowerCase().includes(query) ||
+      (repo.description && repo.description.toLowerCase().includes(query))
+    )
+  })
+
+  // Auto-focus search input when dropdown opens
+  useEffect(() => {
+    if (repoDropdownOpen && repoSearchInputRef.current) {
+      setTimeout(() => {
+        repoSearchInputRef.current?.focus()
+      }, 100)
+    }
+  }, [repoDropdownOpen])
+
+  // Reset highlighted index when search changes or repos change
+  useEffect(() => {
+    setHighlightedRepoIndex(-1)
+  }, [repoSearchQuery, filteredRepos.length])
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedRepoIndex >= 0 && repoListRef.current) {
+      const items = repoListRef.current.querySelectorAll('[data-repo-index]')
+      const highlightedItem = items[highlightedRepoIndex] as HTMLElement
+      if (highlightedItem) {
+        highlightedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      }
+    }
+  }, [highlightedRepoIndex])
+
+  const handleRepoSelect = (repoId: string) => {
+    setSelectedExistingRepo(repoId)
+    setRepoDropdownOpen(false)
+    setRepoSearchQuery("")
+    setHighlightedRepoIndex(-1)
+  }
+
+  const handleRepoKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      setHighlightedRepoIndex((prev) => {
+        if (prev < filteredRepos.length - 1) {
+          return prev + 1
+        }
+        return 0 // Wrap to start
+      })
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault()
+      setHighlightedRepoIndex((prev) => {
+        if (prev > 0) {
+          return prev - 1
+        }
+        return filteredRepos.length - 1 // Wrap to end
+      })
+    } else if (e.key === "Enter") {
+      e.preventDefault()
+      if (highlightedRepoIndex >= 0 && highlightedRepoIndex < filteredRepos.length) {
+        handleRepoSelect(filteredRepos[highlightedRepoIndex].id)
+      }
+    } else if (e.key === "Escape") {
+      setRepoDropdownOpen(false)
+      setRepoSearchQuery("")
+      setHighlightedRepoIndex(-1)
+    }
+  }
+
+  const selectedRepo = adnitRepos.find(repo => repo.id === selectedExistingRepo)
 
   const loadTemplates = async () => {
     setLoadingTemplates(true)
@@ -178,9 +260,6 @@ export function RepositoryCreateModal({
   }
 
   if (!isOpen) return null
-
-  // Filter repos to only show those from adnit-ship-it
-  const adnitRepos = availableRepos.filter(repo => repo.owner === "adnit-ship-it")
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -398,32 +477,100 @@ export function RepositoryCreateModal({
                     Loading repositories...
                   </div>
                 ) : (
-                  <Select value={selectedExistingRepo} onValueChange={setSelectedExistingRepo}>
-                    <SelectTrigger id="existing-repo-select">
-                      <SelectValue placeholder="Select a repository..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {adnitRepos.length === 0 ? (
-                        <SelectItem value="" disabled>
-                          No repositories found
-                        </SelectItem>
-                      ) : (
-                        adnitRepos.map((repo) => (
-                          <SelectItem key={repo.id} value={repo.id}>
-                            <div>
-                              <div className="font-medium">{repo.repo}</div>
-                              <div className="text-xs text-muted-foreground">{repo.id}</div>
-                              {repo.description && (
-                                <div className="text-xs text-muted-foreground mt-0.5">
-                                  {repo.description}
-                                </div>
-                              )}
+                  <PopoverPrimitive.Root 
+                    open={repoDropdownOpen} 
+                    onOpenChange={(open) => {
+                      setRepoDropdownOpen(open)
+                      if (!open) {
+                        setRepoSearchQuery("")
+                        setHighlightedRepoIndex(-1)
+                      }
+                    }}
+                  >
+                    <PopoverPrimitive.Trigger asChild>
+                      <Button
+                        id="existing-repo-select"
+                        variant="outline"
+                        className="w-full justify-between h-10 bg-background-color text-body-color border border-gray-300"
+                        onClick={() => {
+                          setRepoDropdownOpen(true)
+                        }}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1 text-left">
+                          {selectedRepo ? (
+                            <div className="truncate">
+                              <div className="font-medium truncate">{selectedRepo.repo}</div>
+                              <div className="text-xs text-muted-foreground truncate">{selectedRepo.id}</div>
                             </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                          ) : (
+                            <span className="text-muted-foreground">Select a repository...</span>
+                          )}
+                        </div>
+                        <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                      </Button>
+                    </PopoverPrimitive.Trigger>
+                    <PopoverPrimitive.Portal>
+                      <PopoverPrimitive.Content
+                        className={cn(
+                          "z-50 min-w-[500px] rounded-md border border-gray-300 bg-background-color p-1 shadow-md",
+                          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+                          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                        )}
+                        align="start"
+                        sideOffset={4}
+                        onKeyDown={handleRepoKeyDown}
+                      >
+                        {/* Search Input */}
+                        <div className="flex items-center border-b border-gray-300 px-3 py-2">
+                          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-muted-foreground" />
+                          <Input
+                            ref={repoSearchInputRef}
+                            placeholder="Search repositories..."
+                            value={repoSearchQuery}
+                            onChange={(e) => setRepoSearchQuery(e.target.value)}
+                            onKeyDown={handleRepoKeyDown}
+                            className="h-8 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-body-color placeholder:text-muted-foreground"
+                          />
+                        </div>
+                        
+                        {/* Repositories List */}
+                        <div ref={repoListRef} className="max-h-[300px] overflow-auto">
+                          {filteredRepos.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">
+                              {repoSearchQuery ? "No repositories found" : "No repositories available"}
+                            </div>
+                          ) : (
+                            filteredRepos.map((repo, index) => (
+                              <button
+                                key={repo.id}
+                                data-repo-index={index}
+                                onClick={() => handleRepoSelect(repo.id)}
+                                className={cn(
+                                  "w-full flex items-start gap-2 px-3 py-2 text-sm rounded-sm transition-colors text-left",
+                                  "hover:bg-accent-color hover:text-background-color",
+                                  selectedExistingRepo === repo.id && "bg-accent-color/50",
+                                  highlightedRepoIndex === index && "bg-accent-color/70"
+                                )}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium">{repo.repo}</div>
+                                  <div className="text-xs text-muted-foreground">{repo.id}</div>
+                                  {repo.description && (
+                                    <div className="text-xs text-muted-foreground mt-0.5">
+                                      {repo.description}
+                                    </div>
+                                  )}
+                                </div>
+                                {selectedExistingRepo === repo.id && (
+                                  <Check className="h-4 w-4 shrink-0 mt-0.5" />
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </PopoverPrimitive.Content>
+                    </PopoverPrimitive.Portal>
+                  </PopoverPrimitive.Root>
                 )}
                 <p className="text-xs text-muted-foreground">
                   Repositories from adnit-ship-it organization
