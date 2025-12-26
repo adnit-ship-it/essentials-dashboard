@@ -46,7 +46,7 @@ export interface RepoConfig {
  */
 export const DEFAULT_FILE_PATHS = {
   contentFilePath: "data/websiteText.json",
-  productsFilePath: "data/intake-form/productsList.ts",
+  productsFilePath: "data/intake-form/productsList.json",
   tailwindConfigPath: "tailwind.config.js",
   brandLogoPath: "public/assets/images/brand/logo.svg",
   brandAltLogoPath: "public/assets/images/brand/logo-alt.svg",

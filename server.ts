@@ -51,7 +51,7 @@ const DEFAULT_REPO_ORG = "adnit-ship-it";
 const CONTENT_REPO_OWNER = process.env.CONTENT_REPO_OWNER;
 const CONTENT_REPO_NAME = process.env.CONTENT_REPO_NAME;
 const CONTENT_FILE_PATH = 'data/websiteText.json';
-const PRODUCTS_FILE_PATH = "data/intake-form/products.ts";
+const PRODUCTS_FILE_PATH = "data/intake-form/productsList.json";
 const TAILWIND_CONFIG_PATH = "tailwind.config.js";
 const BRAND_PRIMARY_LOGO_PATH = "public/assets/images/brand/logo.svg";
 const BRAND_SECONDARY_LOGO_PATH = "public/assets/images/brand/logo-alt.svg";
@@ -86,7 +86,7 @@ function getActiveRepoConfigFromRequest(req: Request): {
   const branch = (q.branch as string) || process.env.CONTENT_REPO_BRANCH || "main";
   const contentFilePath = process.env.CONTENT_FILE_PATH as string;
   const productsFilePath =
-    process.env.CONTENT_PRODUCTS_FILE_PATH || "data/intake-form/products.ts";
+    process.env.CONTENT_PRODUCTS_FILE_PATH || "data/intake-form/productsList.json";
   const tailwindConfigPath = process.env.CONTENT_TAILWIND_PATH || "tailwind.config.js";
 
   const resolveLogoPath = (value?: string, fallback?: string) => {
@@ -391,66 +391,54 @@ async function fetchAssetMetadata(
   }
 }
 
-const PRODUCTS_FILE_HEADER = `import type { Product } from "~/types/intake-form/checkout";
-
-// --- PRODUCT DATA ---
-
-// This is the master list of all available products.
-`;
-
-const PRODUCTS_FILE_FOOTER = `
-export function getProductById(id: string): Product | undefined {
-  return products.find((product) => product.id === id);
-}
-
-export function getPopularProducts(): Product[] {
-  return products.filter((product) => product.popular);
-}
-`;
-
 function extractProductsArray(content: string): Product[] {
-  // First, try to find direct export: export const products: Product[] = [...]
-  let arrayMatch = content.match(
-    /export const products\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
-  );
-
-  // If not found, try to find productsData array: const productsData: Product[] = [...]
-  if (!arrayMatch || arrayMatch.length < 2) {
-    arrayMatch = content.match(
-      /const productsData\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
-    );
-  }
-
-  if (!arrayMatch || arrayMatch.length < 2) {
-    throw new Error(
-      "Unable to locate products array in products file content."
-    );
-  }
-
-  const arrayLiteral = arrayMatch[1];
-
   try {
-    const productArray = new Function(`"use strict"; return (${arrayLiteral});`)();
-    return productArray as Product[];
-  } catch (error) {
-    console.error("Failed to parse products array literal:", error);
-    throw new Error("Failed to parse products array from content file.");
-  }
-}
+    // Try to parse as JSON first
+    const parsed = JSON.parse(content);
+    
+    // If it's an array, return it directly
+    if (Array.isArray(parsed)) {
+      return parsed as Product[];
+    }
+    
+    // If it's an object with a products property, return that
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.products)) {
+      return parsed.products as Product[];
+    }
+    
+    throw new Error("JSON does not contain a products array");
+  } catch (jsonError) {
+    // If JSON parsing fails, try legacy TypeScript format for backward compatibility
+    let arrayMatch = content.match(
+      /export const products\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
+    );
 
-function formatProductsArray(products: Product[]): string {
-  const json = JSON.stringify(products, null, 2);
-  return json.replace(/"([^"]+)":/g, "$1:");
+    if (!arrayMatch || arrayMatch.length < 2) {
+      arrayMatch = content.match(
+        /const productsData\s*:\s*Product\[\]\s*=\s*(\[[\s\S]*?\]);/
+      );
+    }
+
+    if (!arrayMatch || arrayMatch.length < 2) {
+      throw new Error(
+        "Unable to locate products array in products file content. Expected JSON format or TypeScript export."
+      );
+    }
+
+    const arrayLiteral = arrayMatch[1];
+
+    try {
+      const productArray = new Function(`"use strict"; return (${arrayLiteral});`)();
+      return productArray as Product[];
+    } catch (error) {
+      console.error("Failed to parse products array literal:", error);
+      throw new Error("Failed to parse products array from content file.");
+    }
+  }
 }
 
 function serializeProductsFile(products: Product[]): string {
-  const formattedArray = formatProductsArray(products);
-  return (
-    `${PRODUCTS_FILE_HEADER}
-export const products: Product[] = ${formattedArray};
-
-${PRODUCTS_FILE_FOOTER}`.trimStart() + "\n"
-  );
+  return JSON.stringify(products, null, 2) + "\n";
 }
 
 async function fetchProductsFromRepo(
@@ -947,13 +935,40 @@ async function updateBrandingInRepo({
 
 app.get("/api/products", async (req: Request, res: Response) => {
   try {
-    const repoConfig = getActiveRepoConfigFromRequest(req);
+    const q: any = req.query || {};
+    const owner = (q.owner as string) || (q["repo-owner"] as string) || (q.repoOwner as string) || "";
+    const repo = (q.repo as string) || (q["repo-name"] as string) || (q.repoName as string) || "";
+    
+    if (!owner || !repo) {
+      return res.status(400).json({
+        error: "Missing required parameters: owner and repo",
+      });
+    }
+
+    const repoId = `${owner}/${repo}`;
+    const config = getRepoConfig(repoId);
+    
+    // Use stored config if available, otherwise fall back to legacy method
+    let productsFilePath: string;
+    let branch: string;
+    
+    if (config) {
+      productsFilePath = config.productsFilePath || "data/intake-form/productsList.json";
+      branch = config.defaultBranch || (q.branch as string) || "main";
+      updateLastAccessed(repoId);
+    } else {
+      // Fall back to legacy method for backward compatibility
+      const legacyConfig = getActiveRepoConfigFromRequest(req);
+      productsFilePath = legacyConfig.productsFilePath;
+      branch = legacyConfig.branch;
+    }
+
     const octokit = await getAuthenticatedClient();
     const { products, sha, assets } = await fetchProductsFromRepo(octokit, {
-      owner: repoConfig.owner,
-      repo: repoConfig.repo,
-      branch: repoConfig.branch,
-      productsFilePath: repoConfig.productsFilePath,
+      owner,
+      repo,
+      branch,
+      productsFilePath,
     });
 
     res.json({
@@ -1621,7 +1636,7 @@ app.post(
         contentFilePath:
           config.contentFilePath || "data/content.json",
         productsFilePath:
-          config.productsFilePath || "data/intake-form/products.ts",
+          config.productsFilePath || "data/intake-form/productsList.json",
         tailwindConfigPath:
           config.tailwindConfigPath || "tailwind.config.js",
         brandLogoPath:

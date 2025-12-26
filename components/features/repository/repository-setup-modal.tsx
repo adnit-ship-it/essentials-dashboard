@@ -212,7 +212,7 @@ export function RepositorySetupModal({
                       id="products-file-path"
                       value={paths.productsFilePath}
                       onChange={(e) => setPaths({ ...paths, productsFilePath: e.target.value })}
-                      placeholder="data/intake-form/products.ts"
+                      placeholder="data/intake-form/productsList.json"
                     />
                   </div>
 

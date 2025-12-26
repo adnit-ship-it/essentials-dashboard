@@ -1743,8 +1743,7 @@ export function ProductsSection() {
             <div className="space-y-1">
               <h3 className="text-lg font-semibold">Products</h3>
               <p className="text-sm text-muted-foreground">
-                Manage the product catalog backed by the content repository. Stage edits here and push
-                them in a single commit.
+                Manage the product catalog here.
               </p>
             </div>
             <div className="flex flex-row items-center gap-2 flex-nowrap">
