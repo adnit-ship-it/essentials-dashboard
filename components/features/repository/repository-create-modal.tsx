@@ -190,7 +190,8 @@ export function RepositoryCreateModal({
       setIsPrivate(false)
       
       // Check if deployment URL exists (indicates new repo was created)
-      const hasDeploymentUrl = !!(result.repository?.deploymentUrl || result.config?.deploymentUrl)
+      // deploymentUrl is returned from the API response but not typed in RepoConfig
+      const hasDeploymentUrl = !!(result.deploymentUrl || (result as { deploymentUrl?: string; repository?: { deploymentUrl?: string } }).repository?.deploymentUrl)
       
       // Link to organization if one is selected
       if (selectedOrgId) {
