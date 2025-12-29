@@ -17,8 +17,77 @@ export interface CreateRepoResult {
 }
 
 /**
+ * Waits for the repository to be populated with files from the template
+ * Polls the repository root until files are available or max attempts reached
+ * @param octokit - Authenticated GitHub client
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param maxAttempts - Maximum number of attempts (default: 10)
+ * @param delayMs - Delay between attempts in milliseconds (default: 2000)
+ * @returns true if repository has content, false otherwise
+ */
+async function waitForRepositoryContent(
+  octokit: any,
+  owner: string,
+  repo: string,
+  maxAttempts: number = 10,
+  delayMs: number = 2000
+): Promise<boolean> {
+  console.log(`[RepoCreation] Waiting for repository ${owner}/${repo} to be populated...`);
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      // Try to list the root directory contents
+      console.log(`[RepoCreation] Attempt ${attempt}/${maxAttempts}: Checking repository content...`);
+      const { data } = await octokit.repos.getContent({
+        owner,
+        repo,
+        path: "",
+        ref: "main",
+      });
+      
+      // If we get an array, the repo has content
+      if (Array.isArray(data) && data.length > 0) {
+        console.log(`[RepoCreation] ✅ Repository populated with ${data.length} items after ${attempt} attempt(s)`);
+        return true;
+      }
+      
+      // If we get a single file (unlikely for root), it still has content
+      if (data && !Array.isArray(data) && data.type === "file") {
+        console.log(`[RepoCreation] ✅ Repository has content (single file at root)`);
+        return true;
+      }
+      
+      // Empty array or unexpected response - wait and retry
+      if (attempt < maxAttempts) {
+        console.log(`[RepoCreation] ⏳ Repository appears empty, waiting ${delayMs}ms before retry ${attempt}/${maxAttempts}...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    } catch (error: any) {
+      // 404 means repo is empty or doesn't exist yet
+      if (error.status === 404) {
+        if (attempt < maxAttempts) {
+          console.log(`[RepoCreation] ⏳ Repository not yet populated (404), waiting ${delayMs}ms before retry ${attempt}/${maxAttempts}...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        } else {
+          console.warn(`[RepoCreation] ⚠️ Repository still empty after ${maxAttempts} attempts`);
+          return false;
+        }
+      } else {
+        // Other error - log and return false
+        console.error(`[RepoCreation] ❌ Error checking repository content:`, error.message);
+        return false;
+      }
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Updates the hostTemplate.json file with the Vercel deployment URL
  * Reads the existing file, updates only the hostedAt field, and commits it back
+ * If the file doesn't exist, creates it with the deployment URL
  * @param octokit - Authenticated GitHub client
  * @param owner - Repository owner
  * @param repo - Repository name
@@ -36,65 +105,95 @@ async function updateHostTemplate(
   const filePath = "data/hostTemplate.json";
   console.log(`[HostTemplate] Target file path: ${filePath}`);
   
+  let fileExists = false;
+  let fileData: any;
+  
   try {
-    // Read the existing hostTemplate.json file
+    // Try to read the existing hostTemplate.json file
     console.log(`[HostTemplate] Attempting to read file from repository...`);
     console.log(`[HostTemplate] API call: GET /repos/${owner}/${repo}/contents/${filePath}?ref=main`);
     
-    const { data: fileData } = await octokit.repos.getContent({
-      owner,
-      repo,
-      path: filePath,
-      ref: "main",
-    });
-
-    console.log(`[HostTemplate] File read response received`);
-    console.log(`[HostTemplate] File data type: ${fileData.type}`);
-    console.log(`[HostTemplate] File has content: ${!!fileData.content}`);
-    console.log(`[HostTemplate] File SHA: ${fileData.sha}`);
-
-    if (!fileData.content || fileData.type !== "file") {
-      console.warn(`[HostTemplate] File ${filePath} not found or is not a file, skipping update`);
-      console.warn(`[HostTemplate] File type: ${fileData.type}, Has content: ${!!fileData.content}`);
-      return;
+    try {
+      const response = await octokit.repos.getContent({
+        owner,
+        repo,
+        path: filePath,
+        ref: "main",
+      });
+      fileData = response.data;
+      fileExists = true;
+      
+      console.log(`[HostTemplate] File read response received`);
+      console.log(`[HostTemplate] File data type: ${fileData.type}`);
+      console.log(`[HostTemplate] File has content: ${!!fileData.content}`);
+      console.log(`[HostTemplate] File SHA: ${fileData.sha}`);
+    } catch (error: any) {
+      if (error.status === 404) {
+        // File doesn't exist - we'll create it
+        fileExists = false;
+        console.log(`[HostTemplate] File doesn't exist (404), will create it`);
+      } else {
+        throw error;
+      }
     }
 
-    // Decode the base64 content
-    console.log(`[HostTemplate] Decoding base64 content...`);
-    const contentString = Buffer.from(fileData.content, "base64").toString("utf8");
-    console.log(`[HostTemplate] Content length: ${contentString.length} characters`);
-    
-    const hostTemplate = JSON.parse(contentString);
-    console.log(`[HostTemplate] Current hostTemplate:`, JSON.stringify(hostTemplate, null, 2));
+    let hostTemplate: any;
+    let contentBase64: string;
 
-    // Update only the hostedAt field
-    console.log(`[HostTemplate] Updating hostedAt field from "${hostTemplate.hostedAt}" to "${deploymentUrl}"`);
-    hostTemplate.hostedAt = deploymentUrl;
+    if (fileExists && fileData.content && fileData.type === "file") {
+      // File exists - update it
+      console.log(`[HostTemplate] File exists, updating it...`);
+      
+      // Decode the base64 content
+      console.log(`[HostTemplate] Decoding base64 content...`);
+      const contentString = Buffer.from(fileData.content, "base64").toString("utf8");
+      console.log(`[HostTemplate] Content length: ${contentString.length} characters`);
+      
+      hostTemplate = JSON.parse(contentString);
+      console.log(`[HostTemplate] Current hostTemplate:`, JSON.stringify(hostTemplate, null, 2));
 
-    // Encode back to base64
-    const updatedContent = JSON.stringify(hostTemplate, null, 2);
-    const contentBase64 = Buffer.from(updatedContent, "utf8").toString("base64");
-    console.log(`[HostTemplate] Updated content encoded to base64, length: ${contentBase64.length}`);
+      // Update only the hostedAt field
+      console.log(`[HostTemplate] Updating hostedAt field from "${hostTemplate.hostedAt}" to "${deploymentUrl}"`);
+      hostTemplate.hostedAt = deploymentUrl;
 
-    // Commit the updated file
-    console.log(`[HostTemplate] Committing updated file to repository...`);
+      // Encode back to base64
+      const updatedContent = JSON.stringify(hostTemplate, null, 2);
+      contentBase64 = Buffer.from(updatedContent, "utf8").toString("base64");
+      console.log(`[HostTemplate] Updated content encoded to base64, length: ${contentBase64.length}`);
+    } else {
+      // File doesn't exist - create it
+      console.log(`[HostTemplate] Creating new hostTemplate.json file...`);
+      const templateName = repo.replace(/^store-/, "").replace(/-/g, " ");
+      hostTemplate = {
+        hostedAt: deploymentUrl,
+        templateName: templateName.charAt(0).toUpperCase() + templateName.slice(1) + " Template",
+      };
+      const newContent = JSON.stringify(hostTemplate, null, 2);
+      contentBase64 = Buffer.from(newContent, "utf8").toString("base64");
+      console.log(`[HostTemplate] New file content prepared:`, JSON.stringify(hostTemplate, null, 2));
+    }
+
+    // Commit the file (create or update)
+    console.log(`[HostTemplate] Committing ${fileExists ? 'updated' : 'new'} file to repository...`);
     console.log(`[HostTemplate] API call: PUT /repos/${owner}/${repo}/contents/${filePath}`);
-    console.log(`[HostTemplate] Commit message: "Update hostTemplate.json with Vercel deployment URL"`);
+    console.log(`[HostTemplate] Commit message: "${fileExists ? 'Update' : 'Create'} hostTemplate.json with Vercel deployment URL"`);
     
     const commitResult = await octokit.repos.createOrUpdateFileContents({
       owner,
       repo,
       path: filePath,
-      message: "Update hostTemplate.json with Vercel deployment URL",
+      message: fileExists 
+        ? "Update hostTemplate.json with Vercel deployment URL"
+        : "Create hostTemplate.json with Vercel deployment URL",
       content: contentBase64,
-      sha: fileData.sha,
+      sha: fileExists ? fileData.sha : undefined, // Only include SHA if updating
       branch: "main",
     });
 
     console.log(`[HostTemplate] Commit successful!`);
     console.log(`[HostTemplate] Commit SHA: ${commitResult.data.commit.sha}`);
     console.log(`[HostTemplate] Commit URL: ${commitResult.data.commit.html_url}`);
-    console.log(`[HostTemplate] Successfully updated ${filePath} with deployment URL: ${deploymentUrl}`);
+    console.log(`[HostTemplate] Successfully ${fileExists ? 'updated' : 'created'} ${filePath} with deployment URL: ${deploymentUrl}`);
     console.log(`[HostTemplate] ===== updateHostTemplate completed successfully =====`);
   } catch (error: any) {
     console.error(`[HostTemplate] ===== Error in updateHostTemplate =====`);
@@ -102,14 +201,9 @@ async function updateHostTemplate(
     console.error(`[HostTemplate] Error message: ${error.message}`);
     console.error(`[HostTemplate] Error response:`, error.response?.data);
     
-    // If file doesn't exist (404), log warning but don't fail
-    if (error.status === 404) {
-      console.warn(`[HostTemplate] File ${filePath} not found in repository (404), skipping update`);
-      console.warn(`[HostTemplate] This is expected if the file doesn't exist in the template`);
-      return;
-    }
     // Log error but don't fail the entire operation
-    console.error(`[HostTemplate] Failed to update ${filePath}:`, error.message);
+    const operation = (fileExists !== undefined && fileExists) ? 'update' : 'create';
+    console.error(`[HostTemplate] Failed to ${operation} ${filePath}:`, error.message);
     console.error(`[HostTemplate] ===== updateHostTemplate failed =====`);
   }
 }
@@ -405,6 +499,22 @@ export async function createRepoFromTemplate(
       );
     }
     console.log(`[RepoCreation] Repository owner verified correctly`);
+    
+    // Wait for GitHub to populate the repository with files from the template
+    console.log(`[RepoCreation] Waiting for repository to be populated with template files...`);
+    const repoPopulated = await waitForRepositoryContent(
+      octokit,
+      newRepo.owner.login,
+      newRepo.name,
+      10, // max 10 attempts
+      2000 // 2 second delay between attempts
+    );
+    
+    if (!repoPopulated) {
+      console.warn(`[RepoCreation] ⚠️ Repository ${newRepo.name} may still be empty. Proceeding anyway, but operations may fail.`);
+    } else {
+      console.log(`[RepoCreation] ✅ Repository is populated and ready!`);
+    }
   } catch (error: any) {
     console.error(`[RepoCreation] Failed to create repository from template`);
     console.error(`[RepoCreation] Error status: ${error.status}`);
