@@ -30,10 +30,17 @@ async function updateHostTemplate(
   repo: string,
   deploymentUrl: string
 ): Promise<void> {
+  console.log(`[HostTemplate] ===== Starting updateHostTemplate =====`);
+  console.log(`[HostTemplate] Parameters:`, { owner, repo, deploymentUrl });
+  
   const filePath = "data/hostTemplate.json";
+  console.log(`[HostTemplate] Target file path: ${filePath}`);
   
   try {
     // Read the existing hostTemplate.json file
+    console.log(`[HostTemplate] Attempting to read file from repository...`);
+    console.log(`[HostTemplate] API call: GET /repos/${owner}/${repo}/contents/${filePath}?ref=main`);
+    
     const { data: fileData } = await octokit.repos.getContent({
       owner,
       repo,
@@ -41,24 +48,40 @@ async function updateHostTemplate(
       ref: "main",
     });
 
+    console.log(`[HostTemplate] File read response received`);
+    console.log(`[HostTemplate] File data type: ${fileData.type}`);
+    console.log(`[HostTemplate] File has content: ${!!fileData.content}`);
+    console.log(`[HostTemplate] File SHA: ${fileData.sha}`);
+
     if (!fileData.content || fileData.type !== "file") {
       console.warn(`[HostTemplate] File ${filePath} not found or is not a file, skipping update`);
+      console.warn(`[HostTemplate] File type: ${fileData.type}, Has content: ${!!fileData.content}`);
       return;
     }
 
     // Decode the base64 content
+    console.log(`[HostTemplate] Decoding base64 content...`);
     const contentString = Buffer.from(fileData.content, "base64").toString("utf8");
+    console.log(`[HostTemplate] Content length: ${contentString.length} characters`);
+    
     const hostTemplate = JSON.parse(contentString);
+    console.log(`[HostTemplate] Current hostTemplate:`, JSON.stringify(hostTemplate, null, 2));
 
     // Update only the hostedAt field
+    console.log(`[HostTemplate] Updating hostedAt field from "${hostTemplate.hostedAt}" to "${deploymentUrl}"`);
     hostTemplate.hostedAt = deploymentUrl;
 
     // Encode back to base64
     const updatedContent = JSON.stringify(hostTemplate, null, 2);
     const contentBase64 = Buffer.from(updatedContent, "utf8").toString("base64");
+    console.log(`[HostTemplate] Updated content encoded to base64, length: ${contentBase64.length}`);
 
     // Commit the updated file
-    await octokit.repos.createOrUpdateFileContents({
+    console.log(`[HostTemplate] Committing updated file to repository...`);
+    console.log(`[HostTemplate] API call: PUT /repos/${owner}/${repo}/contents/${filePath}`);
+    console.log(`[HostTemplate] Commit message: "Update hostTemplate.json with Vercel deployment URL"`);
+    
+    const commitResult = await octokit.repos.createOrUpdateFileContents({
       owner,
       repo,
       path: filePath,
@@ -68,15 +91,26 @@ async function updateHostTemplate(
       branch: "main",
     });
 
+    console.log(`[HostTemplate] Commit successful!`);
+    console.log(`[HostTemplate] Commit SHA: ${commitResult.data.commit.sha}`);
+    console.log(`[HostTemplate] Commit URL: ${commitResult.data.commit.html_url}`);
     console.log(`[HostTemplate] Successfully updated ${filePath} with deployment URL: ${deploymentUrl}`);
+    console.log(`[HostTemplate] ===== updateHostTemplate completed successfully =====`);
   } catch (error: any) {
+    console.error(`[HostTemplate] ===== Error in updateHostTemplate =====`);
+    console.error(`[HostTemplate] Error status: ${error.status}`);
+    console.error(`[HostTemplate] Error message: ${error.message}`);
+    console.error(`[HostTemplate] Error response:`, error.response?.data);
+    
     // If file doesn't exist (404), log warning but don't fail
     if (error.status === 404) {
-      console.warn(`[HostTemplate] File ${filePath} not found in repository, skipping update`);
+      console.warn(`[HostTemplate] File ${filePath} not found in repository (404), skipping update`);
+      console.warn(`[HostTemplate] This is expected if the file doesn't exist in the template`);
       return;
     }
     // Log error but don't fail the entire operation
     console.error(`[HostTemplate] Failed to update ${filePath}:`, error.message);
+    console.error(`[HostTemplate] ===== updateHostTemplate failed =====`);
   }
 }
 
@@ -86,9 +120,15 @@ async function updateHostTemplate(
  * @returns The deployment URL (e.g., "https://store-my-app.vercel.app")
  */
 async function linkToVercel(repoName: string): Promise<string> {
+  console.log(`[Vercel] ===== Starting linkToVercel =====`);
+  console.log(`[Vercel] Repository name: ${repoName}`);
+  
   const vercelToken = process.env.VERCEL_TOKEN;
+  console.log(`[Vercel] VERCEL_TOKEN exists: ${!!vercelToken}`);
+  console.log(`[Vercel] VERCEL_TOKEN length: ${vercelToken ? vercelToken.length : 0} characters`);
   
   if (!vercelToken) {
+    console.error(`[Vercel] VERCEL_TOKEN is missing!`);
     throw new Error("VERCEL_TOKEN environment variable is not set. Please add it to your .env.local file.");
   }
 
@@ -103,7 +143,10 @@ async function linkToVercel(repoName: string): Promise<string> {
     };
 
     console.log(`[Vercel] Creating project for ${repoName}...`);
+    console.log(`[Vercel] Request URL: https://api.vercel.com/v9/projects`);
+    console.log(`[Vercel] Request method: POST`);
     console.log(`[Vercel] Request body:`, JSON.stringify(requestBody, null, 2));
+    console.log(`[Vercel] Git repository: ${DEFAULT_ORG}/${repoName}`);
 
     const response = await fetch("https://api.vercel.com/v9/projects", {
       method: "POST",
@@ -114,18 +157,27 @@ async function linkToVercel(repoName: string): Promise<string> {
       body: JSON.stringify(requestBody),
     });
 
+    console.log(`[Vercel] Response received`);
+    console.log(`[Vercel] Response status: ${response.status} ${response.statusText}`);
+    console.log(`[Vercel] Response headers:`, Object.fromEntries(response.headers.entries()));
+
     const responseText = await response.text();
+    console.log(`[Vercel] Response text length: ${responseText.length} characters`);
+    
     let responseData;
     try {
       responseData = JSON.parse(responseText);
-    } catch {
+      console.log(`[Vercel] Response parsed as JSON successfully`);
+    } catch (parseError) {
+      console.error(`[Vercel] Failed to parse response as JSON`);
+      console.error(`[Vercel] Response text (first 500 chars):`, responseText.substring(0, 500));
       responseData = { raw: responseText };
     }
 
-    console.log(`[Vercel] Response status: ${response.status} ${response.statusText}`);
     console.log(`[Vercel] Response body:`, JSON.stringify(responseData, null, 2));
 
     if (!response.ok) {
+      console.error(`[Vercel] Request failed with status ${response.status}`);
       throw new Error(
         `Failed to create Vercel project: ${response.status} ${response.statusText}. ${JSON.stringify(responseData)}`
       );
@@ -135,18 +187,28 @@ async function linkToVercel(repoName: string): Promise<string> {
     // Vercel normalizes project names, so 'store-dr_drip' becomes 'store-drdrip'
     const actualProjectName = responseData.name || repoName;
     const deploymentUrl = `https://${actualProjectName}.vercel.app`;
-    console.log(`[Vercel] Project created with name: ${actualProjectName} (normalized from ${repoName})`);
-    console.log(`[Vercel] Project created successfully. Deployment URL: ${deploymentUrl}`);
+    
+    console.log(`[Vercel] Project created successfully!`);
+    console.log(`[Vercel] Requested name: ${repoName}`);
+    console.log(`[Vercel] Actual project name: ${actualProjectName} (normalized from ${repoName})`);
+    console.log(`[Vercel] Project ID: ${responseData.id}`);
+    console.log(`[Vercel] Deployment URL: ${deploymentUrl}`);
+    console.log(`[Vercel] ===== linkToVercel completed successfully =====`);
     
     return deploymentUrl;
   } catch (error: any) {
+    console.error(`[Vercel] ===== Error in linkToVercel =====`);
+    console.error(`[Vercel] Error type: ${error.constructor.name}`);
+    console.error(`[Vercel] Error message: ${error.message}`);
+    console.error(`[Vercel] Error stack:`, error.stack);
+    
     // If it's already our error, re-throw it
     if (error.message?.includes("Failed to create Vercel project") || error.message?.includes("VERCEL_TOKEN")) {
-      console.error(`[Vercel] Error:`, error.message);
+      console.error(`[Vercel] Re-throwing known error`);
       throw error;
     }
     // Otherwise wrap it
-    console.error(`[Vercel] Unexpected error:`, error);
+    console.error(`[Vercel] Wrapping unexpected error`);
     throw new Error(`Failed to link repository to Vercel: ${error.message || "Unknown error"}`);
   }
 }
@@ -162,20 +224,43 @@ export async function createRepoFromTemplate(
   description?: string,
   isPrivate: boolean = false
 ): Promise<CreateRepoResult> {
+  console.log(`[RepoCreation] ===== Starting createRepoFromTemplate =====`);
+  console.log(`[RepoCreation] Input parameters:`, {
+    templateRepo: templateRepo.id,
+    newRepoName,
+    description,
+    isPrivate,
+  });
+  
+  console.log(`[RepoCreation] Getting authenticated GitHub client...`);
   const octokit = await getAuthenticatedClient();
+  console.log(`[RepoCreation] Authenticated client obtained`);
 
   // Add "store-" prefix if not already present
   const prefixedName = newRepoName.startsWith("store-") 
     ? newRepoName 
     : `store-${newRepoName}`;
+  console.log(`[RepoCreation] Repository name: "${newRepoName}" -> prefixed name: "${prefixedName}"`);
 
   // 1. Validate template repo exists and is accessible
+  console.log(`[RepoCreation] Step 1: Validating template repository exists...`);
+  console.log(`[RepoCreation] Template repo: ${templateRepo.owner}/${templateRepo.repo}`);
+  console.log(`[RepoCreation] Template repo ID: ${templateRepo.id}`);
+  
   try {
-    await octokit.repos.get({
+    console.log(`[RepoCreation] API call: GET /repos/${templateRepo.owner}/${templateRepo.repo}`);
+    const templateRepoInfo = await octokit.repos.get({
       owner: templateRepo.owner,
       repo: templateRepo.repo,
     });
+    console.log(`[RepoCreation] Template repository found and accessible`);
+    console.log(`[RepoCreation] Template repo full name: ${templateRepoInfo.data.full_name}`);
+    console.log(`[RepoCreation] Template repo is template: ${templateRepoInfo.data.is_template}`);
+    console.log(`[RepoCreation] Template repo default branch: ${templateRepoInfo.data.default_branch}`);
   } catch (error: any) {
+    console.error(`[RepoCreation] Failed to access template repository`);
+    console.error(`[RepoCreation] Error status: ${error.status}`);
+    console.error(`[RepoCreation] Error message: ${error.message}`);
     if (error.status === 404) {
       throw new Error(`Template repository "${templateRepo.id}" not found or not accessible`);
     }
@@ -183,12 +268,19 @@ export async function createRepoFromTemplate(
   }
 
   // 2. Verify installation is on the correct account
+  console.log(`[RepoCreation] Step 2: Verifying GitHub App installation...`);
+  console.log(`[RepoCreation] Expected organization: ${DEFAULT_ORG}`);
+  
   let installationAccount: { login: string; type: string } | null = null;
   try {
     const { App } = await import("@octokit/app");
     const APP_ID = process.env.GITHUB_APP_CLIENT_ID;
     const PRIVATE_KEY_RAW = process.env.GITHUB_PRIVATE_KEY;
     const INSTALLATION_ID = process.env.GITHUB_INSTALLATION_ID;
+    
+    console.log(`[RepoCreation] APP_ID exists: ${!!APP_ID}`);
+    console.log(`[RepoCreation] PRIVATE_KEY exists: ${!!PRIVATE_KEY_RAW}`);
+    console.log(`[RepoCreation] INSTALLATION_ID: ${INSTALLATION_ID}`);
     
     if (APP_ID && PRIVATE_KEY_RAW && INSTALLATION_ID) {
       const PRIVATE_KEY = PRIVATE_KEY_RAW.replace(/\\n/g, '\n');
@@ -197,6 +289,7 @@ export async function createRepoFromTemplate(
         privateKey: PRIVATE_KEY,
       });
       
+      console.log(`[RepoCreation] API call: GET /app/installations/${INSTALLATION_ID}`);
       const { data: installation } = await app.octokit.request(
         `GET /app/installations/${INSTALLATION_ID}`,
         {
@@ -211,64 +304,112 @@ export async function createRepoFromTemplate(
         type: installation.account?.type || "",
       };
       
+      console.log(`[RepoCreation] Installation account: ${installationAccount.login} (${installationAccount.type})`);
+      
       // Verify installation is on the correct account
       if (installationAccount.login !== DEFAULT_ORG) {
+        console.error(`[RepoCreation] Installation account mismatch!`);
+        console.error(`[RepoCreation] Expected: ${DEFAULT_ORG}, Got: ${installationAccount.login}`);
         throw new Error(
           `GitHub App installation is on "${installationAccount.login}" (${installationAccount.type}), ` +
           `but repositories must be created under "${DEFAULT_ORG}". ` +
           `Please install the app on "${DEFAULT_ORG}" or update DEFAULT_ORG in the code.`
         );
       }
+      console.log(`[RepoCreation] Installation account verified correctly`);
+    } else {
+      console.warn(`[RepoCreation] Missing GitHub App credentials, skipping installation verification`);
     }
   } catch (error: any) {
+    console.error(`[RepoCreation] Error during installation verification`);
+    console.error(`[RepoCreation] Error status: ${error.status}`);
+    console.error(`[RepoCreation] Error message: ${error.message}`);
     if (error.message?.includes("GitHub App installation is on")) {
       throw error;
     }
     // Continue if we can't verify - the API call will fail with a clear error if there's an issue
+    console.warn(`[RepoCreation] Continuing despite verification error - API call will fail if there's an issue`);
   }
 
   // 3. Check if repository already exists (using prefixed name)
+  console.log(`[RepoCreation] Step 3: Checking if repository already exists...`);
+  console.log(`[RepoCreation] Checking: ${DEFAULT_ORG}/${prefixedName}`);
+  
   try {
-    await octokit.repos.get({
+    console.log(`[RepoCreation] API call: GET /repos/${DEFAULT_ORG}/${prefixedName}`);
+    const existingRepo = await octokit.repos.get({
       owner: DEFAULT_ORG,
       repo: prefixedName,
     });
     // If we get here, repo exists
+    console.error(`[RepoCreation] Repository already exists!`);
+    console.error(`[RepoCreation] Repository URL: ${existingRepo.data.html_url}`);
     throw new Error(
       `Repository "${prefixedName}" already exists in the ${DEFAULT_ORG} account. Please choose a different name.`
     );
   } catch (error: any) {
     if (error.status === 404) {
       // Repo doesn't exist, proceed with creation
+      console.log(`[RepoCreation] Repository does not exist (404), proceeding with creation`);
     } else if (error.message?.includes("already exists")) {
+      console.error(`[RepoCreation] Repository exists error thrown`);
       throw error;
+    } else {
+      console.warn(`[RepoCreation] Unexpected error checking repository: ${error.status} - ${error.message}`);
+      console.warn(`[RepoCreation] Continuing anyway - API will handle it`);
+      // Some other error - continue anyway, API will handle it
     }
-    // Some other error - continue anyway, API will handle it
   }
 
   // 4. Create the new repository using template endpoint
   // The template endpoint works for both personal accounts and organizations
   // It automatically copies all files from the template
+  console.log(`[RepoCreation] Step 4: Creating repository from template...`);
+  console.log(`[RepoCreation] Template: ${templateRepo.owner}/${templateRepo.repo}`);
+  console.log(`[RepoCreation] Target: ${DEFAULT_ORG}/${prefixedName}`);
+  console.log(`[RepoCreation] Description: ${description || `Created from template ${templateRepo.name}`}`);
+  console.log(`[RepoCreation] Private: ${isPrivate}`);
+  
   let newRepo;
   try {
-    const { data } = await octokit.request("POST /repos/{template_owner}/{template_repo}/generate", {
+    console.log(`[RepoCreation] API call: POST /repos/${templateRepo.owner}/${templateRepo.repo}/generate`);
+    const requestParams = {
       template_owner: templateRepo.owner,
       template_repo: templateRepo.repo,
       owner: DEFAULT_ORG,
       name: prefixedName,
       description: description || `Created from template ${templateRepo.name}`,
       private: isPrivate,
-    });
+    };
+    console.log(`[RepoCreation] Request parameters:`, JSON.stringify(requestParams, null, 2));
+    
+    const { data } = await octokit.request("POST /repos/{template_owner}/{template_repo}/generate", requestParams);
     newRepo = data;
+    
+    console.log(`[RepoCreation] Repository created successfully!`);
+    console.log(`[RepoCreation] Repository ID: ${newRepo.id}`);
+    console.log(`[RepoCreation] Repository full name: ${newRepo.full_name}`);
+    console.log(`[RepoCreation] Repository URL: ${newRepo.html_url}`);
+    console.log(`[RepoCreation] Repository owner: ${newRepo.owner.login} (${newRepo.owner.type})`);
+    console.log(`[RepoCreation] Repository default branch: ${newRepo.default_branch}`);
+    console.log(`[RepoCreation] Repository is private: ${newRepo.private}`);
+    console.log(`[RepoCreation] Repository created at: ${newRepo.created_at}`);
     
     // Verify the repo was created under the correct account
     if (newRepo.owner.login !== DEFAULT_ORG) {
+      console.error(`[RepoCreation] Repository owner mismatch!`);
+      console.error(`[RepoCreation] Expected: ${DEFAULT_ORG}, Got: ${newRepo.owner.login}`);
       throw new Error(
         `Repository was created under "${newRepo.owner.login}" instead of "${DEFAULT_ORG}". ` +
         `Please verify your GitHub App installation is on the correct account.`
       );
     }
+    console.log(`[RepoCreation] Repository owner verified correctly`);
   } catch (error: any) {
+    console.error(`[RepoCreation] Failed to create repository from template`);
+    console.error(`[RepoCreation] Error status: ${error.status}`);
+    console.error(`[RepoCreation] Error message: ${error.message}`);
+    console.error(`[RepoCreation] Error response:`, error.response?.data);
     if (error.status === 403) {
       const githubMessage = error.response?.data?.message || error.message;
       throw new Error(
@@ -301,37 +442,54 @@ export async function createRepoFromTemplate(
   }
 
   // 5. Link repository to Vercel and create project
+  console.log(`[RepoCreation] Step 5: Linking repository to Vercel...`);
   let deploymentUrl: string;
-  console.log(`[Vercel] Starting Vercel project creation for repository: ${newRepo.name}`);
-  console.log(`[Vercel] VERCEL_TOKEN exists: ${!!process.env.VERCEL_TOKEN}`);
+  console.log(`[RepoCreation] Repository name for Vercel: ${newRepo.name}`);
+  console.log(`[RepoCreation] VERCEL_TOKEN exists: ${!!process.env.VERCEL_TOKEN}`);
+  
   try {
     deploymentUrl = await linkToVercel(newRepo.name);
+    console.log(`[RepoCreation] Vercel project created successfully`);
+    console.log(`[RepoCreation] Deployment URL: ${deploymentUrl}`);
   } catch (error: any) {
     // Log the error but don't fail the entire operation
     // The repository was created successfully, Vercel linking can be done manually if needed
-    console.error(`[Vercel] Failed to link repository to Vercel:`, error);
-    console.error(`[Vercel] Error details:`, {
+    console.error(`[RepoCreation] Vercel project creation failed, but continuing...`);
+    console.error(`[RepoCreation] Error:`, error);
+    console.error(`[RepoCreation] Error details:`, {
       message: error.message,
       stack: error.stack,
     });
     // Use a placeholder URL - the actual deployment will happen when manually linked
     deploymentUrl = `https://${newRepo.name}.vercel.app`;
+    console.log(`[RepoCreation] Using placeholder deployment URL: ${deploymentUrl}`);
   }
 
   // 6. Update hostTemplate.json with deployment URL (first commit to trigger deployment)
+  console.log(`[RepoCreation] Step 6: Updating hostTemplate.json...`);
+  console.log(`[RepoCreation] Repository: ${newRepo.owner.login}/${newRepo.name}`);
+  console.log(`[RepoCreation] Deployment URL: ${deploymentUrl}`);
+  
   try {
     await updateHostTemplate(octokit, newRepo.owner.login, newRepo.name, deploymentUrl);
+    console.log(`[RepoCreation] hostTemplate.json updated successfully`);
   } catch (error: any) {
     // Log error but don't fail - the repo and Vercel project are already created
-    console.error(`[HostTemplate] Failed to update hostTemplate.json:`, error.message);
+    console.error(`[RepoCreation] hostTemplate.json update failed, but continuing...`);
+    console.error(`[RepoCreation] Error: ${error.message}`);
   }
 
-  return {
+  const result = {
     owner: newRepo.owner.login,
     repo: newRepo.name,
     fullName: newRepo.full_name || `${newRepo.owner.login}/${newRepo.name}`,
     deploymentUrl,
   };
+  
+  console.log(`[RepoCreation] ===== createRepoFromTemplate completed successfully =====`);
+  console.log(`[RepoCreation] Result:`, JSON.stringify(result, null, 2));
+  
+  return result;
 }
 
 /**
