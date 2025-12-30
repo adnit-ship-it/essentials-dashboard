@@ -63,48 +63,30 @@ export function Sidebar({
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
       const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
       
-      // Add retry logic to handle timing issues after repository creation
-      const fetchWithRetry = async (attempt = 1, maxAttempts = 3) => {
-        try {
-          console.log(`[Sidebar] Fetching hostTemplate.json (attempt ${attempt}/${maxAttempts})...`)
-          const res = await fetch(url)
-          
+      fetch(url)
+        .then((res) => {
           if (res.ok) {
-            const data = await res.json()
-            console.log(`[Sidebar] Successfully fetched hostTemplate.json:`, data)
+            return res.json()
+          }
+          if (res.status === 404) {
+            return null // File doesn't exist yet
+          }
+          throw new Error(`Failed to fetch host template: ${res.status}`)
+        })
+        .then((data) => {
+          if (data) {
             setHostTemplateInfo({
               hostedAt: data.hostedAt || "",
               templateName: data.templateName || "Unknown",
             })
-            return
-          }
-          
-          if (res.status === 404) {
-            // File doesn't exist yet - retry if this might be a recent creation
-            if (attempt < maxAttempts) {
-              console.log(`[Sidebar] hostTemplate.json not found (404), retrying in 2s (attempt ${attempt}/${maxAttempts})...`)
-              setTimeout(() => fetchWithRetry(attempt + 1, maxAttempts), 2000)
-              return
-            }
-            console.log(`[Sidebar] hostTemplate.json not found after ${maxAttempts} attempts`)
+          } else {
             setHostTemplateInfo(null)
-            return
           }
-          
-          throw new Error(`Failed to fetch host template: ${res.status}`)
-        } catch (error) {
-          console.error(`[Sidebar] Error fetching host template (attempt ${attempt}/${maxAttempts}):`, error)
-          if (attempt < maxAttempts) {
-            console.log(`[Sidebar] Retrying in 2s...`)
-            setTimeout(() => fetchWithRetry(attempt + 1, maxAttempts), 2000)
-            return
-          }
-          console.error(`[Sidebar] Failed to fetch hostTemplate after ${maxAttempts} attempts`)
+        })
+        .catch((error) => {
+          console.error("Error fetching host template:", error)
           setHostTemplateInfo(null)
-        }
-      }
-      
-      fetchWithRetry()
+        })
     } else {
       setHostTemplateInfo(null)
     }
