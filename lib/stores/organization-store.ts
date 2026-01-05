@@ -233,7 +233,10 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
   validateRepositoryExists: async (owner: string, repo: string): Promise<boolean> => {
     set({ isValidatingRepo: true, repoValidationError: null })
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+      // Use relative URL in browser (same origin, no CORS), or configured URL on server
+      const apiUrl = typeof window !== "undefined" 
+        ? "" // Relative URL in browser
+        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
       const url = `${apiUrl}/api/repositories/validate?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
       
       const response = await fetch(url)

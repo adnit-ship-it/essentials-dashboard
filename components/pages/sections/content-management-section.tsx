@@ -1273,7 +1273,10 @@ export function ContentManagementSection() {
 
   // Fetch content from backend API
   const fetchContentFromBackend = useCallback(async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    // Use relative URL in browser (same origin, no CORS), or configured URL on server
+    const apiUrl = typeof window !== "undefined" 
+      ? "" // Relative URL in browser
+      : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001");
     const owner = repoOwnerFromLink || "";
     const repo = repoNameFromLink || "";
     if (!owner || !repo) {
@@ -1420,7 +1423,10 @@ export function ContentManagementSection() {
     if (!editedContent || !org || !websiteText || !sha) return;
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      // Use relative URL in browser (same origin, no CORS), or configured URL on server
+      const apiUrl = typeof window !== "undefined" 
+        ? "" // Relative URL in browser
+        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001");
 
       // Create updated website_text by merging the edited subsection
       const updatedWebsiteText = {

@@ -31,7 +31,10 @@ export function ComponentsView() {
   // Fetch template name from hostTemplate.json
   useEffect(() => {
     if (repoOwnerFromLink && repoNameFromLink) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+      // Use relative URL in browser (same origin, no CORS), or configured URL on server
+      const apiUrl = typeof window !== "undefined" 
+        ? "" // Relative URL in browser
+        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
       const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
       
       fetch(url)

@@ -63,7 +63,10 @@ export function Sidebar({
   // Fetch hostTemplate.json when repo is available
   useEffect(() => {
     if (repoOwnerFromLink && repoNameFromLink && !isCollapsed) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+      // Use relative URL in browser (same origin, no CORS), or configured URL on server
+      const apiUrl = typeof window !== "undefined" 
+        ? "" // Relative URL in browser
+        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
       const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
 
       fetch(url)
@@ -108,7 +111,10 @@ export function Sidebar({
 
     setIsHosting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      // Use relative URL in browser (same origin, no CORS), or configured URL on server
+      const apiUrl = typeof window !== "undefined" 
+        ? "" // Relative URL in browser
+        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001");
       const url = `${apiUrl}/api/repositories/host?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`;
 
       const response = await fetch(url, {
