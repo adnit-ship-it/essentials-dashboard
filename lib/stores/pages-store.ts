@@ -115,8 +115,14 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
         hasPendingChanges: false,
       })
     } catch (err) {
+      const errorMessage = (err as Error).message || "Failed to load pages and sections data."
+      // Check if it's a repository not found error
+      let enhancedMessage = errorMessage
+      if (errorMessage.toLowerCase().includes('repository') && errorMessage.toLowerCase().includes('not found')) {
+        enhancedMessage = `Repository "${owner}/${repo}" not found or has been deleted. Please link a valid repository.`
+      }
       set({
-        error: (err as Error).message || "Failed to load pages and sections data.",
+        error: enhancedMessage,
         isLoading: false,
       })
     }

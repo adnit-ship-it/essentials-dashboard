@@ -4,7 +4,9 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
+import { AlertTriangle, X } from "lucide-react"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 
 interface OrganizationConfigModalProps {
@@ -22,10 +24,22 @@ export function OrganizationConfigModal({
 	initialRepoName,
 	initialLinkName,
 }: OrganizationConfigModalProps) {
-	const { repoOwnerFromLink, repoNameFromLink, linkNameFromLink, organizationBrandInfo, updatePartnerIntegrationBillOfRights, isLoading, selectedOrgId, fetchOrganizationBrandInfo } = useOrganizationStore()
+	const { 
+		repoOwnerFromLink, 
+		repoNameFromLink, 
+		linkNameFromLink, 
+		organizationBrandInfo, 
+		updatePartnerIntegrationBillOfRights, 
+		clearRepositoryLink,
+		repoValidationError,
+		isLoading, 
+		selectedOrgId, 
+		fetchOrganizationBrandInfo 
+	} = useOrganizationStore()
 	const [repoOwner, setRepoOwner] = useState<string>("")
 	const [repoName, setRepoName] = useState<string>("")
 	const [linkName, setLinkName] = useState<string>("")
+	const [isClearing, setIsClearing] = useState(false)
 	
 	useEffect(() => {
 		if (isOpen && selectedOrgId) {
@@ -59,11 +73,40 @@ export function OrganizationConfigModal({
 		}
 	}
 
+	const onClear = async () => {
+		if (!selectedOrgId) return
+		setIsClearing(true)
+		try {
+			await clearRepositoryLink(selectedOrgId)
+			toast.success("Repository link cleared successfully")
+			setRepoOwner("")
+			setRepoName("")
+			onClose()
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Failed to clear repository link")
+		} finally {
+			setIsClearing(false)
+		}
+	}
+
+	const hasValidationError = repoValidationError && repoOwner && repoName && 
+		repoOwner === repoOwnerFromLink && repoName === repoNameFromLink
+
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
 			<Card className="w-full max-w-lg">
 				<CardContent className="p-6 space-y-4">
 					<h3 className="text-lg font-semibold">Configure Organization</h3>
+					
+					{hasValidationError && (
+						<Alert className="border-destructive/50 bg-destructive/10">
+							<AlertTriangle className="h-4 w-4 text-destructive" />
+							<AlertDescription className="text-sm text-destructive">
+								This repository doesn't exist or has been deleted. Please update the link or clear it.
+							</AlertDescription>
+						</Alert>
+					)}
+					
 					<div className="space-y-2">
 						<label className="text-sm">Repository Owner</label>
 						<Input
@@ -94,13 +137,25 @@ export function OrganizationConfigModal({
 							Used to fetch product bundles for this organization
 						</p>
 					</div>
-					<div className="flex justify-end gap-2 pt-2">
-						<Button variant="outline" onClick={onClose} disabled={isLoading}>
-							Cancel
-						</Button>
-						<Button onClick={onSave} disabled={!repoOwner || !repoName || isLoading}>
-							{isLoading ? "Saving..." : "Save"}
-						</Button>
+					<div className="flex justify-between items-center pt-2">
+						{hasValidationError && (
+							<Button 
+								variant="outline" 
+								onClick={onClear} 
+								disabled={isClearing || isLoading}
+								className="text-destructive hover:text-destructive"
+							>
+								{isClearing ? "Clearing..." : "Clear Repository Link"}
+							</Button>
+						)}
+						<div className="flex justify-end gap-2 ml-auto">
+							<Button variant="outline" onClick={onClose} disabled={isLoading || isClearing}>
+								Cancel
+							</Button>
+							<Button onClick={onSave} disabled={!repoOwner || !repoName || isLoading || isClearing}>
+								{isLoading ? "Saving..." : "Save"}
+							</Button>
+						</div>
 					</div>
 				</CardContent>
 			</Card>

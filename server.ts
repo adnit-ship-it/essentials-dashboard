@@ -1818,6 +1818,59 @@ app.post("/api/repositories/create-from-template", async (req: Request, res: Res
   }
 });
 
+// GET /api/repositories/validate - Validate repository exists
+app.get("/api/repositories/validate", async (req: Request, res: Response) => {
+  try {
+    const q: any = req.query || {};
+    const owner = (q.owner as string) || "";
+    const repo = (q.repo as string) || "";
+
+    if (!owner || !repo) {
+      return res.status(400).json({
+        exists: false,
+        error: "Missing required parameters: owner and repo",
+      });
+    }
+
+    const octokit = await getAuthenticatedClient();
+
+    try {
+      await octokit.repos.get({
+        owner,
+        repo,
+      });
+      // Repository exists
+      res.json({ exists: true });
+    } catch (error: any) {
+      if (error.status === 404) {
+        // Repository doesn't exist
+        res.json({
+          exists: false,
+          error: `Repository "${owner}/${repo}" not found or has been deleted`,
+        });
+      } else if (error.status === 403) {
+        // Permission denied
+        res.json({
+          exists: false,
+          error: `Permission denied: Cannot access repository "${owner}/${repo}"`,
+        });
+      } else {
+        // Other error
+        res.status(500).json({
+          exists: false,
+          error: `Failed to validate repository: ${error.message || "Unknown error"}`,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error validating repository:", error);
+    res.status(500).json({
+      exists: false,
+      error: `Failed to validate repository: ${(error as Error).message}`,
+    });
+  }
+});
+
 // POST /api/repositories/host - Create Vercel project and update hostTemplate.json
 app.post("/api/repositories/host", async (req: Request, res: Response) => {
   try {

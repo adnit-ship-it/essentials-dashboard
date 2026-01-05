@@ -34,7 +34,10 @@ export function DashboardLayout() {
     hasFetched: hasFetchedOrgs, 
     selectedOrgId, 
     repoOwnerFromLink, 
-    repoNameFromLink 
+    repoNameFromLink,
+    repoValidationError,
+    isValidatingRepo,
+    validateRepositoryExists
   } = useOrganizationStore()
 
   useEffect(() => {
@@ -43,12 +46,12 @@ export function DashboardLayout() {
 
   // When an organization is selected and has a linked repo, ensure it's configured and selected
   useEffect(() => {
-    if (selectedOrgId && repoOwnerFromLink && repoNameFromLink) {
+    if (selectedOrgId && repoOwnerFromLink && repoNameFromLink && !repoValidationError) {
       ensureRepoConfigured(repoOwnerFromLink, repoNameFromLink).catch((error) => {
         console.error("Error ensuring repo is configured:", error)
       })
     }
-  }, [selectedOrgId, repoOwnerFromLink, repoNameFromLink, ensureRepoConfigured])
+  }, [selectedOrgId, repoOwnerFromLink, repoNameFromLink, repoValidationError, ensureRepoConfigured])
 
   const getCurrentSectionTitle = () => {
     const sections = [
@@ -64,10 +67,11 @@ export function DashboardLayout() {
   const showEmptyState = useMemo(() => {
     if (selectedOrgId) {
       const hasLinkedRepo = !!(repoOwnerFromLink && repoNameFromLink)
-      return !hasLinkedRepo
+      // Show empty state if no repo linked OR if repo validation failed
+      return !hasLinkedRepo || !!repoValidationError
     }
     return !selectedRepoId && configuredRepos.length === 0
-  }, [selectedOrgId, repoOwnerFromLink, repoNameFromLink, selectedRepoId, configuredRepos])
+  }, [selectedOrgId, repoOwnerFromLink, repoNameFromLink, repoValidationError, selectedRepoId, configuredRepos])
 
   const handleRepositoryCreated = async (owner: string | null, repo: string | null, isNewlyCreated?: boolean) => {
     setShowCreateRepoModal(false)
@@ -81,6 +85,10 @@ export function DashboardLayout() {
           repoName: repo,
           linkName: undefined,
         })
+        // Validate the new repository (updatePartnerIntegrationBillOfRights already validates, but ensure it's done)
+        if (validateRepositoryExists) {
+          await validateRepositoryExists(owner, repo)
+        }
         toast.success(`Repository '${repo}' linked to organization successfully!`)
       } catch (error) {
         console.error("Error linking repository:", error)
@@ -129,10 +137,16 @@ export function DashboardLayout() {
 
         {/* Content area */}
         <main className="flex-1 overflow-auto">
-          {showEmptyState ? (
+          {isValidatingRepo ? (
+            <div className="flex-1 flex items-center justify-center p-8">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
+                <p className="text-sm text-muted-foreground">Validating repository...</p>
+              </div>
+            </div>
+          ) : showEmptyState ? (
             <EmptyStateView
-              title="No Repository Selected"
-              message="To get started, create a new repository or configure an existing one."
+              validationError={repoValidationError || undefined}
               onCreateRepository={() => setShowCreateRepoModal(true)}
               onConfigureRepository={() => setShowRepoModal(true)}
             />

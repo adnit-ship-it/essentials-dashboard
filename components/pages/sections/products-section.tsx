@@ -551,7 +551,22 @@ export function ProductsSection() {
       const url = `${API_BASE_URL}/api/products?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
       const response = await fetch(url)
       if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`)
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || `Request failed with status ${response.status}`
+        
+        // Distinguish error types
+        let enhancedMessage = errorMessage
+        if (response.status === 404) {
+          if (errorMessage.toLowerCase().includes('repository') || errorMessage.toLowerCase().includes('not found')) {
+            enhancedMessage = `Repository "${owner}/${repo}" not found or has been deleted. Please link a valid repository.`
+          } else {
+            enhancedMessage = `Products file not found in repository. ${errorMessage}`
+          }
+        } else if (response.status === 403) {
+          enhancedMessage = `Permission denied: Cannot access repository "${owner}/${repo}". ${errorMessage}`
+        }
+        
+        throw new Error(enhancedMessage)
       }
       const data: { products: Product[]; sha: string; assets?: AssetLookup } = await response.json()
       const normalizedProducts = (data.products || []).map((product) => normalizeProduct(product))

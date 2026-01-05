@@ -19,6 +19,8 @@ interface OrganizationStore {
   repoNameFromLink: string | null
   linkNameFromLink: string | null
   needsRepoConfig: boolean
+  repoValidationError: string | null
+  isValidatingRepo: boolean
   isLoading: boolean
   error: string | null
   hasFetched: boolean
@@ -29,6 +31,8 @@ interface OrganizationStore {
   fetchOrganizationBrandInfo: (orgId: string) => Promise<void>
   fetchPartnerPublicInfoByLinkName: (linkName: string) => Promise<void>
   updatePartnerIntegrationBillOfRights: (params: { repoOwner: string; repoName: string; linkName?: string }) => Promise<void>
+  validateRepositoryExists: (owner: string, repo: string) => Promise<boolean>
+  clearRepositoryLink: (orgId: string) => Promise<void>
   clearError: () => void
 }
 
@@ -43,6 +47,8 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
     repoNameFromLink: null,
     linkNameFromLink: null,
     needsRepoConfig: false,
+    repoValidationError: null,
+    isValidatingRepo: false,
   isLoading: false,
   error: null,
   hasFetched: false,
@@ -207,12 +213,124 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
         needsRepoConfig: !repoOwner || !repoName,
         isLoading: false,
       })
+
+      // Validate repository exists if repo info is available
+      if (repoOwner && repoName) {
+        await get().validateRepositoryExists(repoOwner, repoName)
+      } else {
+        // Clear validation error if no repo info
+        set({ repoValidationError: null })
+      }
     } catch (error) {
       console.error('Error fetching partner public info (GraphQL):', error)
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch partner public info',
         isLoading: false,
       })
+    }
+  },
+
+  validateRepositoryExists: async (owner: string, repo: string): Promise<boolean> => {
+    set({ isValidatingRepo: true, repoValidationError: null })
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+      const url = `${apiUrl}/api/repositories/validate?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
+      
+      const response = await fetch(url)
+      const data = await response.json()
+
+      if (data.exists) {
+        set({ isValidatingRepo: false, repoValidationError: null })
+        return true
+      } else {
+        // Repository doesn't exist or has been deleted
+        const errorMessage = data.error || `Repository "${owner}/${repo}" not found or has been deleted`
+        set({
+          isValidatingRepo: false,
+          repoValidationError: errorMessage,
+          repoOwnerFromLink: null,
+          repoNameFromLink: null,
+          needsRepoConfig: true,
+        })
+        return false
+      }
+    } catch (error) {
+      console.error('Error validating repository:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to validate repository'
+      set({
+        isValidatingRepo: false,
+        repoValidationError: errorMessage,
+      })
+      return false
+    }
+  },
+
+  clearRepositoryLink: async (orgId: string) => {
+    const state = get()
+    const integrationInfoId = state.organizationBrandInfo?.partnerIntegrationInfoId || state.partnerIntegrationPublicId || null
+    
+    if (!integrationInfoId) {
+      set({ error: "Missing integration info id to clear repository link" })
+      console.error("clearRepositoryLink: No integrationInfoId available")
+      return
+    }
+
+    const base = process.env.NEXT_PUBLIC_BOR_LINK || process.env.NEXT_BOR_LINK || ""
+    const url = new URL(base, typeof window !== "undefined" ? window.location.origin : "https://placeholder.local")
+    
+    // Remove repo params from URL
+    url.searchParams.delete("repo-owner")
+    url.searchParams.delete("repo-name")
+    
+    // Keep link-name if it exists
+    const linkName = state.linkNameFromLink
+    if (linkName) {
+      url.searchParams.set("link-name", linkName)
+    }
+
+    const finalLink = url.origin === "https://placeholder.local" 
+      ? base 
+      : url.toString()
+
+    const mutation = `
+      mutation TheMutation($integrationInfoId: String, $integrationInfo: OrganizationPartnerIntegrationInfoInput) {
+        updateOrganizationPartnerIntegrationInfo(
+          integrationInfoId: $integrationInfoId
+          integrationInfo: $integrationInfo
+        ) {
+          success
+          __typename
+        }
+      }
+    `
+    set({ isLoading: true, error: null })
+    try {
+      await fetchGraphQL<{ updateOrganizationPartnerIntegrationInfo: { success: boolean } }>({
+        query: mutation,
+        variables: {
+          integrationInfoId: integrationInfoId,
+          integrationInfo: {
+            billOfRightsLink: finalLink,
+          },
+        },
+      })
+      
+      // Clear repo info from state
+      set({
+        billOfRightsLink: finalLink,
+        repoOwnerFromLink: null,
+        repoNameFromLink: null,
+        needsRepoConfig: true,
+        repoValidationError: null,
+        isLoading: false,
+      })
+    } catch (error) {
+      console.error('Error clearing repository link (GraphQL):', error)
+      set({
+        error: error instanceof Error ? error.message : 'Failed to clear repository link',
+        isLoading: false,
+      })
+      throw error
     }
   },
 
@@ -277,7 +395,11 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
         linkNameFromLink: linkName || null,
         needsRepoConfig: false,
         isLoading: false,
+        repoValidationError: null, // Clear any previous validation errors
       })
+      
+      // Validate the new repository
+      await get().validateRepositoryExists(repoOwner, repoName)
     } catch (error) {
       console.error('Error updating partner integration info (GraphQL):', error)
       set({
