@@ -189,10 +189,6 @@ export function RepositoryCreateModal({
       setDescription("")
       setIsPrivate(false)
       
-      // Check if deployment URL exists (indicates new repo was created)
-      // deploymentUrl is on the repository object (CreateRepoResult type)
-      const hasDeploymentUrl = !!((result as { repository?: { deploymentUrl?: string } }).repository?.deploymentUrl)
-      
       // Link to organization if one is selected
       if (selectedOrgId) {
         try {
@@ -201,16 +197,16 @@ export function RepositoryCreateModal({
             repoName: actualRepoName,
           })
           toast.success(`Repository linked to organization successfully!`)
-          onRepositoryCreated(actualRepoOwner, actualRepoName, hasDeploymentUrl)
+          onRepositoryCreated(actualRepoOwner, actualRepoName)
           onClose()
         } catch (linkError) {
           console.error("Error linking repository:", linkError)
           // Still notify parent about creation, but don't link
-          onRepositoryCreated(actualRepoOwner, actualRepoName, hasDeploymentUrl)
+          onRepositoryCreated(actualRepoOwner, actualRepoName)
           onClose()
         }
       } else {
-        onRepositoryCreated(actualRepoOwner, actualRepoName, hasDeploymentUrl)
+        onRepositoryCreated(actualRepoOwner, actualRepoName)
         onClose()
       }
     } catch (err) {

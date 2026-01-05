@@ -37,21 +37,71 @@ async function checkInstallations() {
       }
     );
 
+    console.log(`\n✅ Found ${installations.length} installation(s):\n`);
 
     for (const installation of installations) {
-      // Get repositories for this installation
+      const accountName = installation.account?.login || installation.account?.name || "Unknown";
+      const accountType = installation.account?.type || "Unknown";
+      const installationId = installation.id;
+      
+      console.log(`📦 Installation ID: ${installationId}`);
+      console.log(`   Account: ${accountName} (${accountType})`);
+      console.log(`   URL: https://github.com/settings/installations/${installationId}`);
+      
+      // Get repositories for this installation (with pagination)
       try {
         const octokit = await app.getInstallationOctokit(installation.id);
-        const { data: repos } = await octokit.request("GET /installation/repositories");
         
-        if (repos.repositories.length === 0) {
+        // Fetch all pages of repositories
+        let allRepos = [];
+        let page = 1;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const { data: repos } = await octokit.request("GET /installation/repositories", {
+            per_page: 100, // Max per page
+            page: page,
+          });
+          
+          if (repos.repositories && repos.repositories.length > 0) {
+            allRepos = allRepos.concat(repos.repositories);
+            // Check if there are more pages (if we got less than 100, we're done)
+            hasMore = repos.repositories.length === 100;
+            page++;
+          } else {
+            hasMore = false;
+          }
+        }
+        
+        if (allRepos.length === 0) {
+          console.log(`   Repositories: None (or access not granted)`);
         } else {
-          repos.repositories.forEach((repo) => {
+          console.log(`   Repositories (${allRepos.length} total):`);
+          allRepos.forEach((repo) => {
+            console.log(`     - ${repo.full_name}`);
           });
         }
       } catch (error) {
+        console.log(`   ⚠️  Could not fetch repositories: ${error.message}`);
       }
       
+      console.log(""); // Empty line between installations
+    }
+
+    // Show which installation ID is currently configured
+    const currentInstallationId = process.env.GITHUB_INSTALLATION_ID;
+    if (currentInstallationId) {
+      const found = installations.find(i => i.id.toString() === currentInstallationId);
+      if (found) {
+        const accountName = found.account?.login || found.account?.name || "Unknown";
+        console.log(`✅ Current GITHUB_INSTALLATION_ID (${currentInstallationId}) matches installation for: ${accountName}`);
+      } else {
+        console.log(`⚠️  Current GITHUB_INSTALLATION_ID (${currentInstallationId}) does NOT match any installation!`);
+        console.log(`   Please update your .env.local file with one of the Installation IDs listed above.`);
+      }
+    } else {
+      console.log(`⚠️  GITHUB_INSTALLATION_ID not set in .env.local`);
+      console.log(`   Please add it using one of the Installation IDs listed above.`);
     }
 
   } catch (error) {

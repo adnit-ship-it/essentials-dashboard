@@ -13,11 +13,29 @@ export async function fetchAvailableRepos(): Promise<GitHubRepo[]> {
   try {
     const octokit = await getAuthenticatedClient();
     
-    // Fetch repositories from the installation
-    const { data } = await octokit.request("GET /installation/repositories");
+    // Fetch all repositories from the installation (with pagination)
+    let allRepos: any[] = [];
+    let page = 1;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data: repos } = await octokit.request("GET /installation/repositories", {
+        per_page: 100, // Max items per page
+        page: page,
+      });
+      
+      if (repos.repositories && repos.repositories.length > 0) {
+        allRepos = allRepos.concat(repos.repositories);
+        // Check if there are more pages (if we got less than 100, we're done)
+        hasMore = repos.repositories.length === 100;
+        page++;
+      } else {
+        hasMore = false;
+      }
+    }
     
     // Map to our GitHubRepo format
-    return data.repositories.map((repo: any) => ({
+    return allRepos.map((repo: any) => ({
       id: repo.full_name, // "owner/repo"
       owner: repo.owner.login,
       repo: repo.name,

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette, GitBranch, Plus, Sparkles } from "lucide-react"
+import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette, GitBranch, Plus, Sparkles, Globe } from "lucide-react"
 
 import { OrganizationDropdown } from "@/components/features/organization"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
@@ -12,8 +12,15 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ExternalLink } from "lucide-react"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase/client"
+import { toast } from "sonner"
 
 const sidebarItems = [
+  {
+    title: "Brand Settings",
+    icon: Palette,
+    href: "/brand-settings",
+    id: "brand-settings",
+  },
   {
     title: "Pages & Sections",
     icon: Layout,
@@ -25,13 +32,8 @@ const sidebarItems = [
     icon: Package,
     href: "/products",
     id: "products",
-  },
-  {
-    title: "Brand Settings",
-    icon: Palette,
-    href: "/brand-settings",
-    id: "brand-settings",
-  },
+  }
+
   // Forms temporarily hidden
 ]
 
@@ -56,6 +58,7 @@ export function Sidebar({
   const { organizations, isLoading, repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [hostTemplateInfo, setHostTemplateInfo] = useState<{ hostedAt: string; templateName: string } | null>(null)
+  const [isHosting, setIsHosting] = useState(false)
 
   // Fetch hostTemplate.json when repo is available
   useEffect(() => {
@@ -97,6 +100,41 @@ export function Sidebar({
       await signOut(auth)
     } finally {
       router.push("/login")
+    }
+  }
+
+  const handleHost = async () => {
+    if (!repoOwnerFromLink || !repoNameFromLink) return;
+    
+    setIsHosting(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const url = `${apiUrl}/api/repositories/host?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`;
+      
+      const response = await fetch(url, {
+        method: "POST",
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to host repository");
+      }
+      
+      const data = await response.json();
+      
+      // Update hostTemplateInfo state
+      setHostTemplateInfo((prev) => ({
+        ...prev,
+        hostedAt: data.deploymentUrl,
+        templateName: prev?.templateName || "Unknown",
+      }));
+      
+      toast.success(`Repository hosted successfully! ${data.deploymentUrl}`);
+    } catch (error) {
+      console.error("Error hosting repository:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to host repository");
+    } finally {
+      setIsHosting(false);
     }
   }
 
@@ -175,6 +213,20 @@ export function Sidebar({
                 </Button>
               )}
 
+              {/* Host Button - only show if repo exists and not already hosted */}
+              {repoNameFromLink && !hostTemplateInfo?.hostedAt && (
+                <Button
+                  onClick={handleHost}
+                  disabled={isHosting}
+                  className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] active:bg-gradient-to-r active:from-[#DDF0E3] active:to-[#D3EBEB] hover:text-black active:text-black transition-all duration-200 justify-start gap-3 px-3 disabled:opacity-50"
+                >
+                  <Globe className="h-4 w-4 flex-shrink-0" />
+                  <span className="transition-opacity duration-300 whitespace-nowrap">
+                    {isHosting ? "Hosting..." : "Host"}
+                  </span>
+                </Button>
+              )}
+
               {/* Repository Info Card */}
               {repoNameFromLink && (
                 <Card className="bg-sidebar border-sidebar-border mt-2">
@@ -244,6 +296,17 @@ export function Sidebar({
                   title="Create Repository"
                 >
                   <Sparkles className="h-4 w-4" />
+                </Button>
+              )}
+              {/* Host Button - collapsed state */}
+              {repoNameFromLink && !hostTemplateInfo?.hostedAt && (
+                <Button
+                  onClick={handleHost}
+                  disabled={isHosting}
+                  className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-accent-color hover:text-background-color justify-center p-2 disabled:opacity-50"
+                  title="Host Repository"
+                >
+                  <Globe className="h-4 w-4" />
                 </Button>
               )}
             </div>

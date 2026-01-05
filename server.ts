@@ -27,7 +27,7 @@ import {
   createDefaultRepoConfig,
   updateLastAccessed,
 } from "./lib/services/repo-config";
-import { createRepoFromTemplate } from "./lib/services/repo-creation";
+import { createRepoFromTemplate, linkToVercel, updateHostTemplate } from "./lib/services/repo-creation";
 import { TEMPLATE_REPOS } from "./lib/services/template-repos";
 import type { RepoConfig } from "./lib/types/repository";
 
@@ -1814,6 +1814,53 @@ app.post("/api/repositories/create-from-template", async (req: Request, res: Res
     console.error("Error creating repository:", error);
     res.status(500).json({
       error: `Failed to create repository: ${(error as Error).message}`,
+    });
+  }
+});
+
+// POST /api/repositories/host - Create Vercel project and update hostTemplate.json
+app.post("/api/repositories/host", async (req: Request, res: Response) => {
+  try {
+    const repoConfig = getActiveRepoConfigFromRequest(req);
+    const octokit = await getAuthenticatedClient();
+
+    // Create Vercel project
+    let deploymentUrl: string;
+    try {
+      deploymentUrl = await linkToVercel(repoConfig.repo);
+    } catch (error: any) {
+      console.error(`[Vercel] Failed to create Vercel project:`, error);
+      return res.status(500).json({
+        error: `Failed to create Vercel project: ${error.message}`,
+      });
+    }
+
+    // Update hostTemplate.json with deployment URL
+    try {
+      await updateHostTemplate(
+        octokit,
+        repoConfig.owner,
+        repoConfig.repo,
+        repoConfig.branch,
+        deploymentUrl
+      );
+    } catch (error: any) {
+      console.error(`[HostTemplate] Failed to update hostTemplate.json:`, error);
+      // Vercel project was created, but file update failed
+      return res.status(500).json({
+        error: `Vercel project created, but failed to update hostTemplate.json: ${error.message}`,
+        deploymentUrl, // Still return the URL so user can manually update
+      });
+    }
+
+    res.json({
+      message: "Repository hosted successfully",
+      deploymentUrl,
+    });
+  } catch (error) {
+    console.error("Error hosting repository:", error);
+    res.status(500).json({
+      error: `Failed to host repository: ${(error as Error).message}`,
     });
   }
 });
