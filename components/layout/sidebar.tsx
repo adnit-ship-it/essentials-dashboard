@@ -100,6 +100,15 @@ export function Sidebar({
 
   const handleLogout = async () => {
     try {
+      // Clear organization selection from store
+      const { setSelectedOrgId } = useOrganizationStore.getState()
+      setSelectedOrgId(null)
+      
+      // Clear organization selection from localStorage
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("cv.selectedOrganizationId")
+      }
+      
       await signOut(auth)
     } finally {
       router.push("/login")

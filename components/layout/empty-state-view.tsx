@@ -23,11 +23,11 @@ export function EmptyStateView({
   // Determine title and message based on validation error
   const displayTitle = title || (validationError 
     ? "Repository Not Found" 
-    : "No repository selected")
+    : "No Organization Selected or Repository Linked")
   
   const displayMessage = message || (validationError
     ? "The linked repository has been deleted or doesn't exist. Please link a valid repository to continue."
-    : "To get started, create a new repository or configure an existing one.")
+    : "To get started, select an organization and create a new repository or configure an existing one.")
 
   return (
     <div className="flex-1 flex items-center justify-center p-8">
@@ -52,7 +52,7 @@ export function EmptyStateView({
               </AlertDescription>
             </Alert>
           )}
-          {onCreateRepository && (
+          {/* {onCreateRepository && (
             <Button
               onClick={onCreateRepository}
               className="w-full"
@@ -61,7 +61,7 @@ export function EmptyStateView({
               <Sparkles className="h-4 w-4 mr-2" />
               {validationError ? "Fix Repository Link" : "Link Repository"}
             </Button>
-          )}
+          )} */}
           {/* {onConfigureRepository && (
             <Button
               onClick={onConfigureRepository}

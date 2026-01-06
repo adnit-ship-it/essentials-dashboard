@@ -32,14 +32,14 @@ export function OrganizationDropdown({ isCollapsed = false, onEditClick }: Organ
   const storageKey = "cv.selectedOrganizationId"
   
   // Initialize from localStorage
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = window.localStorage.getItem(storageKey)
-      if (saved && !selectedOrgId) {
-        setSelectedOrgId(saved)
-      }
-    }
-  }, [selectedOrgId, setSelectedOrgId])
+  // useEffect(() => {
+  //   if (typeof window !== "undefined") {
+  //     const saved = window.localStorage.getItem(storageKey)
+  //     if (saved && !selectedOrgId) {
+  //       setSelectedOrgId(saved)
+  //     }
+  //   }
+  // }, [selectedOrgId, setSelectedOrgId])
   
   // Persist changes
   useEffect(() => {
