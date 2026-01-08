@@ -2303,6 +2303,344 @@ app.post("/api/sections", async (req: SectionsUpdateRequest, res: Response) => {
   }
 })
 
+// ============================================================================
+// QUIZ ENDPOINTS
+// ============================================================================
+
+// GET /api/quiz - Fetch quiz.json
+app.get("/api/quiz", async (req: Request, res: Response) => {
+  try {
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const quizFilePath = "data/quiz.json"
+
+    try {
+      const response = await fetchContentJsonFromRepo(octokit, {
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        branch: repoConfig.branch,
+        contentFilePath: quizFilePath,
+      })
+
+      res.status(200).json({
+        data: response.content,
+        sha: response.sha,
+      })
+    } catch (error: any) {
+      // If file doesn't exist (404), return empty structure
+      if (error.status === 404 || error.message?.includes("not found")) {
+        res.status(200).json({
+          data: {
+            quizzes: [],
+            templates: [],
+            metadata: {
+              version: "1.0.0",
+              lastUpdated: new Date().toISOString(),
+            },
+          },
+          sha: "",
+        })
+      } else {
+        throw error
+      }
+    }
+  } catch (error: any) {
+    console.error("Error fetching quiz data:", error)
+    res.status(500).json({
+      error: `Failed to fetch quiz data: ${error.message}`,
+    })
+  }
+})
+
+// POST /api/quiz - Create new quiz
+interface CreateQuizRequest extends Request {
+  body: {
+    name: string
+    description?: string
+    productBundleIds: string[]
+    organizationId: string
+  }
+}
+
+app.post("/api/quiz", async (req: CreateQuizRequest, res: Response) => {
+  try {
+    const { name, description, productBundleIds, organizationId } = req.body
+
+    if (!name || !organizationId) {
+      return res.status(400).json({
+        error: "Missing required fields: name, organizationId",
+      })
+    }
+
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const quizFilePath = "data/quiz.json"
+
+    // Fetch existing quiz data
+    let quizData: any
+    let sha: string
+
+    try {
+      const response = await fetchContentJsonFromRepo(octokit, {
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        branch: repoConfig.branch,
+        contentFilePath: quizFilePath,
+      })
+      quizData = response.content
+      sha = response.sha
+    } catch (error: any) {
+      // File doesn't exist - create new structure
+      if (error.status === 404 || error.message?.includes("not found")) {
+        quizData = { quizzes: [], templates: [] }
+        sha = ""
+      } else {
+        throw error
+      }
+    }
+
+    // Generate new quiz ID
+    const quizId = `quiz-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+
+    // Create default progress step
+    const progressStepId = `progress-${Date.now()}-1`
+    const progressStep = {
+      id: progressStepId,
+      quiz_id: quizId,
+      slug: "information",
+      name: "Information",
+      description: "Provide your information",
+      color: "#3B82F6",
+      step_order: 1,
+    }
+
+    // Create new quiz
+    const newQuiz = {
+      id: quizId,
+      slug,
+      name,
+      description: description || null,
+      version: "1.0.0",
+      metadata: null,
+      created_at: new Date().toISOString(),
+      organization_id: organizationId,
+      product_bundle_ids: productBundleIds || [],
+      progressSteps: [progressStep],
+      formSteps: [],
+      quizFormStepMapping: [],
+      stepProgressMapping: [],
+    }
+
+    // Add to quizzes array
+    quizData.quizzes = quizData.quizzes || []
+    quizData.quizzes.push(newQuiz)
+
+    // Save to repo
+    const { commitUrl, newSha } = await updateContentJsonInRepo({
+      octokit,
+      repoConfig: {
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        branch: repoConfig.branch,
+        contentFilePath: quizFilePath,
+      },
+      content: quizData,
+      sha: sha || "",
+      commitMessage: `CMS: Create new quiz "${name}"`,
+    })
+
+    res.status(200).json({
+      quiz: newQuiz,
+      sha: newSha,
+      commitUrl,
+    })
+  } catch (error: any) {
+    console.error("Error creating quiz:", error)
+    if (error.status === 409) {
+      return res.status(409).json({
+        error: "Conflict error (409): The quiz file was modified by someone else. Please refresh and try again.",
+      })
+    }
+    res.status(500).json({
+      error: `Failed to create quiz: ${error.message}`,
+    })
+  }
+})
+
+// GET /api/quiz/:id - Get single quiz by ID
+app.get("/api/quiz/:id", async (req: Request, res: Response) => {
+  try {
+    const quizId = (req.params as any).id
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const quizFilePath = "data/quiz.json"
+
+    const response = await fetchContentJsonFromRepo(octokit, {
+      owner: repoConfig.owner,
+      repo: repoConfig.repo,
+      branch: repoConfig.branch,
+      contentFilePath: quizFilePath,
+    })
+
+    const quizData = response.content
+    const quiz = quizData.quizzes?.find((q: any) => q.id === quizId)
+
+    if (!quiz) {
+      return res.status(404).json({
+        error: `Quiz with ID ${quizId} not found`,
+      })
+    }
+
+    res.status(200).json({
+      quiz,
+      sha: response.sha,
+    })
+  } catch (error: any) {
+    console.error("Error fetching quiz:", error)
+    if (error.status === 404 || error.message?.includes("not found")) {
+      return res.status(404).json({
+        error: "Quiz file not found",
+      })
+    }
+    res.status(500).json({
+      error: `Failed to fetch quiz: ${error.message}`,
+    })
+  }
+})
+
+// POST /api/quiz/:id/form-steps/batch-save - Batch save form step changes
+interface BatchSaveRequest extends Request {
+  body: {
+    changes: {
+      newFormSteps: any[]
+      addedTemplateSteps: any[]
+      updatedFormSteps: any[]
+      reorderOperations: any[]
+      deletedFormStepIds: string[]
+    }
+    sha: string
+  }
+}
+
+app.post("/api/quiz/:id/form-steps/batch-save", async (req: BatchSaveRequest, res: Response) => {
+  try {
+    const quizId = (req.params as any).id
+    const { changes, sha } = req.body
+
+    if (!changes || !sha) {
+      return res.status(400).json({
+        error: "Missing changes or SHA in request body.",
+      })
+    }
+
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const quizFilePath = "data/quiz.json"
+
+    // Fetch current quiz data
+    const response = await fetchContentJsonFromRepo(octokit, {
+      owner: repoConfig.owner,
+      repo: repoConfig.repo,
+      branch: repoConfig.branch,
+      contentFilePath: quizFilePath,
+    })
+
+    const quizData = response.content
+
+    // Validate SHA
+    if (response.sha !== sha) {
+      return res.status(409).json({
+        error: "Conflict error (409): The quiz file was modified by someone else. Please refresh and try again.",
+      })
+    }
+
+    // Find quiz
+    const quizIndex = quizData.quizzes?.findIndex((q: any) => q.id === quizId)
+    if (quizIndex === -1) {
+      return res.status(404).json({
+        error: `Quiz with ID ${quizId} not found`,
+      })
+    }
+
+    const quiz = quizData.quizzes[quizIndex]
+
+    // Apply batch changes using the service function
+    const { applyBatchChangesToQuiz } = require("./lib/services/quiz")
+    const updatedQuiz = applyBatchChangesToQuiz(quiz, changes)
+
+    // Update quiz in array
+    quizData.quizzes[quizIndex] = updatedQuiz
+
+    // Save to repo
+    const { commitUrl, newSha } = await updateContentJsonInRepo({
+      octokit,
+      repoConfig: {
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        branch: repoConfig.branch,
+        contentFilePath: quizFilePath,
+      },
+      content: quizData,
+      sha,
+      commitMessage: `CMS: Update quiz "${quiz.name}" form steps`,
+    })
+
+    res.status(200).json({
+      quiz: updatedQuiz,
+      sha: newSha,
+      commitUrl,
+    })
+  } catch (error: any) {
+    console.error("Error saving quiz changes:", error)
+    if (error.status === 409) {
+      return res.status(409).json({
+        error: "Conflict error (409): The quiz file was modified by someone else. Please refresh and try again.",
+      })
+    }
+    res.status(500).json({
+      error: `Failed to save quiz changes: ${error.message}`,
+    })
+  }
+})
+
+// GET /api/form-steps/templates - Get template steps
+app.get("/api/form-steps/templates", async (req: Request, res: Response) => {
+  try {
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const quizFilePath = "data/quiz.json"
+
+    try {
+      const response = await fetchContentJsonFromRepo(octokit, {
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        branch: repoConfig.branch,
+        contentFilePath: quizFilePath,
+      })
+
+      const quizData = response.content
+      res.status(200).json({
+        templates: quizData.templates || [],
+      })
+    } catch (error: any) {
+      // If file doesn't exist, return empty array
+      if (error.status === 404 || error.message?.includes("not found")) {
+        res.status(200).json({
+          templates: [],
+        })
+      } else {
+        throw error
+      }
+    }
+  } catch (error: any) {
+    console.error("Error fetching template steps:", error)
+    res.status(500).json({
+      error: `Failed to fetch template steps: ${error.message}`,
+    })
+  }
+})
+
 app.get("/api/assets", async (req: Request, res: Response) => {
   try {
     const repoConfig = getActiveRepoConfigFromRequest(req)

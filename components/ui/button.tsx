@@ -10,6 +10,8 @@ const buttonVariants = {
     "border border-input bg-background hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] active:bg-gradient-to-r active:from-[#DDF0E3] active:to-[#D3EBEB] hover:text-black active:text-black",
   ghost:
     "hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] active:bg-gradient-to-r active:from-[#DDF0E3] active:to-[#D3EBEB] hover:text-black active:text-black",
+  destructive:
+    "bg-red-600 text-white hover:bg-red-700 active:bg-red-800",
   link: "text-primary underline-offset-4 hover:underline",
 }
 

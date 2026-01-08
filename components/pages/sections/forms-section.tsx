@@ -1,264 +1,204 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useQuizStore } from "@/lib/stores/quiz-store"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Save, Plus, Trash2 } from "lucide-react"
-
-interface FormField {
-  id: string
-  name: string
-  type: string
-  label: string
-  placeholder: string
-  required: boolean
-}
-
-interface FormConfig {
-  id: string
-  name: string
-  title: string
-  description: string
-  fields: FormField[]
-  submitText: string
-  successMessage: string
-}
-
-const fieldTypes = [
-  { value: "text", label: "Text Input" },
-  { value: "email", label: "Email" },
-  { value: "tel", label: "Phone" },
-  { value: "textarea", label: "Textarea" },
-  { value: "select", label: "Select Dropdown" },
-  { value: "checkbox", label: "Checkbox" },
-]
+import { Plus, Loader2, AlertCircle, ChevronLeft } from "lucide-react"
+import { NewQuizModal } from "@/components/ui/new-quiz-modal"
+import { QuizModal } from "@/components/ui/quiz-modal"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { FormPageContainer } from "@/components/pages/form/form-page-container"
 
 export function FormsSection() {
-  const [forms, setForms] = useState<FormConfig[]>([
-    {
-      id: "1",
-      name: "contact",
-      title: "Contact Form",
-      description: "Main contact form for the website",
-      fields: [
-        { id: "1", name: "name", type: "text", label: "Full Name", placeholder: "Enter your name", required: true },
-        { id: "2", name: "email", type: "email", label: "Email", placeholder: "Enter your email", required: true },
-      ],
-      submitText: "Send Message",
-      successMessage: "Thank you for your message!",
-    },
-  ])
+  const {
+    quizzes,
+    isLoading,
+    error,
+    fetchQuizData,
+    feedback,
+    clearFeedback,
+    currentView,
+    builderQuizId,
+    currentQuiz,
+    setView,
+    setBuilderQuizId,
+    fetchQuizById,
+  } = useQuizStore()
 
-  const [selectedForm, setSelectedForm] = useState<string>("1")
-  const [newField, setNewField] = useState({
-    name: "",
-    type: "text",
-    label: "",
-    placeholder: "",
-    required: false,
-  })
+  const [newQuizModalOpen, setNewQuizModalOpen] = useState(false)
+  const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null)
 
-  const currentForm = forms.find((form) => form.id === selectedForm)
+  useEffect(() => {
+    fetchQuizData()
+  }, [fetchQuizData])
 
-  const addField = () => {
-    if (newField.name && newField.label && currentForm) {
-      const field: FormField = {
-        id: Date.now().toString(),
-        ...newField,
-      }
+  useEffect(() => {
+    if (feedback?.message) {
+      const timer = setTimeout(() => {
+        clearFeedback()
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [feedback, clearFeedback])
 
-      setForms(forms.map((form) => (form.id === selectedForm ? { ...form, fields: [...form.fields, field] } : form)))
+  const handleQuizClick = (quizId: string) => {
+    setSelectedQuizId(quizId)
+  }
 
-      setNewField({ name: "", type: "text", label: "", placeholder: "", required: false })
+  const handleOpenBuilder = async (quizId: string) => {
+    setBuilderQuizId(quizId)
+    // Fetch the quiz if not already loaded or if it's a different quiz
+    if (!currentQuiz || currentQuiz.id !== quizId) {
+      await fetchQuizById(quizId)
     }
   }
 
-  const deleteField = (fieldId: string) => {
-    setForms(
-      forms.map((form) =>
-        form.id === selectedForm ? { ...form, fields: form.fields.filter((field) => field.id !== fieldId) } : form,
-      ),
+  const handleBackToList = () => {
+    setView("list")
+    setBuilderQuizId(null)
+  }
+
+  const handleCreateSuccess = () => {
+    setNewQuizModalOpen(false)
+    fetchQuizData()
+  }
+
+  // Show form builder view
+  if (currentView === "builder" && builderQuizId) {
+    if (isLoading && !currentQuiz) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      )
+    }
+
+    if (currentQuiz) {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={handleBackToList}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h3 className="text-lg font-medium">Form Builder</h3>
+              <p className="text-sm text-muted-foreground">
+                {currentQuiz.name}
+              </p>
+            </div>
+          </div>
+          <div className="border rounded-lg overflow-hidden">
+            <FormPageContainer quiz={currentQuiz} />
+          </div>
+        </div>
+      )
+    }
+  }
+
+  // Show quiz list view
+  if (isLoading && currentView === "list") {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     )
   }
 
-  const updateFormConfig = (field: keyof FormConfig, value: string) => {
-    setForms(forms.map((form) => (form.id === selectedForm ? { ...form, [field]: value } : form)))
-  }
-
-  const handleSave = () => {
-    // TODO: Save to Supabase when integration is added
-    console.log("Saving forms data:", forms)
+  if (error && currentView === "list") {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          {error.message || "Failed to load quizzes. Please try again."}
+        </AlertDescription>
+      </Alert>
+    )
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Forms</h3>
-        <p className="text-sm text-muted-foreground">Configure forms for your website</p>
-      </div>
-
-      {/* Form Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Form Configuration</CardTitle>
-          <CardDescription>Select and configure your forms</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Select Form</Label>
-            <Select value={selectedForm} onValueChange={setSelectedForm}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {forms.map((form) => (
-                  <SelectItem key={form.id} value={form.id}>
-                    {form.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {currentForm && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Form Title</Label>
-                <Input value={currentForm.title} onChange={(e) => updateFormConfig("title", e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Submit Button Text</Label>
-                <Input
-                  value={currentForm.submitText}
-                  onChange={(e) => updateFormConfig("submitText", e.target.value)}
-                />
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={currentForm.description}
-                  onChange={(e) => updateFormConfig("description", e.target.value)}
-                  rows={2}
-                />
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label>Success Message</Label>
-                <Input
-                  value={currentForm.successMessage}
-                  onChange={(e) => updateFormConfig("successMessage", e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Add New Field */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Add Form Field</CardTitle>
-          <CardDescription>Add new fields to the selected form</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Field Name</Label>
-              <Input
-                value={newField.name}
-                onChange={(e) => setNewField({ ...newField, name: e.target.value })}
-                placeholder="e.g., firstName"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Field Type</Label>
-              <Select value={newField.type} onValueChange={(value) => setNewField({ ...newField, type: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {fieldTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Label</Label>
-              <Input
-                value={newField.label}
-                onChange={(e) => setNewField({ ...newField, label: e.target.value })}
-                placeholder="e.g., First Name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Placeholder</Label>
-              <Input
-                value={newField.placeholder}
-                onChange={(e) => setNewField({ ...newField, placeholder: e.target.value })}
-                placeholder="e.g., Enter your first name"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              checked={newField.required}
-              onCheckedChange={(checked) => setNewField({ ...newField, required: checked })}
-            />
-            <Label>Required field</Label>
-          </div>
-
-          <Button onClick={addField} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Field
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Form Fields */}
-      {currentForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Form Fields</CardTitle>
-            <CardDescription>Current fields in {currentForm.title}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {currentForm.fields.map((field) => (
-                <div key={field.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-medium">{field.label}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {field.name} • {fieldTypes.find((t) => t.value === field.type)?.label}
-                      {field.required && " • Required"}
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => deleteField(field.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="flex justify-end">
-        <Button onClick={handleSave} className="gap-2">
-          <Save className="h-4 w-4" />
-          Save Forms
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-medium">Forms</h3>
+          <p className="text-sm text-muted-foreground">
+            Manage quizzes and forms for your website
+          </p>
+        </div>
+        <Button onClick={() => setNewQuizModalOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          New Form
         </Button>
       </div>
+
+      {feedback?.message && (
+        <Alert variant={feedback.type === "error" ? "destructive" : "default"}>
+          <AlertDescription>{feedback.message}</AlertDescription>
+        </Alert>
+      )}
+
+      {quizzes.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-muted-foreground mb-4">No quizzes found</p>
+            <Button onClick={() => setNewQuizModalOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Your First Quiz
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quizzes.map((quiz) => (
+            <Card
+              key={quiz.id}
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleQuizClick(quiz.id)}
+            >
+              <CardHeader>
+                <CardTitle>{quiz.name}</CardTitle>
+                <CardDescription>
+                  {quiz.description || "No description"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <div>Steps: {quiz.formSteps?.length || 0}</div>
+                  <div>Version: {quiz.version}</div>
+                  <div>
+                    Created: {new Date(quiz.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <Button
+                  className="w-full mt-4"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleOpenBuilder(quiz.id)
+                  }}
+                >
+                  Open Form Builder
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <NewQuizModal
+        isOpen={newQuizModalOpen}
+        onClose={() => setNewQuizModalOpen(false)}
+        onSuccess={handleCreateSuccess}
+      />
+
+      {selectedQuizId && (
+        <QuizModal
+          quizId={selectedQuizId}
+          isOpen={!!selectedQuizId}
+          onClose={() => setSelectedQuizId(null)}
+          onOpenBuilder={handleOpenBuilder}
+        />
+      )}
     </div>
   )
 }

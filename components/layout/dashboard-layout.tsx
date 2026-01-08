@@ -11,11 +11,20 @@ import { Sidebar } from "./sidebar"
 import { EmptyStateView } from "./empty-state-view"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { useRepositoryStore } from "@/lib/stores/repository-store"
+import { useQuizStore } from "@/lib/stores/quiz-store"
 import { toast } from "sonner"
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeSection, setActiveSection] = useState("brand-settings")
+  const { builderQuizId } = useQuizStore()
+
+  // Auto-switch to Forms tab when builder is opened
+  useEffect(() => {
+    if (builderQuizId && activeSection !== "forms") {
+      setActiveSection("forms")
+    }
+  }, [builderQuizId, activeSection])
   const [showRepoModal, setShowRepoModal] = useState(false)
   const [showCreateRepoModal, setShowCreateRepoModal] = useState(false)
   const [show404Alert, setShow404Alert] = useState(false)
