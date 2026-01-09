@@ -230,9 +230,6 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
     setQuestionModalOpen(true)
   }
 
-  // Get all questions from all steps for conditional rendering
-  const allQuestions = quiz.formSteps.flatMap((fs) => fs.questions || [])
-
   const handleConditionChange = (condition: any) => {
     handleUpdate("render_condition", condition)
   }
@@ -315,11 +312,8 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
 
       <ConditionalRenderingEditor
         condition={step.render_condition}
-        availableFields={allQuestions.map((q) => ({
-          id: q.id,
-          slug: q.slug,
-          question: q.question,
-        }))}
+        quiz={quiz}
+        currentFormStepId={step.id}
         onChange={handleConditionChange}
       />
 

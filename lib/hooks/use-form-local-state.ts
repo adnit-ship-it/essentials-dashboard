@@ -14,6 +14,7 @@ import type {
   ProgressStep,
   Question,
 } from '@/lib/types/quiz'
+import { validateConditionalRendering } from '@/lib/utils/quiz-helpers'
 
 interface UseFormLocalStateOptions {
   quiz: FullQuiz | null
@@ -245,6 +246,22 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
         questionsChanged ||
         renderConditionChanged
       ) {
+        // Validate conditional rendering if it changed
+        if (renderConditionChanged && localStep.render_condition) {
+          const validation = validateConditionalRendering(
+            localQuiz,
+            localStep.id,
+            localStep.render_condition
+          )
+          if (!validation.valid) {
+            console.warn(
+              `Form step "${localStep.title}" has invalid conditional rendering:`,
+              validation.errors
+            )
+            // Still allow saving but log warnings
+          }
+        }
+
         // Recalculate question orders for updated questions (sort by current order first)
         const sortedQuestions = [...(localStep.questions || [])].sort(
           (a, b) => a.question_order - b.question_order

@@ -108,6 +108,167 @@ export function getFormStepsForProgressStep(
   })
 }
 
+/**
+ * Get available questions for conditional rendering in a form step
+ * Returns questions from prior form steps only (based on progress step order, then step_order)
+ */
+export function getAvailableQuestionsForFormStep(
+  quiz: {
+    progressSteps: Array<{ id: string; name: string; step_order: number }>
+    formSteps: Array<{ id: string; title: string; step_order: number; questions?: Array<{ id: string; slug: string; question: string }> }>
+    stepProgressMapping: Array<{ form_step_id: string; progress_step_id: string }>
+  },
+  currentFormStepId: string
+): Array<{ id: string; slug: string; question: string; progressStepName: string; formStepTitle: string }> {
+  // Find current form step
+  const currentFormStep = quiz.formSteps.find((fs) => fs.id === currentFormStepId)
+  if (!currentFormStep) {
+    return []
+  }
+
+  // Find current form step's progress step
+  const currentMapping = quiz.stepProgressMapping.find(
+    (m) => m.form_step_id === currentFormStepId
+  )
+  if (!currentMapping) {
+    return []
+  }
+
+  const currentProgressStepId = currentMapping.progress_step_id
+  const currentProgressStep = quiz.progressSteps.find((ps) => ps.id === currentProgressStepId)
+  if (!currentProgressStep) {
+    return []
+  }
+
+  // Sort progress steps by order
+  const sortedProgressSteps = [...quiz.progressSteps].sort(
+    (a, b) => a.step_order - b.step_order
+  )
+
+  // Find current progress step index
+  const currentProgressStepIndex = sortedProgressSteps.findIndex(
+    (ps) => ps.id === currentProgressStepId
+  )
+
+  if (currentProgressStepIndex === -1) {
+    return []
+  }
+
+  const availableQuestions: Array<{
+    id: string
+    slug: string
+    question: string
+    progressStepName: string
+    formStepTitle: string
+  }> = []
+
+  // Collect questions from previous progress steps (all form steps)
+  for (let i = 0; i < currentProgressStepIndex; i++) {
+    const progressStep = sortedProgressSteps[i]
+    const formStepsInProgressStep = quiz.formSteps.filter((fs) => {
+      const mapping = quiz.stepProgressMapping.find((m) => m.form_step_id === fs.id)
+      return mapping?.progress_step_id === progressStep.id
+    })
+
+    formStepsInProgressStep.forEach((formStep) => {
+      if (formStep.questions) {
+        formStep.questions.forEach((question) => {
+          availableQuestions.push({
+            id: question.id,
+            slug: question.slug,
+            question: question.question,
+            progressStepName: progressStep.name,
+            formStepTitle: formStep.title,
+          })
+        })
+      }
+    })
+  }
+
+  // Collect questions from current progress step with lower step_order
+  // First, get all form steps in the current progress step and sort them
+  const allFormStepsInCurrentProgressStep = quiz.formSteps
+    .filter((fs) => {
+      const mapping = quiz.stepProgressMapping.find((m) => m.form_step_id === fs.id)
+      return mapping?.progress_step_id === currentProgressStepId
+    })
+    .sort((a, b) => a.step_order - b.step_order)
+
+  // Find the current form step's index in the sorted list
+  const currentStepIndex = allFormStepsInCurrentProgressStep.findIndex(
+    (fs) => fs.id === currentFormStepId
+  )
+
+  // Include all form steps that come before the current one
+  if (currentStepIndex > 0) {
+    const previousSteps = allFormStepsInCurrentProgressStep.slice(0, currentStepIndex)
+    previousSteps.forEach((formStep) => {
+      if (formStep.questions) {
+        formStep.questions.forEach((question) => {
+          availableQuestions.push({
+            id: question.id,
+            slug: question.slug,
+            question: question.question,
+            progressStepName: currentProgressStep.name,
+            formStepTitle: formStep.title,
+          })
+        })
+      }
+    })
+  }
+
+  return availableQuestions
+}
+
+/**
+ * Validate conditional rendering conditions
+ */
+export function validateConditionalRendering(
+  quiz: {
+    progressSteps: Array<{ id: string; name: string; step_order: number }>
+    formSteps: Array<{ id: string; title: string; step_order: number; questions?: Array<{ id: string; slug: string }> }>
+    stepProgressMapping: Array<{ form_step_id: string; progress_step_id: string }>
+  },
+  formStepId: string,
+  condition: { conditions: Array<{ field: string }> } | null
+): { valid: boolean; errors: string[] } {
+  if (!condition || !condition.conditions || condition.conditions.length === 0) {
+    return { valid: true, errors: [] }
+  }
+
+  const availableQuestions = getAvailableQuestionsForFormStep(quiz, formStepId)
+  const availableSlugs = new Set(availableQuestions.map((q) => q.slug))
+
+  const errors: string[] = []
+
+  condition.conditions.forEach((cond, index) => {
+    if (!availableSlugs.has(cond.field)) {
+      // Find which form step this question belongs to for better error message
+      const allQuestions = quiz.formSteps.flatMap((fs) =>
+        (fs.questions || []).map((q) => ({
+          slug: q.slug,
+          formStepId: fs.id,
+          formStepTitle: fs.title,
+        }))
+      )
+      const questionInfo = allQuestions.find((q) => q.slug === cond.field)
+
+      if (questionInfo) {
+        errors.push(
+          `Condition ${index + 1}: Question "${cond.field}" is from a future or current form step and cannot be referenced.`
+        )
+      } else {
+        errors.push(`Condition ${index + 1}: Question "${cond.field}" not found in available questions.`)
+      }
+    }
+  })
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  }
+}
+
 
 
 
