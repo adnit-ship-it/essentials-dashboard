@@ -2,6 +2,8 @@
  * Utility functions for quiz/form builder
  */
 
+import type { QuestionType, QuestionOption } from "@/lib/types/quiz"
+
 /**
  * Generate a slug from a string
  */
@@ -115,11 +117,11 @@ export function getFormStepsForProgressStep(
 export function getAvailableQuestionsForFormStep(
   quiz: {
     progressSteps: Array<{ id: string; name: string; step_order: number }>
-    formSteps: Array<{ id: string; title: string; step_order: number; questions?: Array<{ id: string; slug: string; question: string }> }>
+    formSteps: Array<{ id: string; title: string; step_order: number; questions?: Array<{ id: string; slug: string; question: string; type?: QuestionType; options?: QuestionOption[] }> }>
     stepProgressMapping: Array<{ form_step_id: string; progress_step_id: string }>
   },
   currentFormStepId: string
-): Array<{ id: string; slug: string; question: string; progressStepName: string; formStepTitle: string }> {
+): Array<{ id: string; slug: string; question: string; progressStepName: string; formStepTitle: string; type: QuestionType; options?: QuestionOption[] }> {
   // Find current form step
   const currentFormStep = quiz.formSteps.find((fs) => fs.id === currentFormStepId)
   if (!currentFormStep) {
@@ -160,6 +162,8 @@ export function getAvailableQuestionsForFormStep(
     question: string
     progressStepName: string
     formStepTitle: string
+    type: QuestionType
+    options?: QuestionOption[]
   }> = []
 
   // Collect questions from previous progress steps (all form steps)
@@ -179,6 +183,8 @@ export function getAvailableQuestionsForFormStep(
             question: question.question,
             progressStepName: progressStep.name,
             formStepTitle: formStep.title,
+            type: question.type || "TEXT" as QuestionType,
+            options: question.options,
           })
         })
       }
@@ -211,6 +217,8 @@ export function getAvailableQuestionsForFormStep(
             question: question.question,
             progressStepName: currentProgressStep.name,
             formStepTitle: formStep.title,
+            type: question.type || "TEXT" as QuestionType,
+            options: question.options,
           })
         })
       }

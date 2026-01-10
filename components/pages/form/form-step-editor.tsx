@@ -156,6 +156,7 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
         question_order: questions.length + 1,
         validation: questionData.validation || null,
         api_type: questionData.api_type || null,
+        options: questionData.options || undefined,
       }
       const updated = [...questions, newQuestion]
       // Recalculate orders

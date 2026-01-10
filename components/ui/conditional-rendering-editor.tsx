@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, Trash2, AlertTriangle } from "lucide-react"
-import type { RenderCondition, ConditionOperator, LogicalOperator, FullQuiz } from "@/lib/types/quiz"
+import type { RenderCondition, ConditionOperator, LogicalOperator, FullQuiz, QuestionType } from "@/lib/types/quiz"
+import { OPTION_TYPES } from "@/lib/types/quiz"
 import { getAvailableQuestionsForFormStep, validateConditionalRendering } from "@/lib/utils/quiz-helpers"
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -190,14 +191,20 @@ export function ConditionalRenderingEditor({
           <Label>Conditions</Label>
           {localCondition.conditions.map((cond, index) => {
             const fieldInvalid = isFieldInvalid(cond.field)
+            const selectedQuestion = availableQuestions.find((q) => q.slug === cond.field)
+            const questionHasOptions = selectedQuestion && OPTION_TYPES.includes(selectedQuestion.type) && selectedQuestion.options && selectedQuestion.options.length > 0
+            const shouldShowDropdown = questionHasOptions && (cond.operator === "equals" || cond.operator === "notEquals")
+            
             return (
               <div key={index} className="flex gap-2 items-end">
                 <div className="flex-1">
                   <Select
                     value={cond.field}
-                    onValueChange={(value) =>
+                    onValueChange={(value) => {
+                      // When field changes, reset value to allow proper selection for new field type
                       handleUpdateCondition(index, "field", value)
-                    }
+                      handleUpdateCondition(index, "value", "")
+                    }}
                   >
                     <SelectTrigger className={cn(fieldInvalid && "border-destructive")}>
                       <SelectValue placeholder="Select field" />
@@ -219,9 +226,15 @@ export function ConditionalRenderingEditor({
                 <div className="w-32">
                   <Select
                     value={cond.operator}
-                    onValueChange={(value: ConditionOperator) =>
+                    onValueChange={(value: ConditionOperator) => {
+                      // When operator changes, reset value if switching between option and non-option modes
+                      const willShowDropdown = questionHasOptions && (value === "equals" || value === "notEquals")
+                      
                       handleUpdateCondition(index, "operator", value)
-                    }
+                      if (shouldShowDropdown !== willShowDropdown) {
+                        handleUpdateCondition(index, "value", "")
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -229,19 +242,44 @@ export function ConditionalRenderingEditor({
                     <SelectContent>
                       <SelectItem value="equals">equals</SelectItem>
                       <SelectItem value="notEquals">not equals</SelectItem>
-                      <SelectItem value="greaterThan">greater than</SelectItem>
-                      <SelectItem value="lessThan">less than</SelectItem>
+                      {!questionHasOptions && (
+                        <>
+                          <SelectItem value="greaterThan">greater than</SelectItem>
+                          <SelectItem value="lessThan">less than</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex-1">
-                  <Input
-                    value={cond.value}
-                    onChange={(e) =>
-                      handleUpdateCondition(index, "value", e.target.value)
-                    }
-                    placeholder="Value"
-                  />
+                  {shouldShowDropdown ? (
+                    <Select
+                      value={cond.value}
+                      onValueChange={(value) =>
+                        handleUpdateCondition(index, "value", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select option" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedQuestion?.options?.map((option) => (
+                          <SelectItem key={option.id} value={option.value}>
+                            {option.label || option.value}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={cond.value}
+                      onChange={(e) =>
+                        handleUpdateCondition(index, "value", e.target.value)
+                      }
+                      placeholder={selectedQuestion?.type === "NUMBER" ? "Enter number" : "Enter value"}
+                      type={selectedQuestion?.type === "NUMBER" ? "number" : "text"}
+                    />
+                  )}
                 </div>
                 <Button
                   type="button"
