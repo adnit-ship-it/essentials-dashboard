@@ -72,7 +72,7 @@ interface QuizStore {
   ) => void
   addProgressStep: (
     quizId: string,
-    step: Omit<ProgressStep, 'id' | 'quiz_id'>
+    step: Omit<ProgressStep, 'id' | 'quiz_id' | 'step_order'>
   ) => void
 
   // Save operations
@@ -111,11 +111,14 @@ function getRepoInfo() {
   const orgStore = useOrganizationStore.getState()
 
   // Try repository store first
-  if (repoStore.selectedRepo) {
-    return {
-      owner: repoStore.selectedRepo.owner,
-      repo: repoStore.selectedRepo.repo,
-      branch: repoStore.selectedRepo.defaultBranch || "main",
+  if (repoStore.selectedRepoId) {
+    const selectedRepo = repoStore.configuredRepos.find(r => r.id === repoStore.selectedRepoId)
+    if (selectedRepo) {
+      return {
+        owner: selectedRepo.owner,
+        repo: selectedRepo.repo,
+        branch: selectedRepo.defaultBranch || "main",
+      }
     }
   }
 

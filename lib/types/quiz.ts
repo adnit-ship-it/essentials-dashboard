@@ -35,9 +35,24 @@ export const QuestionTypes = [
 export type QuestionType = (typeof QuestionTypes)[number]
 
 /**
- * Validation rules for questions
+ * Validation rule types for questions
  */
-export type ValidationRule = 'required' | 'email' | 'phone'
+export type ValidationRuleType = 'required' | 'email' | 'phone' | 'phonePrefix' | 'pattern'
+
+/**
+ * Validation rule interface
+ */
+export interface ValidationRule {
+  type: ValidationRuleType
+  value?: string  // For pattern (regex) or phonePrefix (default prefix)
+  message?: string // Custom error message
+}
+
+/**
+ * Legacy validation rule type for backward compatibility
+ * @deprecated Use ValidationRule interface instead
+ */
+export type ValidationRuleLegacy = 'required' | 'email' | 'phone'
 
 /**
  * Conditional rendering operators
@@ -75,7 +90,7 @@ export interface Question {
   question: string
   display_question: string | null
   placeholder: string | null
-  is_required: boolean
+  is_required?: boolean // Deprecated: Use validation array instead. Kept for backward compatibility
   question_order: number
   validation: ValidationRule[] | null
   api_type: string | null
@@ -101,7 +116,7 @@ export interface RenderCondition {
   conditions: {
     field: string
     operator: ConditionOperator
-    value: any
+    value: string | string[] // Support both single and multi-select values
   }[]
   logicalOperator: LogicalOperator
 }
@@ -444,9 +459,30 @@ export const QUESTION_TYPE_CONFIGS: QuestionTypeConfig[] = [
  */
 export const VALIDATION_RULE_CONFIGS = [
   { value: "required", label: "Required" },
-  { value: "email", label: "Email" },
-  { value: "phone", label: "Phone" }
+  { value: "email", label: "Email Format" },
+  { value: "phone", label: "Phone Format" },
+  { value: "phonePrefix", label: "Default Phone Prefix" },
+  { value: "pattern", label: "Pattern (Regex)" }
 ] as const
+
+/**
+ * Available validation rules by question type
+ */
+export const VALIDATION_RULES_BY_TYPE: Record<QuestionType, ValidationRuleType[]> = {
+  TEXT: ['required', 'pattern'],
+  TEXTAREA: ['required', 'pattern'],
+  EMAIL: ['required', 'email'],
+  TEL: ['required', 'phone', 'phonePrefix'],
+  NUMBER: ['required'],
+  FILE_INPUT: ['required'],
+  MULTISELECT: ['required'],
+  SINGLESELECT: ['required'],
+  DROPDOWN: ['required'],
+  CHECKBOX: ['required'],
+  PERFECT: ['required'],
+  MARKETING: [],
+  BEFORE_AFTER: [],
+}
 
 
 

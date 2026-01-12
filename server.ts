@@ -29,6 +29,7 @@ import {
 } from "./lib/services/repo-config";
 import { createRepoFromTemplate, linkToVercel, updateHostTemplate } from "./lib/services/repo-creation";
 import { TEMPLATE_REPOS } from "./lib/services/template-repos";
+import { applyBatchChangesToQuiz } from "./lib/services/quiz";
 import type { RepoConfig } from "./lib/types/repository";
 
 const app = express();
@@ -2566,7 +2567,6 @@ app.post("/api/quiz/:id/form-steps/batch-save", async (req: BatchSaveRequest, re
     const quiz = quizData.quizzes[quizIndex]
 
     // Apply batch changes using the service function
-    const { applyBatchChangesToQuiz } = require("./lib/services/quiz")
     const updatedQuiz = applyBatchChangesToQuiz(quiz, changes)
 
     // Update quiz in array

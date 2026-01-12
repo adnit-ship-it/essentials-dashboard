@@ -34,7 +34,7 @@ export function generateTempId(): string {
  * Calculate the next step order for a progress step
  */
 export function calculateNextStepOrder(
-  formSteps: Array<{ step_order: number }>,
+  formSteps: Array<{ id: string; step_order: number }>,
   progressStepId: string,
   stepProgressMapping: Array<{ form_step_id: string; progress_step_id: string }>
 ): number {
@@ -234,7 +234,7 @@ export function getAvailableQuestionsForFormStep(
 export function validateConditionalRendering(
   quiz: {
     progressSteps: Array<{ id: string; name: string; step_order: number }>
-    formSteps: Array<{ id: string; title: string; step_order: number; questions?: Array<{ id: string; slug: string }> }>
+    formSteps: Array<{ id: string; title: string; step_order: number; questions?: Array<{ id: string; slug: string; question: string; type?: QuestionType; options?: QuestionOption[] }> }>
     stepProgressMapping: Array<{ form_step_id: string; progress_step_id: string }>
   },
   formStepId: string,

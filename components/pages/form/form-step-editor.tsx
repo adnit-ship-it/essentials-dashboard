@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { FullQuiz, QuizFormStep, Question } from "@/lib/types/quiz"
+import { migrateIsRequiredToValidation } from "@/lib/utils/question-validator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -131,10 +132,29 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
 
   const handleQuestionSave = (questionData: Partial<Question>) => {
     const questions = step.questions || []
+    
+    // Migrate is_required to validation if present
+    const baseQuestion: Partial<Question> = {
+      ...questionData,
+      id: questionData.id || editingQuestion?.id || `question-${Date.now()}`,
+      form_step_id: step.id,
+      slug: questionData.slug || "",
+      type: questionData.type || "TEXT",
+      question: questionData.question || "",
+      display_question: questionData.display_question || null,
+      placeholder: questionData.placeholder || null,
+      question_order: questionData.question_order || (editingQuestion ? editingQuestion.question_order : questions.length + 1),
+      validation: questionData.validation || null,
+      api_type: questionData.api_type || null,
+      options: questionData.options || undefined,
+    }
+    
+    const migratedQuestionData = migrateIsRequiredToValidation(baseQuestion as Question)
+    
     if (editingQuestion) {
       // Update existing question
       const updated = questions.map((q) =>
-        q.id === editingQuestion.id ? { ...q, ...questionData } : q
+        q.id === editingQuestion.id ? { ...migratedQuestionData, is_required: undefined } : q
       )
       // Recalculate orders
       const questionsWithOrder = updated.map((q, index) => ({
@@ -145,18 +165,10 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
     } else {
       // Add new question
       const newQuestion: Question = {
+        ...migratedQuestionData,
         id: `question-${Date.now()}`,
         form_step_id: step.id,
-        slug: questionData.slug || "",
-        type: questionData.type || "TEXT",
-        question: questionData.question || "",
-        display_question: questionData.display_question || null,
-        placeholder: questionData.placeholder || null,
-        is_required: questionData.is_required || false,
         question_order: questions.length + 1,
-        validation: questionData.validation || null,
-        api_type: questionData.api_type || null,
-        options: questionData.options || undefined,
       }
       const updated = [...questions, newQuestion]
       // Recalculate orders

@@ -78,7 +78,7 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
     reorderProgressStep(quiz.id, progressStepId, newOrder)
   }
 
-  const handleAddProgressStep = (step: Omit<ProgressStep, 'id' | 'quiz_id'>) => {
+  const handleAddProgressStep = (step: Omit<ProgressStep, 'id' | 'quiz_id' | 'step_order'>) => {
     if (!quiz) return
     addProgressStep(quiz.id, step)
   }
@@ -339,7 +339,7 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
           name: localPs.name,
           description: localPs.description,
           color: localPs.color,
-        })
+        } as Partial<ProgressStep> & { id: string })
       }
     })
 

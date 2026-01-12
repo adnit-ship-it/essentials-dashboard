@@ -12,16 +12,37 @@ function evaluateCondition(
   formData: Record<string, any>
 ): boolean {
   const fieldValue = formData[condition.field]
+  const conditionValue = condition.value
 
   switch (condition.operator) {
     case "equals":
-      return fieldValue === condition.value
+      // Handle multi-select: condition value is array, check if fieldValue contains all condition values
+      if (Array.isArray(conditionValue)) {
+        if (!Array.isArray(fieldValue)) {
+          return false
+        }
+        // For MULTISELECT: fieldValue must contain all values in conditionValue
+        return conditionValue.every((val) => fieldValue.includes(val))
+      }
+      // Single value comparison
+      return fieldValue === conditionValue
+      
     case "notEquals":
-      return fieldValue !== condition.value
+      // Handle multi-select: condition value is array, check if fieldValue doesn't contain any condition values
+      if (Array.isArray(conditionValue)) {
+        if (!Array.isArray(fieldValue)) {
+          return true // If field is not an array but condition expects array, it's not equal
+        }
+        // For MULTISELECT: fieldValue should not contain any values in conditionValue
+        return !conditionValue.some((val) => fieldValue.includes(val))
+      }
+      // Single value comparison
+      return fieldValue !== conditionValue
+      
     case "greaterThan":
-      return Number(fieldValue) > Number(condition.value)
+      return Number(fieldValue) > Number(conditionValue)
     case "lessThan":
-      return Number(fieldValue) < Number(condition.value)
+      return Number(fieldValue) < Number(conditionValue)
     default:
       return false
   }

@@ -4,6 +4,7 @@ import { FullQuiz } from "@/lib/types/quiz"
 import { QuizModalHeader } from "./quiz-modal-header"
 import { ProgressStepsAccordion } from "./progress-steps-accordion"
 import { ProductBundleIdsEditor } from "./product-bundle-ids-editor"
+import { ProductLinksEditor } from "./product-links-editor"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -35,6 +36,11 @@ export function QuizModalContainer({
             <div>
               <h3 className="text-sm font-medium mb-2">Progress Steps</h3>
               <ProgressStepsAccordion quiz={quiz} />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium mb-2">Linked Products</h3>
+              <ProductLinksEditor quiz={quiz} />
             </div>
 
             <div>

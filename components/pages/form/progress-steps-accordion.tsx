@@ -76,7 +76,7 @@ function SortableProgressStepTrigger({
   formStepCount,
 }: {
   progressStepId: string
-  progressStep: { name: string; color?: string }
+  progressStep: { name: string; color?: string | null }
   formStepCount: number
 }) {
   const {

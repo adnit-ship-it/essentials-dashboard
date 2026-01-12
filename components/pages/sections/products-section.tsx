@@ -2116,7 +2116,23 @@ export function ProductsSection() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Quiz</Label>
+                        <div className="flex items-center justify-between">
+                          <Label>Quiz Assignment</Label>
+                          {activeEditor.draft.quiz && quizNameById[activeEditor.draft.quiz] && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                // This would open quiz builder - would need to be implemented
+                                console.log("Open quiz builder for:", activeEditor.draft.quiz)
+                              }}
+                              className="text-xs h-7"
+                            >
+                              View Quiz
+                            </Button>
+                          )}
+                        </div>
                         <Select
                           value={activeEditor.draft.quiz ?? "none"}
                           onValueChange={(value) => {
@@ -2153,9 +2169,52 @@ export function ProductsSection() {
                               )}
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-muted-foreground">
-                          Assign an intake quiz to launch after checkout.
-                        </p>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            Assign an intake quiz to launch after checkout. This quiz will be shown to users when they interact with this product.
+                          </p>
+                          {activeEditor.draft.quiz && (
+                            <div className="mt-2 p-2 bg-muted/50 rounded border border-blue-200">
+                              <p className="text-xs font-medium text-blue-900 mb-1">Product Bundle IDs</p>
+                              <p className="text-xs text-blue-700">
+                                When this product is linked to the quiz, the following bundle IDs will be automatically added to the quiz:
+                              </p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {activeEditor.draft.productBundleIds?.monthly && (
+                                  <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium">
+                                    {activeEditor.draft.productBundleIds.monthly}
+                                  </span>
+                                )}
+                                {activeEditor.draft.productBundleIds?.threeMonthly && (
+                                  <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium">
+                                    {activeEditor.draft.productBundleIds.threeMonthly}
+                                  </span>
+                                )}
+                                {activeEditor.draft.productBundleIds?.sixMonthly && (
+                                  <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium">
+                                    {activeEditor.draft.productBundleIds.sixMonthly}
+                                  </span>
+                                )}
+                                {(!activeEditor.draft.productBundleIds?.monthly && 
+                                  !activeEditor.draft.productBundleIds?.threeMonthly && 
+                                  !activeEditor.draft.productBundleIds?.sixMonthly) && (
+                                  <span className="text-xs text-muted-foreground">No bundle IDs configured</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {activeEditor.draft.quiz && (
+                            <div className="mt-2">
+                              <p className="text-xs text-muted-foreground">
+                                Other products using this quiz:{" "}
+                                {draftProducts
+                                  .filter((p) => p.quiz === activeEditor.draft.quiz && p._localId !== activeEditor.draft._localId)
+                                  .map((p) => p.name)
+                                  .join(", ") || "None"}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label>Popular</Label>
