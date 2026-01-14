@@ -30,29 +30,16 @@ export const QuestionTypes = [
   'PERFECT',
   'MARKETING',
   'BEFORE_AFTER',
+  'MEDICAL_REVIEW',
+  'WEIGHT_SUMMARY',
 ] as const
 
 export type QuestionType = (typeof QuestionTypes)[number]
 
 /**
- * Validation rule types for questions
+ * Validation rule type - simple string array matching file format
  */
-export type ValidationRuleType = 'required' | 'email' | 'phone' | 'phonePrefix' | 'pattern'
-
-/**
- * Validation rule interface
- */
-export interface ValidationRule {
-  type: ValidationRuleType
-  value?: string  // For pattern (regex) or phonePrefix (default prefix)
-  message?: string // Custom error message
-}
-
-/**
- * Legacy validation rule type for backward compatibility
- * @deprecated Use ValidationRule interface instead
- */
-export type ValidationRuleLegacy = 'required' | 'email' | 'phone'
+export type ValidationRule = string
 
 /**
  * Conditional rendering operators
@@ -88,17 +75,30 @@ export interface Question {
   slug: string
   type: QuestionType
   question: string
-  display_question: string | null
+  displayQuestion: string | null
   placeholder: string | null
-  is_required?: boolean // Deprecated: Use validation array instead. Kept for backward compatibility
+  required: boolean
   question_order: number
-  validation: ValidationRule[] | null
+  validation: string[] | null
   api_type: string | null
   // Marketing question fields
   image?: string | null
-  before_image?: string | null
-  after_image?: string | null
+  beforeImage?: string | null
+  afterImage?: string | null
   quote?: string | null
+  // Additional question fields
+  icon?: string | null
+  displayAsRow?: boolean
+  optionImages?: string[]
+  // Medical review fields
+  calculatedValues?: Record<string, string>
+  candidateStatement?: string | null
+  // Perfect question fields
+  heading1?: string | null
+  subtext?: string | null
+  dynamicSubtext?: string | null
+  // Marketing display options
+  displayStatistics?: boolean
   // Template flag - derived from parent step's is_template_step
   is_template?: boolean
   // Optional options array
@@ -145,7 +145,8 @@ export interface FormStep {
  * Represents a form step as it is linked to a specific quiz, including its order
  */
 export interface QuizFormStep extends FormStep {
-  step_order: number
+  order: number
+  progressStepId: string
 }
 
 // =================================================================================
@@ -157,12 +158,11 @@ export interface QuizFormStep extends FormStep {
  */
 export interface ProgressStep {
   id: UUID
-  quiz_id: UUID
   slug: string
   name: string
   description: string | null
   color: string | null
-  step_order: number
+  order: number
 }
 
 // =================================================================================
@@ -184,28 +184,8 @@ export interface Quiz {
     targetAudience?: string
     compliance?: string[]
   } | null
-  created_at: string
-  // Multi-tenancy fields
-  organization_id: UUID
-  product_bundle_ids: string[]
-}
-
-/**
- * Represents the mapping between a quiz and its form steps (the "playlist")
- */
-export interface QuizFormStepMapping {
-  quiz_id: UUID
-  form_step_id: UUID
-  step_order: number
-}
-
-/**
- * Represents the mapping between a form step and a progress step for a quiz
- */
-export interface StepProgressMapping {
-  quiz_id: UUID
-  form_step_id: UUID
-  progress_step_id: UUID
+  productBundleIds: string[]
+  isManual?: boolean // true for manually created quizzes, false/undefined for default quizzes
 }
 
 /**
@@ -215,8 +195,6 @@ export interface StepProgressMapping {
 export interface FullQuiz extends Quiz {
   progressSteps: ProgressStep[]
   formSteps: QuizFormStep[]
-  quizFormStepMapping: QuizFormStepMapping[]
-  stepProgressMapping: StepProgressMapping[]
 }
 
 // =================================================================================
@@ -244,15 +222,12 @@ export interface QuizFileStructure {
  */
 export interface LocalFormStep extends Omit<QuizFormStep, 'id'> {
   id: string // Temporary ID like "temp-1234567890-abc123"
-  progressStepId: string // Track which progress step this belongs to
 }
 
 /**
  * Template step that was added to a quiz (cloned from template)
  */
-export interface AddedTemplateStep extends QuizFormStep {
-  progressStepId: string // Track which progress step this belongs to
-}
+export interface AddedTemplateStep extends QuizFormStep {}
 
 /**
  * Form step that has been updated locally
@@ -271,7 +246,7 @@ export interface UpdatedFormStep {
  */
 export interface ReorderOperation {
   formStepId: string
-  newStepOrder: number
+  newOrder: number
   newProgressStepId: string
   oldProgressStepId: string
 }
@@ -282,7 +257,7 @@ export interface ReorderOperation {
 export interface DeletedFormStep {
   id: string
   progressStepId: string
-  stepOrder: number
+  order: number
 }
 
 // =================================================================================
@@ -299,7 +274,7 @@ export interface BatchSaveRequest {
   reorderOperations: ReorderOperation[]
   deletedFormStepIds: string[]
   // Progress step operations
-  newProgressSteps?: (Omit<ProgressStep, 'id' | 'quiz_id'> & { tempId?: string })[]
+  newProgressSteps?: (Omit<ProgressStep, 'id'> & { tempId?: string })[]
   updatedProgressSteps?: Partial<ProgressStep> & { id: string }[]
   reorderProgressOperations?: { progressStepId: string; newOrder: number }[]
 }
@@ -311,7 +286,6 @@ export interface CreateQuizRequest {
   name: string
   description?: string
   productBundleIds: string[]
-  organizationId: string
 }
 
 /**
@@ -321,16 +295,16 @@ export interface QuestionFormData {
   slug: string
   type: QuestionType
   question: string
-  display_question: string
+  displayQuestion: string
   placeholder?: string
-  is_required: boolean
+  required: boolean
   api_type: string
   options: string[]
   validation: string[]
   // Marketing question fields
   image?: string
-  before_image?: string
-  after_image?: string
+  beforeImage?: string
+  afterImage?: string
   quote?: string
 }
 
@@ -452,6 +426,9 @@ export const QUESTION_TYPE_CONFIGS: QuestionTypeConfig[] = [
   { value: "CHECKBOX", label: "Checkbox", apiType: "SINGLESELECT" },
   { value: "MARKETING", label: "Marketing", apiType: "MARKETING" },
   { value: "BEFORE_AFTER", label: "Before/After", apiType: "BEFORE_AFTER" },
+  { value: "PERFECT", label: "Perfect Match", apiType: "TEXT" },
+  { value: "MEDICAL_REVIEW", label: "Medical Review", apiType: "TEXT" },
+  { value: "WEIGHT_SUMMARY", label: "Weight Summary", apiType: "TEXT" },
 ]
 
 /**
@@ -468,7 +445,7 @@ export const VALIDATION_RULE_CONFIGS = [
 /**
  * Available validation rules by question type
  */
-export const VALIDATION_RULES_BY_TYPE: Record<QuestionType, ValidationRuleType[]> = {
+export const VALIDATION_RULES_BY_TYPE: Record<QuestionType, string[]> = {
   TEXT: ['required', 'pattern'],
   TEXTAREA: ['required', 'pattern'],
   EMAIL: ['required', 'email'],
@@ -482,6 +459,8 @@ export const VALIDATION_RULES_BY_TYPE: Record<QuestionType, ValidationRuleType[]
   PERFECT: ['required'],
   MARKETING: [],
   BEFORE_AFTER: [],
+  MEDICAL_REVIEW: [],
+  WEIGHT_SUMMARY: [],
 }
 
 

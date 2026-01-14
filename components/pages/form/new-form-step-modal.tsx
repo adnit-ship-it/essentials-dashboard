@@ -60,8 +60,7 @@ export function NewFormStepModal({ isOpen, onClose, quiz, defaultProgressStepId 
     // Calculate the next step order for this progress step
     const stepOrder = calculateNextStepOrder(
       quiz.formSteps,
-      progressStepId,
-      quiz.stepProgressMapping
+      progressStepId
     )
 
     // Create the new form step
@@ -75,7 +74,7 @@ export function NewFormStepModal({ isOpen, onClose, quiz, defaultProgressStepId 
       is_template_step: false,
       render_condition: null,
       questions: [],
-      step_order: stepOrder,
+      order: stepOrder,
       progressStepId: progressStepId,
     }
 

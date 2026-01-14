@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useQuizStore } from "@/lib/stores/quiz-store"
 import { fetchGraphQL } from "@/lib/services/graphql"
 import type { Product } from "@/lib/types/products"
 import { fileToPendingUpload } from "@/lib/utils/file-uploads"
@@ -170,6 +171,7 @@ const QUIZ_CONFIG_URL = `${API_BASE_URL}/api/quizzes`
 type QuizOption = {
   id: string
   name: string
+  isManual?: boolean
 }
 
 type FetchedProductBundle = {
@@ -534,6 +536,7 @@ export function ProductsSection() {
   )
 
   const { repoOwnerFromLink, repoNameFromLink, linkNameFromLink } = useOrganizationStore()
+  const { setBuilderQuizId, fetchQuizById, currentQuiz } = useQuizStore()
 
   const fetchProducts = useCallback(async () => {
     const owner = repoOwnerFromLink || ""
@@ -640,6 +643,19 @@ export function ProductsSection() {
     },
     [draftProducts]
   )
+
+  const handleOpenQuizInBuilder = async (quizId: string) => {
+    try {
+      // Set builder quiz ID (triggers auto-switch to Forms tab via dashboard layout)
+      setBuilderQuizId(quizId)
+      // Fetch quiz if not already loaded
+      if (!currentQuiz || currentQuiz.id !== quizId) {
+        await fetchQuizById(quizId)
+      }
+    } catch (err) {
+      console.error("Failed to open quiz in builder:", err)
+    }
+  }
 
   const handleNewProduct = () => {
     const blank = createEmptyDraftProduct()
@@ -2123,13 +2139,10 @@ export function ProductsSection() {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
-                                // This would open quiz builder - would need to be implemented
-                                console.log("Open quiz builder for:", activeEditor.draft.quiz)
-                              }}
+                              onClick={() => handleOpenQuizInBuilder(activeEditor.draft.quiz!)}
                               className="text-xs h-7"
                             >
-                              View Quiz
+                              Open in Form Builder
                             </Button>
                           )}
                         </div>
@@ -2158,7 +2171,7 @@ export function ProductsSection() {
                             <SelectItem value="none">No quiz</SelectItem>
                             {quizOptions.map((option) => (
                               <SelectItem key={option.id} value={option.id}>
-                                {option.name}
+                                {option.name}{option.isManual ? " (Manual)" : ""}
                               </SelectItem>
                             ))}
                             {activeEditor.draft.quiz &&

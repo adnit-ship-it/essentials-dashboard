@@ -153,12 +153,11 @@ function createDefaultProgressSteps(quizId: string): ProgressStep[] {
   return [
     {
       id: `progress-${Date.now()}-1`,
-      quiz_id: quizId,
       slug: 'information',
       name: 'Information',
       description: 'Provide your information',
       color: '#3B82F6',
-      step_order: 1,
+      order: 1,
     },
   ]
 }
@@ -220,8 +219,6 @@ export function applyBatchChangesToQuiz(
 ): FullQuiz {
   let updatedQuiz = { ...quiz }
   const updatedFormSteps = [...quiz.formSteps]
-  const updatedMapping = [...quiz.quizFormStepMapping]
-  const updatedStepProgressMapping = [...quiz.stepProgressMapping]
   let updatedProgressSteps = [...quiz.progressSteps]
 
   // Handle progress step changes first (before form step changes that depend on them)
@@ -236,8 +233,7 @@ export function applyBatchChangesToQuiz(
       
       const newProgressStep: ProgressStep = {
         id: `progress-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        quiz_id: quiz.id,
-        step_order: newPs.step_order,
+        order: newPs.order,
         slug: newPs.slug,
         name: newPs.name,
         description: newPs.description,
@@ -269,7 +265,7 @@ export function applyBatchChangesToQuiz(
   if (changes.reorderProgressOperations && changes.reorderProgressOperations.length > 0) {
     // Sort progress steps by current order
     const sortedProgressSteps = [...updatedProgressSteps].sort(
-      (a, b) => a.step_order - b.step_order
+      (a, b) => a.order - b.order
     )
 
     // Apply reorder operations
@@ -289,7 +285,7 @@ export function applyBatchChangesToQuiz(
         const newIndex = withoutDragged.findIndex((p) => p.id === ps.id)
         return {
           ...ps,
-          step_order: newIndex >= 0 ? newIndex + 1 : ps.step_order,
+          order: newIndex >= 0 ? newIndex + 1 : ps.order,
         }
       })
     })
@@ -301,21 +297,13 @@ export function applyBatchChangesToQuiz(
     if (index !== -1) {
       updatedFormSteps.splice(index, 1)
     }
-    // Remove from mappings
-    const mappingIndex = updatedMapping.findIndex((m) => m.form_step_id === deletedId)
-    if (mappingIndex !== -1) {
-      updatedMapping.splice(mappingIndex, 1)
-    }
-    const stepMappingIndex = updatedStepProgressMapping.findIndex(
-      (m) => m.form_step_id === deletedId
-    )
-    if (stepMappingIndex !== -1) {
-      updatedStepProgressMapping.splice(stepMappingIndex, 1)
-    }
   })
 
   // Handle new form steps
   changes.newFormSteps.forEach((newStep) => {
+    // Map temp progress step ID to new ID if needed
+    const progressStepId = progressStepIdMap.get(newStep.progressStepId) || newStep.progressStepId
+    
     const formStep: QuizFormStep = {
       id: newStep.id,
       slug: newStep.slug,
@@ -326,36 +314,15 @@ export function applyBatchChangesToQuiz(
       is_template_step: false,
       render_condition: newStep.render_condition,
       questions: newStep.questions,
-      step_order: newStep.step_order,
+      order: newStep.order,
+      progressStepId,
     }
     updatedFormSteps.push(formStep)
-    updatedMapping.push({
-      quiz_id: quiz.id,
-      form_step_id: formStep.id,
-      step_order: formStep.step_order,
-    })
-    // Map temp progress step ID to new ID if needed
-    const progressStepId = progressStepIdMap.get(newStep.progressStepId) || newStep.progressStepId
-    updatedStepProgressMapping.push({
-      quiz_id: quiz.id,
-      form_step_id: formStep.id,
-      progress_step_id: progressStepId,
-    })
   })
 
   // Handle added template steps
   changes.addedTemplateSteps.forEach((templateStep) => {
     updatedFormSteps.push(templateStep)
-    updatedMapping.push({
-      quiz_id: quiz.id,
-      form_step_id: templateStep.id,
-      step_order: templateStep.step_order,
-    })
-    updatedStepProgressMapping.push({
-      quiz_id: quiz.id,
-      form_step_id: templateStep.id,
-      progress_step_id: templateStep.progressStepId,
-    })
   })
 
   // Handle updated form steps
@@ -377,37 +344,26 @@ export function applyBatchChangesToQuiz(
   changes.reorderOperations.forEach((reorderOp) => {
     const stepIndex = updatedFormSteps.findIndex((fs) => fs.id === reorderOp.formStepId)
     if (stepIndex !== -1) {
-      updatedFormSteps[stepIndex].step_order = reorderOp.newStepOrder
-    }
-    const mappingIndex = updatedMapping.findIndex(
-      (m) => m.form_step_id === reorderOp.formStepId
-    )
-    if (mappingIndex !== -1) {
-      updatedMapping[mappingIndex].step_order = reorderOp.newStepOrder
-    }
-    const stepMappingIndex = updatedStepProgressMapping.findIndex(
-      (m) => m.form_step_id === reorderOp.formStepId
-    )
-    if (stepMappingIndex !== -1) {
       // Map temp progress step ID to new ID if needed
       const progressStepId = progressStepIdMap.get(reorderOp.newProgressStepId) || reorderOp.newProgressStepId
-      updatedStepProgressMapping[stepMappingIndex].progress_step_id = progressStepId
+      updatedFormSteps[stepIndex] = {
+        ...updatedFormSteps[stepIndex],
+        order: reorderOp.newOrder,
+        progressStepId,
+      }
     }
   })
 
   // Sort form steps by order
-  updatedFormSteps.sort((a, b) => a.step_order - b.step_order)
-  updatedMapping.sort((a, b) => a.step_order - b.step_order)
+  updatedFormSteps.sort((a, b) => a.order - b.order)
 
   // Sort progress steps by order
-  updatedProgressSteps.sort((a, b) => a.step_order - b.step_order)
+  updatedProgressSteps.sort((a, b) => a.order - b.order)
 
   return {
     ...updatedQuiz,
     progressSteps: updatedProgressSteps,
     formSteps: updatedFormSteps,
-    quizFormStepMapping: updatedMapping,
-    stepProgressMapping: updatedStepProgressMapping,
   }
 }
 
@@ -421,7 +377,7 @@ export async function saveQuizChanges(
   quizId: string,
   changes: BatchSaveRequest,
   sha: string
-): Promise<{ newSha: string; quiz: FullQuiz }> {
+): Promise<{ newSha: string; quiz: FullQuiz; isNewQuiz?: boolean; originalQuizId?: string }> {
   if (!owner || !repo) {
     throw createQuizError(
       "Repository owner/name missing. Configure via repository settings.",
@@ -478,6 +434,8 @@ export async function saveQuizChanges(
   return {
     newSha: data.sha || sha,
     quiz: data.quiz,
+    isNewQuiz: data.isNewQuiz || false,
+    originalQuizId: data.originalQuizId,
   }
 }
 

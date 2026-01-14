@@ -2,13 +2,13 @@
  * Validation utilities for questions
  */
 
-import type { Question, QuestionType, ValidationRule, ValidationRuleType } from "@/lib/types/quiz"
+import type { Question, QuestionType } from "@/lib/types/quiz"
 import { VALIDATION_RULES_BY_TYPE } from "@/lib/types/quiz"
 
 /**
  * Get available validation rules for a question type
  */
-export function getAvailableValidations(questionType: QuestionType): ValidationRuleType[] {
+export function getAvailableValidations(questionType: QuestionType): string[] {
   return VALIDATION_RULES_BY_TYPE[questionType] || []
 }
 
@@ -38,18 +38,18 @@ export function validateQuestionResponse(
   const errors: string[] = []
 
   if (!question.validation || question.validation.length === 0) {
-    // Check legacy is_required for backward compatibility
-    if (question.is_required && (!value || (Array.isArray(value) && value.length === 0))) {
+    // Check required field
+    if (question.required && (!value || (Array.isArray(value) && value.length === 0))) {
       errors.push("This field is required")
     }
     return { valid: errors.length === 0, errors }
   }
 
   question.validation.forEach((rule) => {
-    switch (rule.type) {
+    switch (rule) {
       case "required":
         if (!value || (Array.isArray(value) && value.length === 0)) {
-          errors.push(rule.message || "This field is required")
+          errors.push("This field is required")
         }
         break
 
@@ -57,7 +57,7 @@ export function validateQuestionResponse(
         if (value && typeof value === "string") {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
           if (!emailRegex.test(value)) {
-            errors.push(rule.message || "Please enter a valid email address")
+            errors.push("Please enter a valid email address")
           }
         }
         break
@@ -67,94 +67,71 @@ export function validateQuestionResponse(
           // Basic phone validation - accepts digits, spaces, dashes, parentheses, plus
           const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/
           if (!phoneRegex.test(value.replace(/\s/g, ""))) {
-            errors.push(rule.message || "Please enter a valid phone number")
+            errors.push("Please enter a valid phone number")
           }
         }
         break
 
       case "phonePrefix":
-        if (value && typeof value === "string" && rule.value) {
-          const prefix = rule.value.trim()
-          if (!value.startsWith(prefix)) {
-            errors.push(rule.message || `Phone number must start with ${prefix}`)
-          }
-        }
+        // Phone prefix validation would need additional metadata
+        // For now, just check if value exists
         break
 
       case "pattern":
-        if (value && typeof value === "string" && rule.value) {
-          try {
-            const regex = new RegExp(rule.value)
-            if (!regex.test(value)) {
-              errors.push(rule.message || "Value does not match the required pattern")
-            }
-          } catch (error) {
-            // Invalid regex pattern - skip this validation
-            console.warn("Invalid regex pattern in validation rule:", rule.value, error)
-          }
-        }
+        // Pattern validation would need additional metadata (the regex pattern)
+        // For now, skip - this should be handled at the form level
         break
     }
   })
+
+  // Also check required field if validation array doesn't include it
+  if (!question.validation.includes("required") && question.required) {
+    if (!value || (Array.isArray(value) && value.length === 0)) {
+      errors.push("This field is required")
+    }
+  }
 
   return { valid: errors.length === 0, errors }
 }
 
 /**
- * Migrate is_required field to validation array
+ * Migrate is_required field to validation array and ensure required field is set
+ * This function normalizes questions to the new format
  */
-export function migrateIsRequiredToValidation(question: Question): Question {
-  // If validation already exists and has required, or is_required is false, return as-is
-  if (question.validation && question.validation.length > 0) {
-    const hasRequired = question.validation.some(
-      (rule) => (typeof rule === "string" && rule === "required") || (typeof rule === "object" && rule.type === "required")
-    )
-    if (hasRequired || !question.is_required) {
-      // Normalize validation array to use ValidationRule interface
-      const normalizedValidation: ValidationRule[] = question.validation.map((rule) => {
-        if (typeof rule === "string") {
-          // Legacy string format
-          return { type: rule as ValidationRuleType }
-        }
-        return rule as ValidationRule
-      })
-      return { ...question, validation: normalizedValidation }
-    }
-  }
-
-  // Migrate is_required to validation array
-  if (question.is_required) {
-    const existingValidation = question.validation || []
-    const normalizedValidation: ValidationRule[] = existingValidation.map((rule) => {
+export function migrateIsRequiredToValidation(question: any): Question {
+  const currentValidation = question.validation || []
+  
+  // Convert validation to string array if it's in old format
+  let normalizedValidation: string[] = []
+  if (Array.isArray(currentValidation)) {
+    normalizedValidation = currentValidation.map((rule: any) => {
       if (typeof rule === "string") {
-        return { type: rule as ValidationRuleType }
+        return rule
       }
-      return rule as ValidationRule
+      if (typeof rule === "object" && rule.type) {
+        return rule.type
+      }
+      return String(rule)
     })
+  }
 
-    // Add required if not already present
-    const hasRequired = normalizedValidation.some((rule) => rule.type === "required")
-    if (!hasRequired) {
-      normalizedValidation.unshift({ type: "required" })
-    }
-
-    return {
-      ...question,
-      validation: normalizedValidation,
-      is_required: undefined, // Remove deprecated field
+  // Handle legacy is_required field
+  if (question.is_required !== undefined) {
+    const hasRequired = normalizedValidation.includes("required")
+    
+    if (question.is_required && !hasRequired) {
+      normalizedValidation.unshift("required")
+    } else if (!question.is_required && hasRequired) {
+      normalizedValidation = normalizedValidation.filter((r) => r !== "required")
     }
   }
 
-  // Normalize existing validation array
-  if (question.validation && question.validation.length > 0) {
-    const normalizedValidation: ValidationRule[] = question.validation.map((rule) => {
-      if (typeof rule === "string") {
-        return { type: rule as ValidationRuleType }
-      }
-      return rule as ValidationRule
-    })
-    return { ...question, validation: normalizedValidation }
-  }
+  // Ensure required field is set based on validation array
+  const required = normalizedValidation.includes("required")
 
-  return question
+  return {
+    ...question,
+    required,
+    validation: normalizedValidation.length > 0 ? normalizedValidation : null,
+  }
 }

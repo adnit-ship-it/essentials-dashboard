@@ -22,10 +22,9 @@ export function ProgressStepsAccordion({ quiz }: ProgressStepsAccordionProps) {
   return (
     <Accordion type="single" collapsible className="w-full">
       {progressSteps.map((step) => {
-        const formStepsInStep = quiz.stepProgressMapping
-          ?.filter((m) => m.progress_step_id === step.id)
-          .map((m) => quiz.formSteps.find((fs) => fs.id === m.form_step_id))
-          .filter(Boolean) || []
+        const formStepsInStep = quiz.formSteps.filter(
+          (fs) => fs.progressStepId === step.id
+        )
 
         return (
           <AccordionItem key={step.id} value={step.id}>

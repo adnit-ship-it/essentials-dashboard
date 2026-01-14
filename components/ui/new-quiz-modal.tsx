@@ -50,7 +50,6 @@ export function NewQuizModal({ isOpen, onClose, onSuccess }: NewQuizModalProps) 
         name: name.trim(),
         description: description.trim() || undefined,
         productBundleIds,
-        organizationId: selectedOrgId,
       })
 
       toast.success("Quiz created successfully")

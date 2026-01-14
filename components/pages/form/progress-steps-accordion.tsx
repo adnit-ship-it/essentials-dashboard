@@ -141,7 +141,7 @@ export function ProgressStepsAccordion({
   onAddFormStep,
 }: ProgressStepsAccordionProps) {
   const progressSteps = [...(quiz.progressSteps || [])].sort(
-    (a, b) => a.step_order - b.step_order
+    (a, b) => a.order - b.order
   )
 
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -162,13 +162,11 @@ export function ProgressStepsAccordion({
     const grouped: Record<string, typeof quiz.formSteps> = {}
     
     progressSteps.forEach((progressStep) => {
-      const steps = quiz.stepProgressMapping
-        ?.filter((m) => m.progress_step_id === progressStep.id)
-        .map((m) => quiz.formSteps.find((fs) => fs.id === m.form_step_id))
-        .filter(Boolean)
-        .sort((a, b) => (a?.step_order || 0) - (b?.step_order || 0)) || []
+      const steps = quiz.formSteps
+        .filter((fs) => fs.progressStepId === progressStep.id)
+        .sort((a, b) => a.order - b.order)
       
-      grouped[progressStep.id] = steps as typeof quiz.formSteps
+      grouped[progressStep.id] = steps
     })
     
     return grouped
@@ -214,7 +212,7 @@ export function ProgressStepsAccordion({
         if (!draggedProgressStep || !targetProgressStep) return
 
         // Calculate new order based on target position
-        const newOrder = targetProgressStep.step_order
+        const newOrder = targetProgressStep.order
         onReorderProgressStep(draggedProgressStepId, newOrder)
         return
       }
@@ -222,19 +220,14 @@ export function ProgressStepsAccordion({
       // If dropped on a form step, find its parent progress step
       const targetFormStep = quiz.formSteps.find((fs) => fs.id === overId)
       if (targetFormStep) {
-        const targetMapping = quiz.stepProgressMapping.find(
-          (m) => m.form_step_id === targetFormStep.id
+        const targetProgressStepId = targetFormStep.progressStepId
+        const targetProgressStep = progressSteps.find(
+          (ps) => ps.id === targetProgressStepId
         )
-        if (targetMapping) {
-          const targetProgressStepId = targetMapping.progress_step_id
-          const targetProgressStep = progressSteps.find(
-            (ps) => ps.id === targetProgressStepId
-          )
-          if (targetProgressStep) {
-            const newOrder = targetProgressStep.step_order
-            onReorderProgressStep(draggedProgressStepId, newOrder)
-            return
-          }
+        if (targetProgressStep) {
+          const newOrder = targetProgressStep.order
+          onReorderProgressStep(draggedProgressStepId, newOrder)
+          return
         }
       }
       
@@ -249,10 +242,7 @@ export function ProgressStepsAccordion({
     if (!draggedStep) return
 
     // Find current progress step for dragged step
-    const currentMapping = quiz.stepProgressMapping.find(
-      (m) => m.form_step_id === draggedStepId
-    )
-    const oldProgressStepId = currentMapping?.progress_step_id || ""
+    const oldProgressStepId = draggedStep.progressStepId || ""
 
     // Determine target progress step
     let newProgressStepId = oldProgressStepId
@@ -266,12 +256,7 @@ export function ProgressStepsAccordion({
       const targetStep = quiz.formSteps.find((fs) => fs.id === over.id)
       if (targetStep) {
         targetStepId = targetStep.id
-        const targetMapping = quiz.stepProgressMapping.find(
-          (m) => m.form_step_id === targetStep.id
-        )
-        if (targetMapping) {
-          newProgressStepId = targetMapping.progress_step_id
-        }
+        newProgressStepId = targetStep.progressStepId
       }
     }
 
@@ -288,8 +273,8 @@ export function ProgressStepsAccordion({
       if (targetStep) {
         if (oldProgressStepId === newProgressStepId) {
           // Same progress step - reordering within
-          const currentOrder = draggedStep.step_order
-          const targetOrder = targetStep.step_order
+          const currentOrder = draggedStep.order
+          const targetOrder = targetStep.order
           
           // Find the index of target step in the filtered list
           const targetIndex = stepsInTargetWithoutDragged.findIndex((fs) => fs.id === targetStepId)
@@ -303,7 +288,7 @@ export function ProgressStepsAccordion({
           }
         } else {
           // Different progress step - insert at target position
-          newOrder = targetStep.step_order
+          newOrder = targetStep.order
         }
       }
     } else {

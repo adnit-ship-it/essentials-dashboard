@@ -78,7 +78,7 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
     reorderProgressStep(quiz.id, progressStepId, newOrder)
   }
 
-  const handleAddProgressStep = (step: Omit<ProgressStep, 'id' | 'quiz_id' | 'step_order'>) => {
+  const handleAddProgressStep = (step: Omit<ProgressStep, 'id' | 'order'>) => {
     if (!quiz) return
     addProgressStep(quiz.id, step)
   }
@@ -102,14 +102,14 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
     console.log("Local Quiz ID:", localQuiz.id)
     console.log("Original Progress Steps Count:", originalQuiz.progressSteps?.length || 0)
     console.log("Local Progress Steps Count:", localQuiz.progressSteps?.length || 0)
-    console.log("Original Progress Steps:", originalQuiz.progressSteps?.map(ps => ({ id: ps.id, name: ps.name, order: ps.step_order })) || [])
-    console.log("Local Progress Steps:", localQuiz.progressSteps?.map(ps => ({ id: ps.id, name: ps.name, order: ps.step_order })) || [])
+    console.log("Original Progress Steps:", originalQuiz.progressSteps?.map(ps => ({ id: ps.id, name: ps.name, order: ps.order })) || [])
+    console.log("Local Progress Steps:", localQuiz.progressSteps?.map(ps => ({ id: ps.id, name: ps.name, order: ps.order })) || [])
     
     // Sort both for comparison
-    const originalSorted = [...(originalQuiz.progressSteps || [])].sort((a, b) => a.step_order - b.step_order)
-    const localSorted = [...(localQuiz.progressSteps || [])].sort((a, b) => a.step_order - b.step_order)
-    console.log("Original Sorted:", originalSorted.map(ps => ({ id: ps.id, name: ps.name, order: ps.step_order })))
-    console.log("Local Sorted:", localSorted.map(ps => ({ id: ps.id, name: ps.name, order: ps.step_order })))
+    const originalSorted = [...(originalQuiz.progressSteps || [])].sort((a, b) => a.order - b.order)
+    const localSorted = [...(localQuiz.progressSteps || [])].sort((a, b) => a.order - b.order)
+    console.log("Original Sorted:", originalSorted.map(ps => ({ id: ps.id, name: ps.name, order: ps.order })))
+    console.log("Local Sorted:", localSorted.map(ps => ({ id: ps.id, name: ps.name, order: ps.order })))
     
     // Compare order
     const orderDifferences = originalSorted.map((ops, idx) => {
@@ -117,9 +117,9 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
       return {
         id: ops.id,
         name: ops.name,
-        originalOrder: ops.step_order,
-        localOrder: lps?.step_order,
-        orderChanged: lps && lps.step_order !== ops.step_order,
+        originalOrder: ops.order,
+        localOrder: lps?.order,
+        orderChanged: lps && lps.order !== ops.order,
         indexChanged: lps && localSorted.findIndex(ps => ps.id === ops.id) !== idx
       }
     })
@@ -156,9 +156,6 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
       if (localStep.id.startsWith('temp-')) {
         changes.newFormSteps.push({
           ...localStep,
-          progressStepId: localQuiz.stepProgressMapping.find(
-            (m) => m.form_step_id === localStep.id
-          )?.progress_step_id || '',
         } as LocalFormStep)
       }
     })
@@ -178,24 +175,16 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
       const originalStep = originalFormSteps.find((fs) => fs.id === localStep.id)
       if (!originalStep) return
 
-      // Check for reorder (step_order or progress_step_id changed)
-      const originalMapping = originalQuiz.stepProgressMapping.find(
-        (m) => m.form_step_id === localStep.id
-      )
-      const localMapping = localQuiz.stepProgressMapping.find(
-        (m) => m.form_step_id === localStep.id
-      )
-
-      const stepOrderChanged = localStep.step_order !== originalStep.step_order
-      const progressStepChanged =
-        localMapping?.progress_step_id !== originalMapping?.progress_step_id
+      // Check for reorder (order or progressStepId changed)
+      const stepOrderChanged = localStep.order !== originalStep.order
+      const progressStepChanged = localStep.progressStepId !== originalStep.progressStepId
 
       if (stepOrderChanged || progressStepChanged) {
         changes.reorderOperations.push({
           formStepId: localStep.id,
-          newStepOrder: localStep.step_order,
-          newProgressStepId: localMapping?.progress_step_id || '',
-          oldProgressStepId: originalMapping?.progress_step_id || '',
+          newOrder: localStep.order,
+          newProgressStepId: localStep.progressStepId,
+          oldProgressStepId: originalStep.progressStepId,
         })
       }
 
@@ -225,9 +214,9 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
           return (
             oq.question !== lq.question ||
             oq.type !== lq.type ||
-            oq.is_required !== lq.is_required ||
+            oq.required !== lq.required ||
             oq.slug !== lq.slug ||
-            oq.display_question !== lq.display_question ||
+            oq.displayQuestion !== lq.displayQuestion ||
             oq.placeholder !== lq.placeholder ||
             JSON.stringify(oq.validation) !== JSON.stringify(lq.validation) ||
             oq.api_type !== lq.api_type
@@ -284,10 +273,10 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
 
     // Collect progress step changes
     const originalProgressSteps = [...(originalQuiz.progressSteps || [])].sort(
-      (a, b) => a.step_order - b.step_order
+      (a, b) => a.order - b.order
     )
     const localProgressSteps = [...(localQuiz.progressSteps || [])].sort(
-      (a, b) => a.step_order - b.step_order
+      (a, b) => a.order - b.order
     )
 
     // Find new progress steps (temp IDs or not in original)
@@ -300,7 +289,7 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
           name: localPs.name,
           description: localPs.description,
           color: localPs.color,
-          step_order: localPs.step_order,
+          order: localPs.order,
           tempId: isTempId ? localPs.id : undefined,
         })
       }
@@ -315,11 +304,11 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
       }
 
       // Check for reorder
-      if (localPs.step_order !== originalPs.step_order) {
-        console.log(`Progress step ${localPs.id} reordered: ${originalPs.step_order} -> ${localPs.step_order}`)
+      if (localPs.order !== originalPs.order) {
+        console.log(`Progress step ${localPs.id} reordered: ${originalPs.order} -> ${localPs.order}`)
         changes.reorderProgressOperations?.push({
           progressStepId: localPs.id,
-          newOrder: localPs.step_order,
+          newOrder: localPs.order,
         })
       }
 

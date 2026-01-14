@@ -16,9 +16,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Trash2, Info, ChevronDown, ChevronUp, GripVertical } from "lucide-react"
-import type { Question, QuestionType, QuestionOption, ValidationRule, ValidationRuleType } from "@/lib/types/quiz"
+import type { Question, QuestionType, QuestionOption } from "@/lib/types/quiz"
 import { QUESTION_TYPE_CONFIGS, OPTION_TYPES } from "@/lib/types/quiz"
 import { getAvailableValidations, validateRegexPattern, migrateIsRequiredToValidation } from "@/lib/utils/question-validator"
+import { QuizImageUpload } from "./question-modal/quiz-image-upload"
+import { CalculatedValuesEditor } from "./question-modal/calculated-values-editor"
 import {
   DndContext,
   closestCenter,
@@ -144,18 +146,36 @@ export function QuestionModal({
     slug: question?.slug || "",
     type: (question?.type || "TEXT") as QuestionType,
     question: question?.question || "",
-    display_question: question?.display_question || "",
+    displayQuestion: question?.displayQuestion || "",
     placeholder: question?.placeholder || "",
-    is_required: question?.is_required || false,
+    required: question?.required ?? false,
     api_type: question?.api_type || "TEXT",
     validation: question?.validation || [],
+    // General fields
+    icon: question?.icon || "",
+    displayAsRow: question?.displayAsRow || false,
+    optionImages: question?.optionImages || [],
+    // MARKETING fields
+    image: question?.image || "",
+    displayStatistics: question?.displayStatistics || false,
+    // BEFORE_AFTER fields
+    beforeImage: question?.beforeImage || "",
+    afterImage: question?.afterImage || "",
+    quote: question?.quote || "",
+    // MEDICAL_REVIEW fields
+    calculatedValues: question?.calculatedValues || {},
+    candidateStatement: question?.candidateStatement || "",
+    // PERFECT fields
+    heading1: question?.heading1 || "",
+    subtext: question?.subtext || "",
+    dynamicSubtext: question?.dynamicSubtext || "",
   })
 
   const [options, setOptions] = useState<QuestionOption[]>(
     question?.options || []
   )
 
-  const [validationRules, setValidationRules] = useState<ValidationRule[]>([])
+  const [validationRules, setValidationRules] = useState<string[]>([])
   const [showAdvancedValidation, setShowAdvancedValidation] = useState(false)
   const [patternError, setPatternError] = useState<string | null>(null)
 
@@ -185,24 +205,45 @@ export function QuestionModal({
         slug: question?.slug || "",
         type: (question?.type || "TEXT") as QuestionType,
         question: question?.question || "",
-        display_question: question?.display_question || "",
+        displayQuestion: question?.displayQuestion || "",
         placeholder: question?.placeholder || "",
-        is_required: question?.is_required || false,
+        required: migratedQuestion?.required ?? false,
         api_type: question?.api_type || "TEXT",
         validation: migratedQuestion?.validation || [],
+        // General fields
+        icon: question?.icon || "",
+        displayAsRow: question?.displayAsRow || false,
+        optionImages: question?.optionImages || [],
+        // MARKETING fields
+        image: question?.image || "",
+        displayStatistics: question?.displayStatistics || false,
+        // BEFORE_AFTER fields
+        beforeImage: question?.beforeImage || "",
+        afterImage: question?.afterImage || "",
+        quote: question?.quote || "",
+        // MEDICAL_REVIEW fields
+        calculatedValues: question?.calculatedValues || {},
+        candidateStatement: question?.candidateStatement || "",
+        // PERFECT fields
+        heading1: question?.heading1 || "",
+        subtext: question?.subtext || "",
+        dynamicSubtext: question?.dynamicSubtext || "",
       })
-      setOptions(question?.options || [])
+      const questionOptions = question?.options || []
+      setOptions(questionOptions)
+      
+      // Initialize optionImages array to match options length
+      const questionOptionImages = question?.optionImages || []
+      const optionImagesArray = questionOptions.map((_, index) => questionOptionImages[index] || "")
+      setFormData((prev) => ({
+        ...prev,
+        optionImages: optionImagesArray,
+      }))
       
       // Initialize validation rules
       const validation = migratedQuestion?.validation || []
-      const normalizedValidation: ValidationRule[] = validation.map((rule) => {
-        if (typeof rule === "string") {
-          return { type: rule as ValidationRuleType }
-        }
-        return rule as ValidationRule
-      })
-      setValidationRules(normalizedValidation)
-      setShowAdvancedValidation(normalizedValidation.some((r) => r.type === "pattern"))
+      setValidationRules(validation)
+      setShowAdvancedValidation(validation.includes("pattern"))
     }
   }, [isOpen, question])
 
@@ -219,12 +260,44 @@ export function QuestionModal({
           option_order: 1,
         },
       ])
+      // Initialize optionImages array
+      setFormData((prev) => ({
+        ...prev,
+        optionImages: [""],
+      }))
     } else if (!requiresOptions && options.length > 0) {
       // Switching away from option type - clear options
       setOptions([])
+      setFormData((prev) => ({
+        ...prev,
+        optionImages: [],
+        displayAsRow: false,
+      }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.type])
+
+  // Sync optionImages array with options array
+  useEffect(() => {
+    if (requiresOptions) {
+      const currentLength = formData.optionImages.length
+      const optionsLength = options.length
+      
+      if (currentLength < optionsLength) {
+        // Add empty strings for new options
+        const newOptionImages = [...formData.optionImages]
+        while (newOptionImages.length < optionsLength) {
+          newOptionImages.push("")
+        }
+        setFormData((prev) => ({ ...prev, optionImages: newOptionImages }))
+      } else if (currentLength > optionsLength) {
+        // Remove excess images
+        const newOptionImages = formData.optionImages.slice(0, optionsLength)
+        setFormData((prev) => ({ ...prev, optionImages: newOptionImages }))
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options.length, requiresOptions])
 
   const handleAddOption = () => {
     const newOption: QuestionOption = {
@@ -235,6 +308,11 @@ export function QuestionModal({
       option_order: options.length + 1,
     }
     setOptions([...options, newOption])
+    // Add empty string to optionImages array
+    setFormData((prev) => ({
+      ...prev,
+      optionImages: [...prev.optionImages, ""],
+    }))
   }
 
   const handleRemoveOption = (index: number) => {
@@ -243,6 +321,12 @@ export function QuestionModal({
       option_order: i + 1,
     }))
     setOptions(newOptions)
+    // Remove corresponding image from optionImages array
+    const newOptionImages = formData.optionImages.filter((_, i) => i !== index)
+    setFormData((prev) => ({
+      ...prev,
+      optionImages: newOptionImages,
+    }))
   }
 
   const handleUpdateOption = (index: number, field: "value" | "label", value: string) => {
@@ -268,20 +352,24 @@ export function QuestionModal({
         option_order: index + 1,
       }))
       setOptions(optionsWithOrder)
+      
+      // Reorder optionImages array to match
+      const reorderedImages = arrayMove(formData.optionImages, oldIndex, newIndex)
+      setFormData((prev) => ({
+        ...prev,
+        optionImages: reorderedImages,
+      }))
     }
   }
 
-  const handleValidationChange = (type: ValidationRuleType, enabled: boolean, value?: string, message?: string) => {
+  const handleValidationChange = (type: string, enabled: boolean, value?: string) => {
     setPatternError(null)
     let newRules = [...validationRules]
     
     if (enabled) {
-      // Add or update rule
-      const existingIndex = newRules.findIndex((r) => r.type === type)
-      if (existingIndex >= 0) {
-        newRules[existingIndex] = { type, value, message }
-      } else {
-        newRules.push({ type, value, message })
+      // Add rule if not already present
+      if (!newRules.includes(type)) {
+        newRules.push(type)
       }
       
       // Validate pattern if it's a pattern rule
@@ -294,14 +382,14 @@ export function QuestionModal({
       }
     } else {
       // Remove rule
-      newRules = newRules.filter((r) => r.type !== type)
+      newRules = newRules.filter((r) => r !== type)
     }
     
     setValidationRules(newRules)
   }
 
-  const getValidationRule = (type: ValidationRuleType): ValidationRule | undefined => {
-    return validationRules.find((r) => r.type === type)
+  const hasValidationRule = (type: string): boolean => {
+    return validationRules.includes(type)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -322,28 +410,55 @@ export function QuestionModal({
       }
     }
 
-    // Validate pattern if present
-    const patternRule = getValidationRule("pattern")
-    if (patternRule && patternRule.value) {
-      const patternValidation = validateRegexPattern(patternRule.value)
-      if (!patternValidation.valid) {
-        setPatternError(patternValidation.error || "Invalid pattern")
-        alert(`Invalid regex pattern: ${patternValidation.error}`)
-        return
-      }
-    }
-
     // Build validation array for save
     const validationToSave = validationRules.length > 0 ? validationRules : null
 
-    onSave({
+    // Build question object with conditional fields based on type
+    const questionToSave: Partial<Question> = {
       ...formData,
       form_step_id: formStepId,
       question_order: question?.question_order || 0,
       options: requiresOptions ? options : undefined,
       validation: validationToSave,
-      is_required: undefined, // Remove deprecated field
-    })
+    }
+
+    // Add type-specific fields
+    if (formData.type === "MARKETING") {
+      questionToSave.image = formData.image || null
+      questionToSave.displayStatistics = formData.displayStatistics || false
+    }
+
+    if (formData.type === "BEFORE_AFTER") {
+      questionToSave.beforeImage = formData.beforeImage || null
+      questionToSave.afterImage = formData.afterImage || null
+      questionToSave.quote = formData.quote || null
+    }
+
+    if (formData.type === "MEDICAL_REVIEW") {
+      questionToSave.calculatedValues = Object.keys(formData.calculatedValues).length > 0 
+        ? formData.calculatedValues 
+        : undefined
+      questionToSave.candidateStatement = formData.candidateStatement || null
+    }
+
+    if (formData.type === "PERFECT") {
+      questionToSave.heading1 = formData.heading1 || null
+      questionToSave.subtext = formData.subtext || null
+      questionToSave.dynamicSubtext = formData.dynamicSubtext || null
+    }
+
+    // Add general fields
+    if (formData.icon) {
+      questionToSave.icon = formData.icon || null
+    }
+    if (requiresOptions) {
+      questionToSave.displayAsRow = formData.displayAsRow || false
+      if (formData.optionImages.length > 0) {
+        questionToSave.optionImages = formData.optionImages
+      }
+    }
+
+    onSave(questionToSave)
     onClose()
   }
 
@@ -402,27 +517,27 @@ export function QuestionModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="display_question">Display Question</Label>
+            <Label htmlFor="displayQuestion">Display Question</Label>
             <Input
-              id="display_question"
-              value={formData.display_question}
+              id="displayQuestion"
+              value={formData.displayQuestion}
               onChange={(e) =>
-                setFormData({ ...formData, display_question: e.target.value })
+                setFormData({ ...formData, displayQuestion: e.target.value })
               }
               placeholder="Email Address"
             />
           </div>
 
           {!requiresOptions && (
-            <div className="space-y-2">
-              <Label htmlFor="placeholder">Placeholder</Label>
-              <Input
-                id="placeholder"
-                value={formData.placeholder}
-                onChange={(e) => setFormData({ ...formData, placeholder: e.target.value })}
-                placeholder="Enter your email"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="placeholder">Placeholder</Label>
+            <Input
+              id="placeholder"
+              value={formData.placeholder}
+              onChange={(e) => setFormData({ ...formData, placeholder: e.target.value })}
+              placeholder="Enter your email"
+            />
+          </div>
           )}
 
           {requiresOptions && (
@@ -496,7 +611,7 @@ export function QuestionModal({
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Switch
-                    checked={!!getValidationRule("required")}
+                    checked={hasValidationRule("required")}
                     onCheckedChange={(checked) => handleValidationChange("required", checked)}
                   />
                   <Label>Required</Label>
@@ -512,7 +627,7 @@ export function QuestionModal({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Switch
-                      checked={!!getValidationRule("email")}
+                      checked={hasValidationRule("email")}
                       onCheckedChange={(checked) => handleValidationChange("email", checked)}
                     />
                     <Label>Email Format</Label>
@@ -530,7 +645,7 @@ export function QuestionModal({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Switch
-                        checked={!!getValidationRule("phone")}
+                        checked={hasValidationRule("phone")}
                         onCheckedChange={(checked) => handleValidationChange("phone", checked)}
                       />
                       <Label>Phone Format</Label>
@@ -541,30 +656,18 @@ export function QuestionModal({
                     </div>
                   </div>
 
-                  {/* Phone Prefix */}
+                  {/* Phone Prefix - Note: File format doesn't support storing prefix value */}
                   <div className="space-y-2 pl-8">
                     <div className="flex items-center space-x-2">
                       <Switch
-                        checked={!!getValidationRule("phonePrefix")}
-                        onCheckedChange={(checked) => {
-                          handleValidationChange("phonePrefix", checked, checked ? getValidationRule("phonePrefix")?.value || "+1" : undefined)
-                        }}
+                        checked={hasValidationRule("phonePrefix")}
+                        onCheckedChange={(checked) => handleValidationChange("phonePrefix", checked)}
                       />
                       <Label className="text-sm">Default Phone Prefix</Label>
                     </div>
-                    {getValidationRule("phonePrefix") && (
-                      <div className="space-y-1">
-                        <Input
-                          value={getValidationRule("phonePrefix")?.value || "+1"}
-                          onChange={(e) => handleValidationChange("phonePrefix", true, e.target.value)}
-                          placeholder="+1"
-                          className="max-w-32"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Phone numbers must start with this prefix (e.g., +1, +44, +33)
-                        </p>
-                      </div>
-                    )}
+                    <p className="text-xs text-muted-foreground pl-6">
+                      Note: Prefix value cannot be stored in current file format
+                    </p>
                   </div>
                 </>
               )}
@@ -593,59 +696,241 @@ export function QuestionModal({
                   
                   {showAdvancedValidation && (
                     <div className="space-y-2 pl-6 pt-2">
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={!!getValidationRule("pattern")}
-                          onCheckedChange={(checked) => {
-                            handleValidationChange("pattern", checked, checked ? getValidationRule("pattern")?.value || "" : undefined)
-                          }}
+          <div className="flex items-center space-x-2">
+            <Switch
+                          checked={hasValidationRule("pattern")}
+                          onCheckedChange={(checked) => handleValidationChange("pattern", checked)}
                         />
                         <Label className="text-sm">Enable Pattern Validation</Label>
                       </div>
-                      {getValidationRule("pattern") && (
+                      {hasValidationRule("pattern") && (
                         <div className="space-y-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Pattern (Regex)</Label>
-                            <Input
-                              value={getValidationRule("pattern")?.value || ""}
-                              onChange={(e) => {
-                                const value = e.target.value
-                                handleValidationChange("pattern", true, value)
-                                if (value) {
-                                  const validation = validateRegexPattern(value)
-                                  if (!validation.valid) {
-                                    setPatternError(validation.error || "Invalid pattern")
-                                  } else {
-                                    setPatternError(null)
-                                  }
-                                }
-                              }}
-                              placeholder="^[A-Z]+$"
-                              className={patternError ? "border-destructive" : ""}
-                            />
-                            {patternError && (
-                              <p className="text-xs text-destructive">{patternError}</p>
-                            )}
-                            <p className="text-xs text-muted-foreground">
-                              Example: ^[A-Z]+$ (uppercase letters only)
-                            </p>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Custom Error Message (optional)</Label>
-                            <Input
-                              value={getValidationRule("pattern")?.message || ""}
-                              onChange={(e) => handleValidationChange("pattern", true, getValidationRule("pattern")?.value, e.target.value)}
-                              placeholder="Value does not match the required pattern"
-                            />
-                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Note: Pattern regex value cannot be stored in current file format. This validation will be enabled but pattern matching cannot be configured.
+                          </p>
                         </div>
                       )}
                     </div>
                   )}
+          </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Display Options Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Display Options</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Icon */}
+              <QuizImageUpload
+                label="Icon"
+                value={formData.icon}
+                onChange={(value) => setFormData({ ...formData, icon: value })}
+              />
+
+              {/* Display As Row - only for option types */}
+              {requiresOptions && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={formData.displayAsRow}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, displayAsRow: checked })
+                      }
+                    />
+                    <Label>Display Options in Row</Label>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Info className="h-3 w-3" />
+                    <span>Show options horizontally instead of vertically</span>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* Option Images - only for option types */}
+          {requiresOptions && options.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Option Images</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {options.map((option, index) => (
+                  <div key={option.id} className="space-y-2">
+                    <Label className="text-xs">
+                      Image for "{option.value || `Option ${index + 1}`}"
+                    </Label>
+                    <QuizImageUpload
+                      label=""
+                      value={formData.optionImages[index] || ""}
+                      onChange={(value) => {
+                        const newOptionImages = [...formData.optionImages]
+                        newOptionImages[index] = value
+                        setFormData({ ...formData, optionImages: newOptionImages })
+                      }}
+                      onDelete={() => {
+                        const newOptionImages = [...formData.optionImages]
+                        newOptionImages[index] = ""
+                        setFormData({ ...formData, optionImages: newOptionImages })
+                      }}
+                    />
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  Add images for each option. Images will be displayed in the same order as options.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* MARKETING Type Fields */}
+          {formData.type === "MARKETING" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Marketing Question Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <QuizImageUpload
+                  label="Marketing Image"
+                  value={formData.image}
+                  onChange={(value) => setFormData({ ...formData, image: value })}
+                />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={formData.displayStatistics}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, displayStatistics: checked })
+                      }
+                    />
+                    <Label>Display Statistics</Label>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Info className="h-3 w-3" />
+                    <span>Show statistics display on marketing question</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* BEFORE_AFTER Type Fields */}
+          {formData.type === "BEFORE_AFTER" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Before/After Question Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <QuizImageUpload
+                  label="Before Image"
+                  value={formData.beforeImage}
+                  onChange={(value) => setFormData({ ...formData, beforeImage: value })}
+                />
+                <QuizImageUpload
+                  label="After Image"
+                  value={formData.afterImage}
+                  onChange={(value) => setFormData({ ...formData, afterImage: value })}
+                />
+                <div className="space-y-2">
+                  <Label htmlFor="quote">Testimonial Quote</Label>
+                  <Textarea
+                    id="quote"
+                    value={formData.quote}
+                    onChange={(e) => setFormData({ ...formData, quote: e.target.value })}
+                    placeholder="I lost 30 pounds in 3 months!"
+                    rows={3}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Testimonial quote to display with the before/after images
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* MEDICAL_REVIEW Type Fields */}
+          {formData.type === "MEDICAL_REVIEW" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Medical Review Question Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <CalculatedValuesEditor
+                  value={formData.calculatedValues}
+                  onChange={(value) => setFormData({ ...formData, calculatedValues: value })}
+                />
+                <div className="space-y-2">
+                  <Label htmlFor="candidateStatement">Candidate Statement</Label>
+                  <Textarea
+                    id="candidateStatement"
+                    value={formData.candidateStatement}
+                    onChange={(e) =>
+                      setFormData({ ...formData, candidateStatement: e.target.value })
+                    }
+                    placeholder="Based on your responses, you are a good candidate for this treatment."
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Statement about the candidate's eligibility based on their responses
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* PERFECT Type Fields */}
+          {formData.type === "PERFECT" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Perfect Match Question Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="heading1">Main Heading</Label>
+                  <Input
+                    id="heading1"
+                    value={formData.heading1}
+                    onChange={(e) => setFormData({ ...formData, heading1: e.target.value })}
+                    placeholder="You're a Perfect Match!"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Main heading displayed on the perfect match screen
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="subtext">Subtext</Label>
+                  <Textarea
+                    id="subtext"
+                    value={formData.subtext}
+                    onChange={(e) => setFormData({ ...formData, subtext: e.target.value })}
+                    placeholder="Based on your responses, this treatment is ideal for you."
+                    rows={3}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Subtext displayed below the heading
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dynamicSubtext">Dynamic Subtext</Label>
+                  <Textarea
+                    id="dynamicSubtext"
+                    value={formData.dynamicSubtext}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dynamicSubtext: e.target.value })
+                    }
+                    placeholder="Your goal weight of {{goalWeight}}lbs is achievable!"
+                    rows={3}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Dynamic subtext with template variables. Use double curly braces for variables, e.g., {"{{goalWeight}}"}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>

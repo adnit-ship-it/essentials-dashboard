@@ -72,7 +72,7 @@ interface QuizStore {
   ) => void
   addProgressStep: (
     quizId: string,
-    step: Omit<ProgressStep, 'id' | 'quiz_id' | 'step_order'>
+    step: Omit<ProgressStep, 'id' | 'order'>
   ) => void
 
   // Save operations
@@ -291,22 +291,6 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
       const updatedQuiz = {
         ...quiz,
         formSteps: [...quiz.formSteps, step as any],
-        quizFormStepMapping: [
-          ...quiz.quizFormStepMapping,
-          {
-            quiz_id: quizId,
-            form_step_id: step.id,
-            step_order: step.step_order,
-          },
-        ],
-        stepProgressMapping: [
-          ...quiz.stepProgressMapping,
-          {
-            quiz_id: quizId,
-            form_step_id: step.id,
-            progress_step_id: step.progressStepId,
-          },
-        ],
       }
 
       return {
@@ -349,12 +333,6 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
       const updatedQuiz = {
         ...quiz,
         formSteps: quiz.formSteps.filter((fs) => fs.id !== stepId),
-        quizFormStepMapping: quiz.quizFormStepMapping.filter(
-          (m) => m.form_step_id !== stepId
-        ),
-        stepProgressMapping: quiz.stepProgressMapping.filter(
-          (m) => m.form_step_id !== stepId
-        ),
       }
 
       return {
@@ -375,15 +353,7 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
       const updatedQuiz = {
         ...quiz,
         formSteps: quiz.formSteps.map((fs) =>
-          fs.id === stepId ? { ...fs, step_order: newOrder } : fs
-        ),
-        quizFormStepMapping: quiz.quizFormStepMapping.map((m) =>
-          m.form_step_id === stepId ? { ...m, step_order: newOrder } : m
-        ),
-        stepProgressMapping: quiz.stepProgressMapping.map((m) =>
-          m.form_step_id === stepId
-            ? { ...m, progress_step_id: newProgressStepId }
-            : m
+          fs.id === stepId ? { ...fs, order: newOrder, progressStepId: newProgressStepId } : fs
         ),
       }
 
@@ -407,11 +377,11 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
         throw new Error(`Quiz ${quizId} not found`)
       }
 
-      console.log("Before reorder - Progress Steps:", quiz.progressSteps.map(ps => ({ id: ps.id, name: ps.name, order: ps.step_order })))
+      console.log("Before reorder - Progress Steps:", quiz.progressSteps.map(ps => ({ id: ps.id, name: ps.name, order: ps.order })))
 
       // Get all progress steps sorted by order
       const sortedProgressSteps = [...quiz.progressSteps].sort(
-        (a, b) => a.step_order - b.step_order
+        (a, b) => a.order - b.order
       )
       
       const draggedStep = sortedProgressSteps.find((ps) => ps.id === progressStepId)
@@ -419,7 +389,7 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
         throw new Error(`Progress step ${progressStepId} not found`)
       }
 
-      console.log("Dragged Step:", { id: draggedStep.id, name: draggedStep.name, currentOrder: draggedStep.step_order })
+      console.log("Dragged Step:", { id: draggedStep.id, name: draggedStep.name, currentOrder: draggedStep.order })
 
       // Remove dragged step from array
       const withoutDragged = sortedProgressSteps.filter((ps) => ps.id !== progressStepId)
@@ -433,15 +403,15 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
       // Recalculate orders based on new positions
       const reorderedProgressSteps = quiz.progressSteps.map((ps) => {
         const newIndex = withoutDragged.findIndex((p) => p.id === ps.id)
-        const finalOrder = newIndex >= 0 ? newIndex + 1 : ps.step_order
-        console.log(`Progress step ${ps.id}: ${ps.step_order} -> ${finalOrder}`)
+        const finalOrder = newIndex >= 0 ? newIndex + 1 : ps.order
+        console.log(`Progress step ${ps.id}: ${ps.order} -> ${finalOrder}`)
         return {
           ...ps,
-          step_order: finalOrder,
+          order: finalOrder,
         }
       })
 
-      console.log("After reorder - Progress Steps:", reorderedProgressSteps.map(ps => ({ id: ps.id, name: ps.name, order: ps.step_order })))
+      console.log("After reorder - Progress Steps:", reorderedProgressSteps.map(ps => ({ id: ps.id, name: ps.name, order: ps.order })))
 
       const updatedQuiz = {
         ...quiz,
@@ -465,13 +435,12 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
 
       // Calculate next order
       const maxOrder = quiz.progressSteps.length > 0
-        ? Math.max(...quiz.progressSteps.map((ps) => ps.step_order))
+        ? Math.max(...quiz.progressSteps.map((ps) => ps.order))
         : 0
 
       const newProgressStep: ProgressStep = {
         id: `temp-progress-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        quiz_id: quizId,
-        step_order: maxOrder + 1,
+        order: maxOrder + 1,
         ...step,
       }
 
@@ -515,10 +484,23 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
         sha
       )
 
-      // Update the quiz in data
-      const updatedData = {
-        ...data,
-        quizzes: data.quizzes.map((q) => (q.id === quizId ? response.quiz : q)),
+      // If a new quiz was created (editing a default quiz), add it to the list
+      // Otherwise, update the existing quiz
+      let updatedData
+      if (response.isNewQuiz) {
+        // Add new quiz to the list (don't remove the original default quiz)
+        updatedData = {
+          ...data,
+          quizzes: [...data.quizzes, response.quiz],
+        }
+        // Update builder quiz ID to the new quiz
+        set({ builderQuizId: response.quiz.id })
+      } else {
+        // Update existing quiz
+        updatedData = {
+          ...data,
+          quizzes: data.quizzes.map((q) => (q.id === quizId ? response.quiz : q)),
+        }
       }
 
       set({
@@ -530,7 +512,9 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
         hasPendingChanges: false,
         feedback: {
           type: "success",
-          message: "Quiz changes saved successfully.",
+          message: response.isNewQuiz
+            ? `Custom quiz "${response.quiz.name}" created successfully. The original default quiz was not modified.`
+            : "Quiz changes saved successfully.",
         },
       })
     } catch (err) {

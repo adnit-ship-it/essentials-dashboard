@@ -12,7 +12,7 @@ interface ProductBundleIdsEditorProps {
 
 export function ProductBundleIdsEditor({ quiz }: ProductBundleIdsEditorProps) {
   const [productBundleIds, setProductBundleIds] = useState<string[]>(
-    quiz.product_bundle_ids || []
+    quiz.productBundleIds || []
   )
   const [inputValue, setInputValue] = useState("")
 

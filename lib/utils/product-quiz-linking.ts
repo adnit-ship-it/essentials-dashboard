@@ -18,7 +18,7 @@ export function getProductsLinkedToQuiz(quizId: string, products: Product[]): Pr
 export function getQuizLinkedToProduct(productId: string, quizzes: FullQuiz[]): FullQuiz | null {
   return quizzes.find((quiz) => {
     // Check if any product with this ID is linked to this quiz
-    // This would require products data, so we'll check quiz's product_bundle_ids instead
+    // This would require products data, so we'll check quiz's productBundleIds instead
     // For now, return null - this will be handled at a higher level
     return null
   }) || null
@@ -57,10 +57,10 @@ export function syncProductBundleIds(quiz: FullQuiz, products: Product[]): FullQ
     bundleIds.forEach((id) => bundleIdsSet.add(id))
   })
   
-  // Update quiz's product_bundle_ids
+  // Update quiz's productBundleIds
   return {
     ...quiz,
-    product_bundle_ids: Array.from(bundleIdsSet),
+    productBundleIds: Array.from(bundleIdsSet),
   }
 }
 

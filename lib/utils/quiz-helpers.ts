@@ -34,20 +34,16 @@ export function generateTempId(): string {
  * Calculate the next step order for a progress step
  */
 export function calculateNextStepOrder(
-  formSteps: Array<{ id: string; step_order: number }>,
-  progressStepId: string,
-  stepProgressMapping: Array<{ form_step_id: string; progress_step_id: string }>
+  formSteps: Array<{ id: string; order: number; progressStepId: string }>,
+  progressStepId: string
 ): number {
-  const stepsInProgressStep = formSteps.filter((fs) => {
-    const mapping = stepProgressMapping.find((m) => m.form_step_id === fs.id)
-    return mapping?.progress_step_id === progressStepId
-  })
+  const stepsInProgressStep = formSteps.filter((fs) => fs.progressStepId === progressStepId)
 
   if (stepsInProgressStep.length === 0) {
     return 1
   }
 
-  const maxOrder = Math.max(...stepsInProgressStep.map((fs) => fs.step_order))
+  const maxOrder = Math.max(...stepsInProgressStep.map((fs) => fs.order))
   return maxOrder + 1
 }
 
@@ -69,9 +65,6 @@ export function validateQuiz(quiz: any): { valid: boolean; errors: string[] } {
     errors.push("Quiz slug is required")
   }
 
-  if (!quiz.organization_id) {
-    errors.push("Organization ID is required")
-  }
 
   if (!Array.isArray(quiz.progressSteps)) {
     errors.push("Progress steps must be an array")
@@ -90,35 +83,30 @@ export function validateQuiz(quiz: any): { valid: boolean; errors: string[] } {
 /**
  * Sort form steps by order
  */
-export function sortFormStepsByOrder<T extends { step_order: number }>(
+export function sortFormStepsByOrder<T extends { order: number }>(
   steps: T[]
 ): T[] {
-  return [...steps].sort((a, b) => a.step_order - b.step_order)
+  return [...steps].sort((a, b) => a.order - b.order)
 }
 
 /**
  * Get form steps for a specific progress step
  */
 export function getFormStepsForProgressStep(
-  formSteps: Array<{ id: string }>,
-  progressStepId: string,
-  stepProgressMapping: Array<{ form_step_id: string; progress_step_id: string }>
+  formSteps: Array<{ id: string; progressStepId: string }>,
+  progressStepId: string
 ) {
-  return formSteps.filter((fs) => {
-    const mapping = stepProgressMapping.find((m) => m.form_step_id === fs.id)
-    return mapping?.progress_step_id === progressStepId
-  })
+  return formSteps.filter((fs) => fs.progressStepId === progressStepId)
 }
 
 /**
  * Get available questions for conditional rendering in a form step
- * Returns questions from prior form steps only (based on progress step order, then step_order)
+ * Returns questions from prior form steps only (based on progress step order, then order)
  */
 export function getAvailableQuestionsForFormStep(
   quiz: {
-    progressSteps: Array<{ id: string; name: string; step_order: number }>
-    formSteps: Array<{ id: string; title: string; step_order: number; questions?: Array<{ id: string; slug: string; question: string; type?: QuestionType; options?: QuestionOption[] }> }>
-    stepProgressMapping: Array<{ form_step_id: string; progress_step_id: string }>
+    progressSteps: Array<{ id: string; name: string; order: number }>
+    formSteps: Array<{ id: string; title: string; order: number; progressStepId: string; questions?: Array<{ id: string; slug: string; question: string; type?: QuestionType; options?: QuestionOption[] }> }>
   },
   currentFormStepId: string
 ): Array<{ id: string; slug: string; question: string; progressStepName: string; formStepTitle: string; type: QuestionType; options?: QuestionOption[] }> {
@@ -128,15 +116,7 @@ export function getAvailableQuestionsForFormStep(
     return []
   }
 
-  // Find current form step's progress step
-  const currentMapping = quiz.stepProgressMapping.find(
-    (m) => m.form_step_id === currentFormStepId
-  )
-  if (!currentMapping) {
-    return []
-  }
-
-  const currentProgressStepId = currentMapping.progress_step_id
+  const currentProgressStepId = currentFormStep.progressStepId
   const currentProgressStep = quiz.progressSteps.find((ps) => ps.id === currentProgressStepId)
   if (!currentProgressStep) {
     return []
@@ -144,7 +124,7 @@ export function getAvailableQuestionsForFormStep(
 
   // Sort progress steps by order
   const sortedProgressSteps = [...quiz.progressSteps].sort(
-    (a, b) => a.step_order - b.step_order
+    (a, b) => a.order - b.order
   )
 
   // Find current progress step index
@@ -169,10 +149,7 @@ export function getAvailableQuestionsForFormStep(
   // Collect questions from previous progress steps (all form steps)
   for (let i = 0; i < currentProgressStepIndex; i++) {
     const progressStep = sortedProgressSteps[i]
-    const formStepsInProgressStep = quiz.formSteps.filter((fs) => {
-      const mapping = quiz.stepProgressMapping.find((m) => m.form_step_id === fs.id)
-      return mapping?.progress_step_id === progressStep.id
-    })
+    const formStepsInProgressStep = quiz.formSteps.filter((fs) => fs.progressStepId === progressStep.id)
 
     formStepsInProgressStep.forEach((formStep) => {
       if (formStep.questions) {
@@ -191,14 +168,11 @@ export function getAvailableQuestionsForFormStep(
     })
   }
 
-  // Collect questions from current progress step with lower step_order
+  // Collect questions from current progress step with lower order
   // First, get all form steps in the current progress step and sort them
   const allFormStepsInCurrentProgressStep = quiz.formSteps
-    .filter((fs) => {
-      const mapping = quiz.stepProgressMapping.find((m) => m.form_step_id === fs.id)
-      return mapping?.progress_step_id === currentProgressStepId
-    })
-    .sort((a, b) => a.step_order - b.step_order)
+    .filter((fs) => fs.progressStepId === currentProgressStepId)
+    .sort((a, b) => a.order - b.order)
 
   // Find the current form step's index in the sorted list
   const currentStepIndex = allFormStepsInCurrentProgressStep.findIndex(
@@ -233,9 +207,8 @@ export function getAvailableQuestionsForFormStep(
  */
 export function validateConditionalRendering(
   quiz: {
-    progressSteps: Array<{ id: string; name: string; step_order: number }>
-    formSteps: Array<{ id: string; title: string; step_order: number; questions?: Array<{ id: string; slug: string; question: string; type?: QuestionType; options?: QuestionOption[] }> }>
-    stepProgressMapping: Array<{ form_step_id: string; progress_step_id: string }>
+    progressSteps: Array<{ id: string; name: string; order: number }>
+    formSteps: Array<{ id: string; title: string; order: number; progressStepId: string; questions?: Array<{ id: string; slug: string; question: string; type?: QuestionType; options?: QuestionOption[] }> }>
   },
   formStepId: string,
   condition: { conditions: Array<{ field: string }> } | null

@@ -991,12 +991,33 @@ app.get("/api/quizzes", async (req: Request, res: Response) => {
   try {
     const repoConfig = getActiveRepoConfigFromRequest(req);
     const octokit = await getAuthenticatedClient();
-    const quizzes = await fetchQuizConfigs(octokit, {
-      owner: repoConfig.owner,
-      repo: repoConfig.repo,
-      branch: repoConfig.branch,
-    });
-    res.json({ quizzes });
+    const quizFilePath = "data/quiz.json";
+
+    try {
+      const response = await fetchContentJsonFromRepo(octokit, {
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        branch: repoConfig.branch,
+        contentFilePath: quizFilePath,
+      });
+
+      const quizData = response.content;
+      // Extract quizzes with id, name, and isManual fields
+      const quizzes = (quizData.quizzes || []).map((quiz: any) => ({
+        id: quiz.id,
+        name: quiz.name,
+        isManual: quiz.isManual ?? false, // Default to false for backward compatibility
+      }));
+
+      res.json({ quizzes });
+    } catch (error: any) {
+      // If file doesn't exist (404), return empty array
+      if (error.status === 404 || error.message?.includes("not found")) {
+        res.json({ quizzes: [] });
+      } else {
+        throw error;
+      }
+    }
   } catch (error) {
     console.error("Error fetching quizzes:", error);
     res.status(500).json({
@@ -1226,6 +1247,135 @@ app.put("/api/branding", async (req: BrandingUpdateRequest, res: Response) => {
     });
   }
 });
+
+// POST /api/quiz-images - Upload quiz question images
+interface QuizImageUploadRequest extends Request {
+  body: {
+    filePath: string
+    contentBase64?: string
+    sha?: string
+    deletePath?: string
+    deleteSha?: string
+  }
+}
+
+app.post("/api/quiz-images", async (req: QuizImageUploadRequest, res: Response) => {
+  try {
+    const { filePath, contentBase64, sha, deletePath, deleteSha } = req.body
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+
+    // Handle file deletion
+    if (deletePath && deleteSha) {
+      const octokit = await getAuthenticatedClient()
+      const normalizedDeletePath = normalizeRepoPath(deletePath)
+      if (normalizedDeletePath) {
+        try {
+          await deleteFileFromRepo({
+            octokit,
+            path: normalizedDeletePath,
+            sha: deleteSha,
+            repoConfig,
+            commitMessage: `CMS: Delete quiz image ${normalizedDeletePath}`,
+          })
+        } catch (error: any) {
+          // If file doesn't exist, that's okay
+          if (error?.status !== 404) {
+            console.error("Error deleting quiz image:", error)
+          }
+        }
+      }
+    }
+
+    // Handle file upload
+    if (!filePath || !contentBase64) {
+      // If only deletion was requested, return success
+      if (deletePath) {
+        return res.json({
+          message: "Image deleted successfully.",
+          fileUrl: "",
+        })
+      }
+      return res.status(400).json({
+        error: "Request must include filePath and contentBase64 for upload.",
+      })
+    }
+
+    if (filePath.includes("..")) {
+      return res.status(400).json({
+        error: "Invalid path.",
+      })
+    }
+
+    const repoPath = normalizeRepoPath(filePath)
+    if (!repoPath) {
+      return res.status(400).json({
+        error: "Image path cannot be empty.",
+      })
+    }
+
+    // Ensure path is in quizzes directory
+    if (!repoPath.startsWith("public/assets/images/quizzes/")) {
+      return res.status(400).json({
+        error: "Quiz images must be stored in public/assets/images/quizzes/",
+      })
+    }
+
+    const octokit = await getAuthenticatedClient()
+
+    // If SHA is not provided, try to fetch it from the existing file
+    let fileSha = sha
+    if (!fileSha) {
+      try {
+        const metadata = await fetchAssetMetadata(octokit, repoPath, repoConfig)
+        fileSha = metadata.sha || undefined
+      } catch (error: any) {
+        // If file doesn't exist (404), that's fine - we'll create it
+        if (error?.status !== 404) {
+          throw error
+        }
+      }
+    }
+
+    const params: any = {
+      owner: repoConfig.owner,
+      repo: repoConfig.repo,
+      path: repoPath,
+      message: fileSha
+        ? `CMS: Update quiz image ${repoPath}`
+        : `CMS: Create quiz image ${repoPath}`,
+      content: contentBase64,
+      branch: repoConfig.branch,
+    }
+
+    if (fileSha) {
+      params.sha = fileSha
+    }
+
+    const response = await octokit.repos.createOrUpdateFileContents(params)
+    const newSha = response.data.content?.sha
+
+    // Convert repo path to absolute website path format
+    const fileUrl = repoPathToWebsitePath(repoPath)
+
+    res.json({
+      message: fileSha ? "Image updated successfully." : "Image created successfully.",
+      newSha,
+      commitUrl: response.data.commit.html_url,
+      fileUrl,
+    })
+  } catch (error: any) {
+    console.error("Error uploading quiz image:", error)
+    if (error?.status === 409) {
+      return res.status(409).json({
+        error: "Conflict detected. The image changed in the repository. Refresh and try again.",
+      })
+    }
+
+    res.status(500).json({
+      error: `Failed to upload quiz image: ${(error as Error).message}`,
+    })
+  }
+})
 
 app.post(
   "/api/product-images",
@@ -2365,11 +2515,11 @@ interface CreateQuizRequest extends Request {
 
 app.post("/api/quiz", async (req: CreateQuizRequest, res: Response) => {
   try {
-    const { name, description, productBundleIds, organizationId } = req.body
+    const { name, description, productBundleIds } = req.body
 
-    if (!name || !organizationId) {
+    if (!name) {
       return res.status(400).json({
-        error: "Missing required fields: name, organizationId",
+        error: "Missing required fields: name",
       })
     }
 
@@ -2408,12 +2558,11 @@ app.post("/api/quiz", async (req: CreateQuizRequest, res: Response) => {
     const progressStepId = `progress-${Date.now()}-1`
     const progressStep = {
       id: progressStepId,
-      quiz_id: quizId,
       slug: "information",
       name: "Information",
       description: "Provide your information",
       color: "#3B82F6",
-      step_order: 1,
+      order: 1,
     }
 
     // Create new quiz
@@ -2424,13 +2573,10 @@ app.post("/api/quiz", async (req: CreateQuizRequest, res: Response) => {
       description: description || null,
       version: "1.0.0",
       metadata: null,
-      created_at: new Date().toISOString(),
-      organization_id: organizationId,
-      product_bundle_ids: productBundleIds || [],
+      productBundleIds: productBundleIds || [],
       progressSteps: [progressStep],
       formSteps: [],
-      quizFormStepMapping: [],
-      stepProgressMapping: [],
+      isManual: true, // All quizzes created via Forms tab are manual
     }
 
     // Add to quizzes array
@@ -2566,25 +2712,80 @@ app.post("/api/quiz/:id/form-steps/batch-save", async (req: BatchSaveRequest, re
 
     const quiz = quizData.quizzes[quizIndex]
 
-    // Apply batch changes using the service function
-    const updatedQuiz = applyBatchChangesToQuiz(quiz, changes)
+    // Check if this is a default quiz (isManual === false or undefined)
+    const isDefaultQuiz = quiz.isManual === false || quiz.isManual === undefined
 
-    // Update quiz in array
-    quizData.quizzes[quizIndex] = updatedQuiz
+    if (isDefaultQuiz) {
+      // Create a new manual quiz copy instead of updating the default quiz
+      const newQuizId = `quiz-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+      const newQuizSlug = `${quiz.slug}-custom-${Date.now()}`
+      
+      // Apply batch changes to create the new quiz
+      const updatedQuiz = applyBatchChangesToQuiz(quiz, changes)
+      
+      // Create new quiz with manual flag
+      const newQuiz = {
+        ...updatedQuiz,
+        id: newQuizId,
+        slug: newQuizSlug,
+        name: `${quiz.name} (Custom)`,
+        isManual: true,
+      }
 
-    // Save to repo
-    const { commitUrl, newSha } = await updateContentJsonInRepo({
-      octokit,
-      repoConfig: {
-        owner: repoConfig.owner,
-        repo: repoConfig.repo,
-        branch: repoConfig.branch,
-        contentFilePath: quizFilePath,
-      },
-      content: quizData,
-      sha,
-      commitMessage: `CMS: Update quiz "${quiz.name}" form steps`,
-    })
+      // Add new quiz to array (don't modify the original default quiz)
+      quizData.quizzes = quizData.quizzes || []
+      quizData.quizzes.push(newQuiz)
+
+      // Save to repo
+      const { commitUrl, newSha } = await updateContentJsonInRepo({
+        octokit,
+        repoConfig: {
+          owner: repoConfig.owner,
+          repo: repoConfig.repo,
+          branch: repoConfig.branch,
+          contentFilePath: quizFilePath,
+        },
+        content: quizData,
+        sha,
+        commitMessage: `CMS: Create custom quiz "${newQuiz.name}" based on "${quiz.name}"`,
+      })
+
+      res.status(200).json({
+        quiz: newQuiz,
+        sha: newSha,
+        commitUrl,
+        isNewQuiz: true, // Indicate that a new quiz was created
+        originalQuizId: quizId,
+      })
+    } else {
+      // Manual quiz - update normally
+      // Apply batch changes using the service function
+      const updatedQuiz = applyBatchChangesToQuiz(quiz, changes)
+
+      // Update quiz in array
+      quizData.quizzes[quizIndex] = updatedQuiz
+
+      // Save to repo
+      const { commitUrl, newSha } = await updateContentJsonInRepo({
+        octokit,
+        repoConfig: {
+          owner: repoConfig.owner,
+          repo: repoConfig.repo,
+          branch: repoConfig.branch,
+          contentFilePath: quizFilePath,
+        },
+        content: quizData,
+        sha,
+        commitMessage: `CMS: Update quiz "${quiz.name}" form steps`,
+      })
+
+      res.status(200).json({
+        quiz: updatedQuiz,
+        sha: newSha,
+        commitUrl,
+        isNewQuiz: false,
+      })
+    }
 
     res.status(200).json({
       quiz: updatedQuiz,
@@ -3112,6 +3313,58 @@ app.get("/api/host-template", async (req: Request, res: Response) => {
 });
 
 // --- Server Start ---
+// GET /api/file-metadata - Get file metadata (SHA) for a file
+app.get("/api/file-metadata", async (req: Request, res: Response) => {
+  try {
+    const path = req.query.path as string
+    const owner = req.query.owner as string
+    const repo = req.query.repo as string
+    const branch = (req.query.branch as string) || "main"
+
+    if (!path || !owner || !repo) {
+      return res.status(400).json({
+        error: "Missing required parameters: path, owner, repo",
+      })
+    }
+
+    const repoConfig = {
+      owner,
+      repo,
+      branch,
+    }
+
+    const octokit = await getAuthenticatedClient()
+    const normalizedPath = normalizeRepoPath(path)
+    
+    if (!normalizedPath) {
+      return res.status(400).json({
+        error: "Invalid path",
+      })
+    }
+
+    try {
+      const metadata = await fetchAssetMetadata(octokit, normalizedPath, repoConfig)
+      res.json({
+        sha: metadata.sha || null,
+        url: metadata.url || null,
+      })
+    } catch (error: any) {
+      if (error?.status === 404) {
+        return res.json({
+          sha: null,
+          url: null,
+        })
+      }
+      throw error
+    }
+  } catch (error: any) {
+    console.error("Error fetching file metadata:", error)
+    res.status(500).json({
+      error: `Failed to fetch file metadata: ${(error as Error).message}`,
+    })
+  }
+})
+
 app.listen(PORT, () =>
   console.log(`✅ Backend server running on http://localhost:${PORT}`)
 );

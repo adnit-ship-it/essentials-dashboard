@@ -36,7 +36,7 @@ export function QuizModalHeader({ quiz, onClose }: QuizModalHeaderProps) {
         <div>
           <h2 className="text-2xl font-bold">{quiz.name}</h2>
           <p className="text-sm text-muted-foreground">
-            Version {quiz.version} • Created {new Date(quiz.created_at).toLocaleDateString()}
+            Version {quiz.version}
           </p>
         </div>
         <div className="flex items-center gap-2">

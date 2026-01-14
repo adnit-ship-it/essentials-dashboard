@@ -85,7 +85,7 @@ function SortableQuestionItem({
         <div className="flex-1">
           <div className="font-medium">{question.question}</div>
           <div className="text-sm text-muted-foreground">
-            {question.type} {question.is_required && "• Required"}
+            {question.type} {question.required && "• Required"}
           </div>
         </div>
       </div>
@@ -141,10 +141,11 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
       slug: questionData.slug || "",
       type: questionData.type || "TEXT",
       question: questionData.question || "",
-      display_question: questionData.display_question || null,
+      displayQuestion: questionData.displayQuestion || null,
       placeholder: questionData.placeholder || null,
       question_order: questionData.question_order || (editingQuestion ? editingQuestion.question_order : questions.length + 1),
       validation: questionData.validation || null,
+      required: questionData.required ?? false,
       api_type: questionData.api_type || null,
       options: questionData.options || undefined,
     }
@@ -154,7 +155,7 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
     if (editingQuestion) {
       // Update existing question
       const updated = questions.map((q) =>
-        q.id === editingQuestion.id ? { ...migratedQuestionData, is_required: undefined } : q
+        q.id === editingQuestion.id ? migratedQuestionData : q
       )
       // Recalculate orders
       const questionsWithOrder = updated.map((q, index) => ({

@@ -166,7 +166,6 @@ export function FormsSection() {
                   <div>Steps: {quiz.formSteps?.length || 0}</div>
                   <div>Version: {quiz.version}</div>
                   <div>
-                    Created: {new Date(quiz.created_at).toLocaleDateString()}
                   </div>
                 </div>
                 <Button
