@@ -416,6 +416,7 @@ export function QuestionModal({
     // Build question object with conditional fields based on type
     const questionToSave: Partial<Question> = {
       ...formData,
+      question: formData.question, // Explicitly include question field
       form_step_id: formStepId,
       question_order: question?.question_order || 0,
       options: requiresOptions ? options : undefined,

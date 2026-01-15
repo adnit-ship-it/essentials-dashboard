@@ -18,13 +18,18 @@ export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeSection, setActiveSection] = useState("brand-settings")
   const { builderQuizId } = useQuizStore()
+  const [hasAutoSwitched, setHasAutoSwitched] = useState(false)
 
-  // Auto-switch to Forms tab when builder is opened
+  // Auto-switch to Forms tab when builder is opened (only once)
   useEffect(() => {
-    if (builderQuizId && activeSection !== "forms") {
+    if (builderQuizId && !hasAutoSwitched && activeSection !== "forms") {
       setActiveSection("forms")
+      setHasAutoSwitched(true)
+    } else if (!builderQuizId) {
+      // Reset flag when builder is closed
+      setHasAutoSwitched(false)
     }
-  }, [builderQuizId, activeSection])
+  }, [builderQuizId, hasAutoSwitched, activeSection])
   const [showRepoModal, setShowRepoModal] = useState(false)
   const [showCreateRepoModal, setShowCreateRepoModal] = useState(false)
   const [show404Alert, setShow404Alert] = useState(false)

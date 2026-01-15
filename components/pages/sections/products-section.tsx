@@ -2139,7 +2139,17 @@ export function ProductsSection() {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleOpenQuizInBuilder(activeEditor.draft.quiz!)}
+                              onClick={() => {
+                                const quizId = activeEditor.draft.quiz!
+                                // Close modal immediately
+                                setProductPreviewModalOpen(false)
+                                // Also close the product editor modal
+                                setActiveEditor(null)
+                                // Use requestAnimationFrame to ensure DOM update happens before navigation
+                                requestAnimationFrame(() => {
+                                  handleOpenQuizInBuilder(quizId)
+                                })
+                              }}
                               className="text-xs h-7"
                             >
                               Open in Form Builder

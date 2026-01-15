@@ -140,7 +140,7 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
       form_step_id: step.id,
       slug: questionData.slug || "",
       type: questionData.type || "TEXT",
-      question: questionData.question || "",
+      question: questionData.question || editingQuestion?.question || "", // Ensure question is preserved
       displayQuestion: questionData.displayQuestion || null,
       placeholder: questionData.placeholder || null,
       question_order: questionData.question_order || (editingQuestion ? editingQuestion.question_order : questions.length + 1),

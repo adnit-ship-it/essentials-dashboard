@@ -104,10 +104,13 @@ export function ConditionalRenderingEditor({
       ...newConditions[index],
       [field]: value,
     }
-    setLocalCondition({
+    const updatedCondition = {
       ...localCondition,
       conditions: newConditions,
-    })
+    }
+    setLocalCondition(updatedCondition)
+    // Immediately notify parent of changes
+    onChange(updatedCondition)
   }
 
   const handleMultiSelectChange = (index: number, optionValue: string, checked: boolean) => {
@@ -243,37 +246,37 @@ export function ConditionalRenderingEditor({
         )}
 
         {localCondition.conditions.length > 0 && (
-          <div className="space-y-2">
+        <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>Logical Operator</Label>
+          <Label>Logical Operator</Label>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Info className="h-3 w-3" />
                 <span>How to combine multiple conditions</span>
               </div>
             </div>
-            <Select
-              value={localCondition.logicalOperator}
-              onValueChange={(value: LogicalOperator) =>
-                setLocalCondition({
-                  ...localCondition,
-                  logicalOperator: value,
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="AND">AND (all conditions must be true)</SelectItem>
-                <SelectItem value="OR">OR (any condition must be true)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Select
+            value={localCondition.logicalOperator}
+            onValueChange={(value: LogicalOperator) =>
+              setLocalCondition({
+                ...localCondition,
+                logicalOperator: value,
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="AND">AND (all conditions must be true)</SelectItem>
+              <SelectItem value="OR">OR (any condition must be true)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         )}
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label>Conditions</Label>
+          <Label>Conditions</Label>
             {localCondition.conditions.length > 0 && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Info className="h-3 w-3" />
@@ -297,38 +300,55 @@ export function ConditionalRenderingEditor({
                   <div className="flex-1 space-y-2">
                     <div className="space-y-1">
                       <Label className="text-sm font-medium">Question</Label>
-                      <Select
-                        value={cond.field}
-                        onValueChange={(value) => {
-                          handleUpdateCondition(index, "field", value)
-                          handleUpdateCondition(index, "value", "")
-                        }}
-                      >
-                        <SelectTrigger className={cn(fieldInvalid && "border-destructive")}>
+                  <Select
+                    value={cond.field}
+                    onValueChange={(value) => {
+                      // Update field and clear value in a single update
+                      const newConditions = [...localCondition.conditions]
+                      newConditions[index] = {
+                        ...newConditions[index],
+                        field: value,
+                        value: "",
+                      }
+                      const updatedCondition = {
+                        ...localCondition,
+                        conditions: newConditions,
+                      }
+                      setLocalCondition(updatedCondition)
+                      onChange(updatedCondition)
+                    }}
+                  >
+                    <SelectTrigger className={cn(fieldInvalid && "border-destructive")}>
                           <SelectValue placeholder="Select question" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableQuestions.map((field) => (
-                            <SelectItem key={field.id} value={field.slug}>
-                              <div className="flex items-center gap-2">
-                                {getQuestionTypeIcon(field.type)}
-                                <div className="flex flex-col">
-                                  <span>{field.question}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {field.progressStepName} → {field.formStepTitle}
-                                  </span>
-                                </div>
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      {availableQuestions.length === 0 ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          No previous questions available
+                        </div>
+                      ) : (
+                        availableQuestions.map((field) => (
+                          <SelectItem key={field.id} value={field.slug}>
+                            <div className="flex items-center gap-2">
+                              {getQuestionTypeIcon(field.type)}
+                              <div className="flex flex-col">
+                                <span>{field.question}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {field.progressStepName} → {field.formStepTitle}
+                                </span>
                               </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {fieldInvalid && cond.field && (
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {fieldInvalid && cond.field && (
                         <p className="text-xs text-destructive mt-1 flex items-center gap-1">
                           <AlertTriangle className="h-3 w-3" />
-                          This question is not available (from current or future step)
-                        </p>
-                      )}
+                      This question is not available (from current or future step)
+                    </p>
+                  )}
                       {selectedQuestion && !fieldInvalid && (
                         <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                           <Info className="h-3 w-3" />
@@ -341,36 +361,36 @@ export function ConditionalRenderingEditor({
                             : "Enter the value to match"}
                         </p>
                       )}
-                    </div>
+                </div>
                     
                     <div className="space-y-1">
                       <Label className="text-sm font-medium">Operator</Label>
-                      <Select
-                        value={cond.operator}
+                  <Select
+                    value={cond.operator}
                         onValueChange={(value: ConditionOperator) => {
                           const willShowDropdown = questionHasOptions && (value === "equals" || value === "notEquals") && !isMultiSelect
                           const willShowCheckboxes = isMultiSelect && (value === "equals" || value === "notEquals")
                           
-                          handleUpdateCondition(index, "operator", value)
+                      handleUpdateCondition(index, "operator", value)
                           if (shouldShowDropdown !== willShowDropdown || shouldShowCheckboxes !== (isMultiSelect && (cond.operator === "equals" || cond.operator === "notEquals"))) {
                             handleUpdateCondition(index, "value", isMultiSelect ? [] : "")
-                          }
+                    }
                         }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="equals">equals</SelectItem>
-                          <SelectItem value="notEquals">not equals</SelectItem>
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="equals">equals</SelectItem>
+                      <SelectItem value="notEquals">not equals</SelectItem>
                           {!questionHasOptions && (
                             <>
-                              <SelectItem value="greaterThan">greater than</SelectItem>
-                              <SelectItem value="lessThan">less than</SelectItem>
+                      <SelectItem value="greaterThan">greater than</SelectItem>
+                      <SelectItem value="lessThan">less than</SelectItem>
                             </>
                           )}
-                        </SelectContent>
-                      </Select>
+                    </SelectContent>
+                  </Select>
                       {selectedQuestion && (
                         <p className="text-xs text-muted-foreground mt-1">
                           {questionHasOptions
@@ -430,7 +450,7 @@ export function ConditionalRenderingEditor({
                           ) : (
                             <p className="text-sm text-muted-foreground">No options available</p>
                           )}
-                        </div>
+                </div>
                       ) : shouldShowDropdown ? (
                         <Select
                           value={typeof cond.value === "string" ? cond.value : ""}
@@ -450,11 +470,11 @@ export function ConditionalRenderingEditor({
                           </SelectContent>
                         </Select>
                       ) : (
-                        <Input
+                  <Input
                           value={typeof cond.value === "string" ? cond.value : Array.isArray(cond.value) ? cond.value.join(", ") : ""}
-                          onChange={(e) =>
-                            handleUpdateCondition(index, "value", e.target.value)
-                          }
+                    onChange={(e) =>
+                      handleUpdateCondition(index, "value", e.target.value)
+                    }
                           placeholder={
                             selectedQuestion?.type === "NUMBER"
                               ? "Enter number (e.g., 25)"
@@ -471,16 +491,16 @@ export function ConditionalRenderingEditor({
                         </p>
                       )}
                     </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveCondition(index)}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveCondition(index)}
                     className="mt-6"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
                 </div>
                 
                 {preview && !fieldInvalid && (

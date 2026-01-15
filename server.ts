@@ -2786,12 +2786,6 @@ app.post("/api/quiz/:id/form-steps/batch-save", async (req: BatchSaveRequest, re
         isNewQuiz: false,
       })
     }
-
-    res.status(200).json({
-      quiz: updatedQuiz,
-      sha: newSha,
-      commitUrl,
-    })
   } catch (error: any) {
     console.error("Error saving quiz changes:", error)
     if (error.status === 409) {
