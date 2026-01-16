@@ -91,7 +91,7 @@ export function NewProgressStepModal({ isOpen, onClose, quiz }: NewProgressStepM
             />
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="color">Color</Label>
             <div className="flex items-center gap-2">
               <Input
@@ -109,7 +109,7 @@ export function NewProgressStepModal({ isOpen, onClose, quiz }: NewProgressStepM
                 className="flex-1"
               />
             </div>
-          </div>
+          </div> */}
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
