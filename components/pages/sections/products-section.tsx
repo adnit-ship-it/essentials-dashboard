@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as Dialog from "@radix-ui/react-dialog"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
 import DOMPurify from "dompurify"
 import {
   AlertTriangle,
@@ -18,6 +19,9 @@ import {
   Undo2,
   X,
   XCircle,
+  Search,
+  Check,
+  ChevronDown,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -450,6 +454,229 @@ function validateProducts(products: Product[]) {
   return null
 }
 
+interface QuizDropdownProps {
+  value: string
+  onValueChange: (value: string) => void
+  quizOptions: QuizOption[]
+  quizNameById: Record<string, string>
+  disabled?: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  searchQuery: string
+  onSearchChange: (query: string) => void
+  selectedIndex: number
+  onSelectedIndexChange: (index: number) => void
+}
+
+function QuizDropdown({
+  value,
+  onValueChange,
+  quizOptions,
+  quizNameById,
+  disabled,
+  open,
+  onOpenChange,
+  searchQuery,
+  onSearchChange,
+  selectedIndex,
+  onSelectedIndexChange,
+}: QuizDropdownProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // Build options list: "none" option + quiz options + missing quiz if applicable
+  const allOptions = useMemo(() => {
+    const options: Array<{ id: string; label: string; value: string }> = [
+      { id: "none", label: "No quiz", value: "none" },
+    ]
+    
+    quizOptions.forEach((option) => {
+      options.push({
+        id: option.id,
+        label: `${option.name}${option.isManual ? " (Manual)" : ""}`,
+        value: option.id,
+      })
+    })
+    
+    // Add missing quiz if current value is not in options
+    if (value !== "none" && !quizNameById[value]) {
+      options.push({
+        id: value,
+        label: `${value} (not found in config)`,
+        value: value,
+      })
+    }
+    
+    return options
+  }, [quizOptions, quizNameById, value])
+
+  // Filter options based on search query
+  const filteredOptions = useMemo(() => {
+    if (!searchQuery.trim()) return allOptions
+    const query = searchQuery.toLowerCase()
+    return allOptions.filter((option) =>
+      option.label.toLowerCase().includes(query)
+    )
+  }, [allOptions, searchQuery])
+
+  // Reset selected index when options change or dropdown opens
+  useEffect(() => {
+    if (open) {
+      onSelectedIndexChange(-1)
+      // Focus search input when dropdown opens
+      setTimeout(() => {
+        searchInputRef.current?.focus()
+      }, 0)
+    } else {
+      onSearchChange("")
+      onSelectedIndexChange(-1)
+    }
+  }, [open, onSearchChange, onSelectedIndexChange])
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent, isSearchInput = false) => {
+    if (!open) return
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault()
+        const nextIndex = selectedIndex < filteredOptions.length - 1 ? selectedIndex + 1 : 0
+        onSelectedIndexChange(nextIndex)
+        break
+      case "ArrowUp":
+        e.preventDefault()
+        const prevIndex = selectedIndex > 0 ? selectedIndex - 1 : filteredOptions.length - 1
+        onSelectedIndexChange(prevIndex)
+        break
+      case "Enter":
+        e.preventDefault()
+        if (selectedIndex >= 0 && selectedIndex < filteredOptions.length) {
+          handleSelect(filteredOptions[selectedIndex].value)
+        } else if (filteredOptions.length === 1) {
+          // If only one option after search, select it
+          handleSelect(filteredOptions[0].value)
+        }
+        break
+      case "Escape":
+        e.preventDefault()
+        onOpenChange(false)
+        break
+    }
+  }
+
+  // Scroll selected item into view
+  useEffect(() => {
+    if (selectedIndex >= 0 && listRef.current) {
+      const selectedElement = listRef.current.children[selectedIndex] as HTMLElement
+      if (selectedElement) {
+        selectedElement.scrollIntoView({ block: "nearest", behavior: "smooth" })
+      }
+    }
+  }, [selectedIndex])
+
+  const handleSelect = (selectedValue: string) => {
+    onValueChange(selectedValue)
+    onOpenChange(false)
+    onSearchChange("")
+    onSelectedIndexChange(-1)
+  }
+
+  const selectedQuiz = allOptions.find((opt) => opt.value === value)
+
+  return (
+    <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <PopoverPrimitive.Trigger asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-between h-10"
+          disabled={disabled}
+          onKeyDown={handleKeyDown}
+        >
+          <span className="truncate">
+            {selectedQuiz?.label || "Select quiz"}
+          </span>
+          <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+        </Button>
+      </PopoverPrimitive.Trigger>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          className={cn(
+            "z-50 w-[var(--radix-popover-trigger-width)] rounded-md border border-gray-300 bg-background-color p-1 shadow-md",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          )}
+          align="start"
+          sideOffset={4}
+          onKeyDown={handleKeyDown}
+          onInteractOutside={(e) => {
+            // Prevent closing when clicking inside the scrollable area
+            const target = e.target as HTMLElement
+            if (listRef.current?.contains(target)) {
+              e.preventDefault()
+            }
+          }}
+        >
+          {/* Search Input */}
+          <div className="flex items-center border-b border-gray-300 px-3 py-2">
+            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <Input
+              ref={searchInputRef}
+              placeholder="Search quizzes..."
+              value={searchQuery}
+              onChange={(e) => {
+                onSearchChange(e.target.value)
+                onSelectedIndexChange(-1)
+              }}
+              className="h-8 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              onKeyDown={(e) => handleKeyDown(e, true)}
+            />
+          </div>
+
+          {/* Options List */}
+          <div 
+            ref={listRef} 
+            className="max-h-[300px] overflow-y-auto"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+            onWheel={(e) => {
+              // Prevent event from bubbling to parent elements that might interfere
+              e.stopPropagation()
+            }}
+            onTouchMove={(e) => {
+              // Allow touch scrolling
+              e.stopPropagation()
+            }}
+          >
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                {searchQuery ? "No quizzes found" : "No quizzes available"}
+              </div>
+            ) : (
+              filteredOptions.map((option, index) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleSelect(option.value)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-sm transition-colors",
+                    "hover:bg-accent-color hover:text-background-color",
+                    value === option.value && "bg-accent-color/50",
+                    selectedIndex === index && "bg-accent-color/70"
+                  )}
+                  onMouseEnter={() => onSelectedIndexChange(index)}
+                >
+                  <div className="flex-1 text-left truncate">{option.label}</div>
+                  {value === option.value && (
+                    <Check className="h-4 w-4 shrink-0" />
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
+  )
+}
+
 export function ProductsSection() {
   const [draftProducts, setDraftProducts] = useState<DraftProduct[]>([])
   const [loading, setLoading] = useState(true)
@@ -459,6 +686,9 @@ export function ProductsSection() {
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [activeEditor, setActiveEditor] = useState<ProductEditorState | null>(null)
   const [quizOptions, setQuizOptions] = useState<QuizOption[]>([])
+  const [quizDropdownOpen, setQuizDropdownOpen] = useState(false)
+  const [quizSearchQuery, setQuizSearchQuery] = useState("")
+  const [quizSelectedIndex, setQuizSelectedIndex] = useState<number>(-1)
   const [linkNameModalOpen, setLinkNameModalOpen] = useState(false)
   const [linkNameInput, setLinkNameInput] = useState("")
   const [linkNameLoading, setLinkNameLoading] = useState(false)
@@ -2156,7 +2386,7 @@ export function ProductsSection() {
                             </Button>
                           )}
                         </div>
-                        <Select
+                        <QuizDropdown
                           value={activeEditor.draft.quiz ?? "none"}
                           onValueChange={(value) => {
                             resetEditorError()
@@ -2172,26 +2402,16 @@ export function ProductsSection() {
                                 : prev
                             )
                           }}
+                          quizOptions={quizOptions}
+                          quizNameById={quizNameById}
                           disabled={quizOptions.length === 0 && !activeEditor.draft.quiz}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select quiz" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No quiz</SelectItem>
-                            {quizOptions.map((option) => (
-                              <SelectItem key={option.id} value={option.id}>
-                                {option.name}{option.isManual ? " (Manual)" : ""}
-                              </SelectItem>
-                            ))}
-                            {activeEditor.draft.quiz &&
-                              !quizNameById[activeEditor.draft.quiz] && (
-                                <SelectItem value={activeEditor.draft.quiz}>
-                                  {activeEditor.draft.quiz} (not found in config)
-                                </SelectItem>
-                              )}
-                          </SelectContent>
-                        </Select>
+                          open={quizDropdownOpen}
+                          onOpenChange={setQuizDropdownOpen}
+                          searchQuery={quizSearchQuery}
+                          onSearchChange={setQuizSearchQuery}
+                          selectedIndex={quizSelectedIndex}
+                          onSelectedIndexChange={setQuizSelectedIndex}
+                        />
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground">
                             Assign an intake quiz to launch after checkout. This quiz will be shown to users when they interact with this product.
