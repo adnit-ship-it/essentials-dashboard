@@ -259,7 +259,7 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
-              value={step.title}
+              value={step.title ?? ""}
               onChange={(e) => handleUpdate("title", e.target.value)}
             />
           </div>

@@ -104,7 +104,7 @@ function SortableOptionItem({
             Option Value *
           </Label>
           <Input
-            value={option.value}
+            value={option.value || ""}
             onChange={(e) => onUpdate(index, "value", e.target.value)}
             placeholder="option-value"
             required
@@ -499,7 +499,7 @@ export function QuestionModal({
             <Label htmlFor="slug">Slug *</Label>
             <Input
               id="slug"
-              value={formData.slug}
+              value={formData.slug ?? ""}
               onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
               placeholder="e.g., email-address"
               required
@@ -510,14 +510,14 @@ export function QuestionModal({
             <Label htmlFor="question">Question Text *</Label>
             <Input
               id="question"
-              value={formData.question}
+              value={formData.question ?? ""}
               onChange={(e) => setFormData({ ...formData, question: e.target.value })}
               placeholder="What is your email?"
               required
             />
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="displayQuestion">Display Question</Label>
             <Input
               id="displayQuestion"
@@ -527,14 +527,14 @@ export function QuestionModal({
               }
               placeholder="Email Address"
             />
-          </div>
+          </div> */}
 
           {!requiresOptions && (
           <div className="space-y-2">
             <Label htmlFor="placeholder">Placeholder</Label>
             <Input
               id="placeholder"
-              value={formData.placeholder}
+              value={formData.placeholder ?? ""}
               onChange={(e) => setFormData({ ...formData, placeholder: e.target.value })}
               placeholder="Enter your email"
             />
@@ -727,7 +727,7 @@ export function QuestionModal({
               {/* Icon */}
               <QuizImageUpload
                 label="Icon"
-                value={formData.icon}
+                value={formData.icon ?? ""}
                 onChange={(value) => setFormData({ ...formData, icon: value })}
               />
 
@@ -796,7 +796,7 @@ export function QuestionModal({
               <CardContent className="space-y-4">
                 <QuizImageUpload
                   label="Marketing Image"
-                  value={formData.image}
+                  value={formData.image ?? ""}
                   onChange={(value) => setFormData({ ...formData, image: value })}
                 />
                 <div className="flex items-center justify-between">
@@ -827,19 +827,19 @@ export function QuestionModal({
               <CardContent className="space-y-4">
                 <QuizImageUpload
                   label="Before Image"
-                  value={formData.beforeImage}
+                  value={formData.beforeImage ?? ""}
                   onChange={(value) => setFormData({ ...formData, beforeImage: value })}
                 />
                 <QuizImageUpload
                   label="After Image"
-                  value={formData.afterImage}
+                  value={formData.afterImage ?? ""}
                   onChange={(value) => setFormData({ ...formData, afterImage: value })}
                 />
                 <div className="space-y-2">
                   <Label htmlFor="quote">Testimonial Quote</Label>
                   <Textarea
                     id="quote"
-                    value={formData.quote}
+                    value={formData.quote ?? ""}
                     onChange={(e) => setFormData({ ...formData, quote: e.target.value })}
                     placeholder="I lost 30 pounds in 3 months!"
                     rows={3}
@@ -867,7 +867,7 @@ export function QuestionModal({
                   <Label htmlFor="candidateStatement">Candidate Statement</Label>
                   <Textarea
                     id="candidateStatement"
-                    value={formData.candidateStatement}
+                    value={formData.candidateStatement ?? ""}
                     onChange={(e) =>
                       setFormData({ ...formData, candidateStatement: e.target.value })
                     }
@@ -893,7 +893,7 @@ export function QuestionModal({
                   <Label htmlFor="heading1">Main Heading</Label>
                   <Input
                     id="heading1"
-                    value={formData.heading1}
+                    value={formData.heading1 ?? ""}
                     onChange={(e) => setFormData({ ...formData, heading1: e.target.value })}
                     placeholder="You're a Perfect Match!"
                   />
@@ -905,7 +905,7 @@ export function QuestionModal({
                   <Label htmlFor="subtext">Subtext</Label>
                   <Textarea
                     id="subtext"
-                    value={formData.subtext}
+                    value={formData.subtext ?? ""}
                     onChange={(e) => setFormData({ ...formData, subtext: e.target.value })}
                     placeholder="Based on your responses, this treatment is ideal for you."
                     rows={3}
@@ -918,7 +918,7 @@ export function QuestionModal({
                   <Label htmlFor="dynamicSubtext">Dynamic Subtext</Label>
                   <Textarea
                     id="dynamicSubtext"
-                    value={formData.dynamicSubtext}
+                    value={formData.dynamicSubtext ?? ""}
                     onChange={(e) =>
                       setFormData({ ...formData, dynamicSubtext: e.target.value })
                     }

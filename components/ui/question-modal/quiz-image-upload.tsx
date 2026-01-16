@@ -273,7 +273,7 @@ export function QuizImageUpload({
           </Button>
         )}
         <Input
-          value={value}
+          value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder="/assets/images/quizzes/..."
           disabled={uploading || disabled}
