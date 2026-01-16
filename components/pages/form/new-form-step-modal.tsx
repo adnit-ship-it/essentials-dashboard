@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect } from "react"
 import { useFormLocalState } from "@/lib/hooks/use-form-local-state"
@@ -28,7 +27,6 @@ interface NewFormStepModalProps {
 export function NewFormStepModal({ isOpen, onClose, quiz, defaultProgressStepId }: NewFormStepModalProps) {
   const [title, setTitle] = useState("")
   const [heading1, setHeading1] = useState("")
-  const [subtext, setSubtext] = useState("")
   const [progressStepId, setProgressStepId] = useState<string>(
     defaultProgressStepId || quiz.progressSteps[0]?.id || ""
   )
@@ -40,7 +38,6 @@ export function NewFormStepModal({ isOpen, onClose, quiz, defaultProgressStepId 
     if (isOpen) {
       setTitle("")
       setHeading1("")
-      setSubtext("")
       setProgressStepId(defaultProgressStepId || quiz.progressSteps[0]?.id || "")
     }
   }, [isOpen, quiz.progressSteps, defaultProgressStepId])
@@ -69,7 +66,7 @@ export function NewFormStepModal({ isOpen, onClose, quiz, defaultProgressStepId 
       slug: generateSlug(title),
       title: title.trim(),
       heading1: heading1.trim() || null,
-      subtext: subtext.trim() || null,
+      subtext: null,
       config: null,
       is_template_step: false,
       render_condition: null,
@@ -84,7 +81,6 @@ export function NewFormStepModal({ isOpen, onClose, quiz, defaultProgressStepId 
     // Reset form and close modal
     setTitle("")
     setHeading1("")
-    setSubtext("")
     onClose()
   }
 
@@ -115,17 +111,6 @@ export function NewFormStepModal({ isOpen, onClose, quiz, defaultProgressStepId 
               value={heading1}
               onChange={(e) => setHeading1(e.target.value)}
               placeholder="Main heading text"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="subtext">Subtext</Label>
-            <Textarea
-              id="subtext"
-              value={subtext}
-              onChange={(e) => setSubtext(e.target.value)}
-              placeholder="Additional description"
-              rows={3}
             />
           </div>
 

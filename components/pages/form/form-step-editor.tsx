@@ -6,7 +6,6 @@ import { migrateIsRequiredToValidation } from "@/lib/utils/question-validator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Plus, Edit, Trash2, GripVertical } from "lucide-react"
 import { QuestionModal } from "@/components/ui/question-modal"
@@ -270,16 +269,6 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
               id="heading1"
               value={step.heading1 || ""}
               onChange={(e) => handleUpdate("heading1", e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="subtext">Subtext</Label>
-            <Textarea
-              id="subtext"
-              value={step.subtext || ""}
-              onChange={(e) => handleUpdate("subtext", e.target.value)}
-              rows={3}
             />
           </div>
         </CardContent>

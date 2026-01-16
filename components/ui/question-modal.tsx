@@ -112,7 +112,7 @@ function SortableOptionItem({
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">
-            Display Label (optional)
+            Display Label
           </Label>
           <Input
             value={option.label || ""}
