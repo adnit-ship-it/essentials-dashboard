@@ -84,6 +84,21 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
         hasFetched: true,
       })
       const { selectedOrgId } = get()
+      
+      // Check localStorage for previously selected organization
+      if (!selectedOrgId && typeof window !== "undefined") {
+        const storageKey = "cv.selectedOrganizationId"
+        const savedOrgId = window.localStorage.getItem(storageKey)
+        
+        // Validate that the saved organization ID exists in the fetched organizations
+        if (savedOrgId && orgs.some(org => org.id === savedOrgId)) {
+          set({ selectedOrgId: savedOrgId })
+          // Prime brand info for the saved org
+          get().fetchOrganizationBrandInfo(savedOrgId).catch(() => {})
+          return
+        }
+      }
+      
       // Only auto-select if there's exactly one organization
       if (!selectedOrgId && orgs.length === 1) {
         set({ selectedOrgId: orgs[0].id })
