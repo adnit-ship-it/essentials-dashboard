@@ -48,6 +48,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { useQuizStore } from "@/lib/stores/quiz-store"
+import { useProductStore } from "@/lib/stores/product-store"
 import { fetchGraphQL } from "@/lib/services/graphql"
 import type { Product } from "@/lib/types/products"
 import { fileToPendingUpload } from "@/lib/utils/file-uploads"
@@ -707,6 +708,7 @@ export function ProductsSection() {
   const originalProductsRef = useRef<Record<string, Product>>({})
   const originalOrderRef = useRef<Product[]>([])
   const assetLookupRef = useRef<AssetLookup>({})
+  const { setProducts: setProductStoreProducts } = useProductStore()
   const quizNameById = useMemo(() => {
     return quizOptions.reduce<Record<string, string>>((acc, option) => {
       acc[option.id] = option.name
@@ -820,6 +822,9 @@ export function ProductsSection() {
 
       setDraftProducts(drafts)
       setSha(data.sha)
+      
+      // Update product store for use in other components
+      setProductStoreProducts(normalizedProducts, data.sha)
     } catch (err) {
       setError((err as Error).message || "Failed to load products.")
       setDraftProducts([])
@@ -1330,6 +1335,9 @@ export function ProductsSection() {
         )
       )
       setSha(nextSha)
+      
+      // Update product store with latest products
+      setProductStoreProducts(normalizedProducts, nextSha)
       
       // After a delay, refresh to ensure we have the latest from GitHub
       // This ensures that if the user refreshes the page, they get the latest data

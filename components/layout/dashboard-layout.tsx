@@ -20,16 +20,23 @@ export function DashboardLayout() {
   const { builderQuizId } = useQuizStore()
   const [hasAutoSwitched, setHasAutoSwitched] = useState(false)
 
-  // Auto-switch to Forms tab when builder is opened (only once)
+  // Reset hasAutoSwitched when activeSection changes away from "forms"
   useEffect(() => {
-    if (builderQuizId && !hasAutoSwitched && activeSection !== "forms") {
+    if (activeSection !== "forms" && hasAutoSwitched) {
+      setHasAutoSwitched(false)
+    }
+  }, [activeSection, hasAutoSwitched])
+
+  // Auto-switch to Forms tab when builder is opened
+  useEffect(() => {
+    if (builderQuizId && activeSection !== "forms") {
       setActiveSection("forms")
       setHasAutoSwitched(true)
     } else if (!builderQuizId) {
       // Reset flag when builder is closed
       setHasAutoSwitched(false)
     }
-  }, [builderQuizId, hasAutoSwitched, activeSection])
+  }, [builderQuizId, activeSection])
   const [showRepoModal, setShowRepoModal] = useState(false)
   const [showCreateRepoModal, setShowCreateRepoModal] = useState(false)
   const [show404Alert, setShow404Alert] = useState(false)

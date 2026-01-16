@@ -4,9 +4,10 @@ import { useState, useEffect } from "react"
 import { useQuizStore } from "@/lib/stores/quiz-store"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Loader2, AlertCircle, ChevronLeft } from "lucide-react"
+import { Plus, Loader2, AlertCircle, ChevronLeft, Link2 } from "lucide-react"
 import { NewQuizModal } from "@/components/ui/new-quiz-modal"
 import { QuizModal } from "@/components/ui/quiz-modal"
+import { LinkProductModal } from "@/components/ui/link-product-modal"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { FormPageContainer } from "@/components/pages/form/form-page-container"
 
@@ -28,6 +29,7 @@ export function FormsSection() {
 
   const [newQuizModalOpen, setNewQuizModalOpen] = useState(false)
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null)
+  const [linkProductModalOpen, setLinkProductModalOpen] = useState(false)
 
   useEffect(() => {
     fetchQuizData()
@@ -76,22 +78,47 @@ export function FormsSection() {
 
     if (currentQuiz) {
       return (
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={handleBackToList}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h3 className="text-lg font-medium">Form Builder</h3>
-              <p className="text-sm text-muted-foreground">
-                {currentQuiz.name}
-              </p>
+        <>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={handleBackToList}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <h3 className="text-lg font-medium">Form Builder</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {currentQuiz.name}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (currentQuiz?.id) {
+                    setLinkProductModalOpen(true)
+                  }
+                }}
+                className="gap-2"
+              >
+                <Link2 className="h-4 w-4" />
+                Link to Product
+              </Button>
+            </div>
+            <div className="border rounded-lg overflow-hidden">
+              <FormPageContainer quiz={currentQuiz} />
             </div>
           </div>
-          <div className="border rounded-lg overflow-hidden">
-            <FormPageContainer quiz={currentQuiz} />
-          </div>
-        </div>
+          <LinkProductModal
+            isOpen={linkProductModalOpen}
+            onClose={() => setLinkProductModalOpen(false)}
+            quizId={currentQuiz.id}
+            onSuccess={() => {
+              // Optionally refresh quiz data or show success message
+              fetchQuizData()
+            }}
+          />
+        </>
       )
     }
   }
