@@ -108,7 +108,7 @@ export function NewQuizModal({ isOpen, onClose, onSuccess }: NewQuizModalProps) 
             />
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="productBundles">Product Bundle IDs</Label>
             <div className="flex gap-2">
               <Input
@@ -150,7 +150,7 @@ export function NewQuizModal({ isOpen, onClose, onSuccess }: NewQuizModalProps) 
                 ))}
               </div>
             )}
-          </div>
+          </div> */}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
