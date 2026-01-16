@@ -115,8 +115,8 @@ type AssetLookup = Record<
   }
 >
 
-type AssetSlot = "img" | "thumbnail"
-const ASSET_SLOTS: AssetSlot[] = ["img", "thumbnail"]
+type AssetSlot = "img"
+const ASSET_SLOTS: AssetSlot[] = ["img"]
 
 type PriceKey = keyof Product["prices"]
 const PRICE_KEYS: PriceKey[] = ["monthly", "threeMonthly", "sixMonthly"]
@@ -738,6 +738,7 @@ export function ProductsSection() {
   const originalProductsRef = useRef<Record<string, Product>>({})
   const originalOrderRef = useRef<Product[]>([])
   const assetLookupRef = useRef<AssetLookup>({})
+  const originalEditorStateRef = useRef<ProductEditorState | null>(null)
   const { setProducts: setProductStoreProducts } = useProductStore()
   const quizNameById = useMemo(() => {
     return quizOptions.reduce<Record<string, string>>((acc, option) => {
@@ -918,7 +919,15 @@ export function ProductsSection() {
       if (!target) {
         return
       }
-      setActiveEditor(buildEditorStateFromDraft(target))
+      const editorState = buildEditorStateFromDraft(target)
+      // Store a deep copy of the original draft for comparison
+      originalEditorStateRef.current = {
+        draft: cloneDraftProduct(target),
+        priceEntries: [...editorState.priceEntries],
+        bundleEntries: [...editorState.bundleEntries],
+        featureInput: "",
+      }
+      setActiveEditor(editorState)
     },
     [draftProducts]
   )
@@ -947,7 +956,9 @@ export function ProductsSection() {
       const updated = [newProduct, ...prev]
       return updated
     })
-    setActiveEditor(buildEditorStateFromDraft(newProduct))
+    const editorState = buildEditorStateFromDraft(newProduct)
+    originalEditorStateRef.current = null // New products have no original state
+    setActiveEditor(editorState)
   }
 
   const handleDiscardProduct = (localId: string) => {
@@ -1044,6 +1055,52 @@ export function ProductsSection() {
     [computeDraftWithMeta]
   )
 
+  const hasEditorChanges = useMemo(() => {
+    if (!activeEditor || !originalEditorStateRef.current) {
+      // New products always have changes (they're new)
+      return activeEditor?.draft._meta.isNew ?? false
+    }
+
+    const original = originalEditorStateRef.current
+    const current = activeEditor
+
+    // Compare draft fields
+    const draftChanged =
+      current.draft.id !== original.draft.id ||
+      current.draft.name !== original.draft.name ||
+      current.draft.category !== original.draft.category ||
+      current.draft.description !== original.draft.description ||
+      current.draft.img !== original.draft.img ||
+      current.draft.thumbnail !== original.draft.thumbnail ||
+      current.draft.availability !== original.draft.availability ||
+      current.draft.type !== original.draft.type ||
+      current.draft.popular !== original.draft.popular ||
+      current.draft.quiz !== original.draft.quiz ||
+      JSON.stringify(current.draft.features?.sort()) !== JSON.stringify(original.draft.features?.sort())
+
+    // Compare price entries
+    const pricesChanged = current.priceEntries.some(
+      (entry, index) => entry.value !== original.priceEntries[index]?.value
+    ) || original.priceEntries.some(
+      (entry, index) => entry.value !== current.priceEntries[index]?.value
+    )
+
+    // Compare bundle entries
+    const bundlesChanged = current.bundleEntries.some(
+      (entry, index) => entry.value !== original.bundleEntries[index]?.value
+    ) || original.bundleEntries.some(
+      (entry, index) => entry.value !== current.bundleEntries[index]?.value
+    )
+
+    // Check for pending uploads
+    const hasPendingUpload = Boolean(
+      current.draft._meta.assets?.img?.pendingUpload ||
+      current.draft._meta.assets?.thumbnail?.pendingUpload
+    )
+
+    return draftChanged || pricesChanged || bundlesChanged || hasPendingUpload
+  }, [activeEditor])
+
   const applyEditorChanges = useCallback(() => {
     console.log("[ApplyEditorChanges] 🎯 Applying changes to product")
     if (!activeEditor) {
@@ -1128,6 +1185,7 @@ export function ProductsSection() {
       }
 
       upsertDraft(updatedDraft)
+      originalEditorStateRef.current = null
       setActiveEditor(null)
     } catch (err) {
       setActiveEditor((prev) => prev && { ...prev, error: (err as Error).message })
@@ -1159,10 +1217,10 @@ export function ProductsSection() {
         for (const slot of ASSET_SLOTS) {
           const meta = draft._meta.assets?.[slot]
           if (meta?.pendingUpload) {
-            const pathValue = (slot === "img" ? draft.img : draft.thumbnail)?.trim()
+            const pathValue = draft.img?.trim()
             if (!pathValue) {
               throw new Error(
-                `${slot === "img" ? "Primary image" : "Thumbnail image"} requires a path before uploading.`
+                "Image requires a path before uploading."
               )
             }
             uploadItems.push({
@@ -1210,7 +1268,7 @@ export function ProductsSection() {
             path: upload.path,
             contentBase64: upload.base64,
             sha: upload.sha || undefined,
-            commitMessage: `CMS: Update ${upload.slot === "img" ? "primary" : "thumbnail"} image for ${
+            commitMessage: `CMS: Update image for ${
               upload.productId
             } (${new Date().toISOString()})`,
           }),
@@ -1475,7 +1533,7 @@ export function ProductsSection() {
         const existingAssets = prev.draft._meta.assets ?? {}
         const existingMeta = existingAssets[slot]
         const currentPathRaw =
-          (slot === "img" ? prev.draft.img : prev.draft.thumbnail)?.trim() ||
+          prev.draft.img?.trim() ||
           existingMeta?.path?.trim() ||
           ""
 
@@ -1501,7 +1559,7 @@ export function ProductsSection() {
           error: undefined,
           draft: {
             ...prev.draft,
-            ...(slot === "img" ? { img: nextPath } : { thumbnail: nextPath }),
+            img: nextPath,
             _meta: {
               ...prev.draft._meta,
               assets: nextAssets,
@@ -2211,7 +2269,12 @@ export function ProductsSection() {
         )}
       </div>
 
-      <Dialog.Root open={Boolean(activeEditor)} onOpenChange={(open) => !open && setActiveEditor(null)}>
+      <Dialog.Root open={Boolean(activeEditor)} onOpenChange={(open) => {
+        if (!open) {
+          originalEditorStateRef.current = null
+          setActiveEditor(null)
+        }
+      }}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
           <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-full max-w-4xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-scroll rounded-xl border border-border bg-background-color shadow-2xl focus:outline-none">
@@ -2226,7 +2289,10 @@ export function ProductsSection() {
               </div>
               <Button
                 className="bg-transparent text-muted-foreground hover:bg-muted"
-                onClick={() => setActiveEditor(null)}
+                onClick={() => {
+                  originalEditorStateRef.current = null
+                  setActiveEditor(null)
+                }}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -2272,11 +2338,17 @@ export function ProductsSection() {
                   <div className="flex flex-wrap gap-2">
                     <Button
                       className="bg-transparent text-muted-foreground hover:bg-muted"
-                      onClick={() => setActiveEditor(null)}
+                      onClick={() => {
+                        originalEditorStateRef.current = null
+                        setActiveEditor(null)
+                      }}
                     >
                       Cancel
                     </Button>
-                    <Button onClick={applyEditorChanges}>
+                    <Button 
+                      onClick={applyEditorChanges}
+                      disabled={!hasEditorChanges}
+                    >
                       <Save className="mr-2 h-4 w-4" />
                       Apply changes
                     </Button>
@@ -2545,37 +2617,29 @@ export function ProductsSection() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {ASSET_SLOTS.map((slot) => {
+                    <div className="space-y-3 rounded-lg border p-4">
+                      {(() => {
+                        const slot: AssetSlot = "img"
                         const assetMeta = activeEditor.draft._meta.assets?.[slot]
                         const previewUrl =
                           assetMeta?.pendingUpload?.dataUrl ||
                           assetMeta?.url ||
                           ""
-                        const inputId =
-                          slot === "img" ? "product-img-upload" : "product-thumbnail-upload"
-                        const pathValue =
-                          slot === "img"
-                            ? activeEditor.draft.img
-                            : activeEditor.draft.thumbnail
-                        const label =
-                          slot === "img" ? "Primary image" : "Thumbnail image"
-                        const description =
-                          slot === "img"
-                            ? "Displayed on product cards and detail pages."
-                            : "Used in listings or condensed views."
+                        const pathValue = activeEditor.draft.img
 
                         return (
-                          <div key={slot} className="space-y-3 rounded-lg border p-4">
+                          <>
                             <div className="space-y-1">
-                              <Label>{label}</Label>
-                              <p className="text-xs text-muted-foreground">{description}</p>
+                              <Label>Image</Label>
+                              <p className="text-xs text-muted-foreground">
+                                Displayed on product cards and detail pages.
+                              </p>
                             </div>
                             <div className="relative overflow-hidden rounded-md border bg-muted">
                               {previewUrl ? (
                                 <img
                                   src={previewUrl}
-                                  alt={`${label} preview`}
+                                  alt="Image preview"
                                   className="h-48 w-full object-cover"
                                 />
                               ) : (
@@ -2617,9 +2681,7 @@ export function ProductsSection() {
                                       ...prev,
                                       draft: {
                                         ...prev.draft,
-                                        ...(slot === "img"
-                                          ? { img: value }
-                                          : { thumbnail: value }),
+                                        img: value,
                                         _meta: {
                                           ...prev.draft._meta,
                                           assets:
@@ -2635,7 +2697,7 @@ export function ProductsSection() {
                               />
                               <div className="flex flex-wrap gap-2">
                                 <input
-                                  id={inputId}
+                                  id="product-img-upload"
                                   type="file"
                                   accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
                                   className="hidden"
@@ -2650,7 +2712,7 @@ export function ProductsSection() {
                                   asChild
                                   className="bg-transparent text-muted-foreground hover:bg-muted"
                                 >
-                                  <label htmlFor={inputId} className="cursor-pointer">
+                                  <label htmlFor="product-img-upload" className="cursor-pointer">
                                     <Plus className="mr-2 h-4 w-4" />
                                     Upload image
                                   </label>
@@ -2688,9 +2750,9 @@ export function ProductsSection() {
                                 </p>
                               )}
                             </div>
-                          </div>
+                          </>
                         )
-                      })}
+                      })()}
                     </div>
 
                     <div className="space-y-2">
@@ -2737,43 +2799,6 @@ export function ProductsSection() {
                                     ? {
                                         ...prev,
                                         priceEntries: prev.priceEntries.map((item, itemIndex) =>
-                                          itemIndex === index ? { ...item, value } : item
-                                        ),
-                                      }
-                                    : prev
-                                )
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 rounded-lg border p-4">
-                      <h4 className="text-sm font-semibold">Product bundle identifiers</h4>
-                      <div className="space-y-3">
-                        {activeEditor.bundleEntries.map((entry, index) => (
-                          <div
-                            key={`bundle-${entry.key}`}
-                            className="grid gap-3 rounded-md border p-3 md:grid-cols-[200px_1fr]"
-                          >
-                            <div>
-                              <p className="text-sm font-medium text-foreground">
-                                {BUNDLE_LABELS[entry.key]}
-                              </p>
-                              <p className="text-xs text-muted-foreground">Optional</p>
-                            </div>
-                            <Input
-                              placeholder="Bundle identifier"
-                              value={entry.value}
-                              onChange={(event) => {
-                                resetEditorError()
-                                const value = event.target.value
-                                setActiveEditor((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        bundleEntries: prev.bundleEntries.map((item, itemIndex) =>
                                           itemIndex === index ? { ...item, value } : item
                                         ),
                                       }

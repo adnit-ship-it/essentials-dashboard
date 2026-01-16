@@ -30,6 +30,7 @@ export function FormsSection() {
   const [newQuizModalOpen, setNewQuizModalOpen] = useState(false)
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null)
   const [linkProductModalOpen, setLinkProductModalOpen] = useState(false)
+  const [shouldGlowLinkButton, setShouldGlowLinkButton] = useState(false)
 
   useEffect(() => {
     fetchQuizData()
@@ -43,6 +44,24 @@ export function FormsSection() {
       return () => clearTimeout(timer)
     }
   }, [feedback, clearFeedback])
+
+  // Trigger glow effect when quiz is successfully created or updated
+  useEffect(() => {
+    // Only glow if we're in builder view with a current quiz
+    if (
+      feedback?.type === "success" &&
+      currentView === "builder" &&
+      currentQuiz &&
+      builderQuizId
+    ) {
+      setShouldGlowLinkButton(true)
+      // Clear glow after animation completes (2 seconds)
+      const timer = setTimeout(() => {
+        setShouldGlowLinkButton(false)
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [feedback, currentQuiz, currentView, builderQuizId])
 
   const handleQuizClick = (quizId: string) => {
     setSelectedQuizId(quizId)
@@ -97,9 +116,19 @@ export function FormsSection() {
                 onClick={() => {
                   if (currentQuiz?.id) {
                     setLinkProductModalOpen(true)
+                    setShouldGlowLinkButton(false) // Stop glowing when clicked
                   }
                 }}
-                className="gap-2"
+                className={`gap-2 transition-all duration-300 ${
+                  shouldGlowLinkButton ? "animate-pulse-glow" : ""
+                }`}
+                style={
+                  shouldGlowLinkButton
+                    ? {
+                        boxShadow: "0 0 20px rgba(59, 130, 246, 0.6), 0 0 40px rgba(59, 130, 246, 0.4)",
+                      }
+                    : undefined
+                }
               >
                 <Link2 className="h-4 w-4" />
                 Link to Product
