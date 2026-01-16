@@ -6,10 +6,10 @@ import type { Product } from "@/lib/types/products"
 import type { FullQuiz } from "@/lib/types/quiz"
 
 /**
- * Get all products linked to a specific quiz
+ * Get all products linked to a specific quiz (by slug)
  */
-export function getProductsLinkedToQuiz(quizId: string, products: Product[]): Product[] {
-  return products.filter((product) => product.quiz === quizId)
+export function getProductsLinkedToQuiz(quizSlug: string, products: Product[]): Product[] {
+  return products.filter((product) => product.quiz === quizSlug)
 }
 
 /**
@@ -47,8 +47,8 @@ export function getProductBundleIdsFromProduct(product: Product): string[] {
  * Sync product bundle IDs to quiz based on linked products
  */
 export function syncProductBundleIds(quiz: FullQuiz, products: Product[]): FullQuiz {
-  // Get all products linked to this quiz
-  const linkedProducts = getProductsLinkedToQuiz(quiz.id, products)
+  // Get all products linked to this quiz (by slug)
+  const linkedProducts = getProductsLinkedToQuiz(quiz.slug, products)
   
   // Collect all bundle IDs from linked products
   const bundleIdsSet = new Set<string>()
@@ -83,10 +83,10 @@ export function validateProductQuizLink(product: Product, quiz: FullQuiz): { val
 }
 
 /**
- * Get products that use the same quiz
+ * Get products that use the same quiz (by slug)
  */
-export function getProductsUsingSameQuiz(quizId: string, currentProductId: string, products: Product[]): Product[] {
+export function getProductsUsingSameQuiz(quizSlug: string, currentProductId: string, products: Product[]): Product[] {
   return products.filter(
-    (product) => product.quiz === quizId && product.id !== currentProductId
+    (product) => product.quiz === quizSlug && product.id !== currentProductId
   )
 }

@@ -20,14 +20,14 @@ import { cn } from "@/lib/utils"
 interface LinkProductModalProps {
   isOpen: boolean
   onClose: () => void
-  quizId: string
+  quizSlug: string
   onSuccess?: () => void
 }
 
 export function LinkProductModal({
   isOpen,
   onClose,
-  quizId,
+  quizSlug,
   onSuccess,
 }: LinkProductModalProps) {
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
@@ -50,10 +50,10 @@ export function LinkProductModal({
         setProducts(storeProducts)
         setSha(storeSha)
         
-        // Pre-select products that already have this quiz assigned
+        // Pre-select products that already have this quiz assigned (by slug)
         const preSelected = new Set<string>()
         storeProducts.forEach((product: Product) => {
-          if (product.quiz === quizId) {
+          if (product.quiz === quizSlug) {
             preSelected.add(product.id)
           }
         })
@@ -68,7 +68,7 @@ export function LinkProductModal({
       setSearchQuery("")
       setError(null)
     }
-  }, [isOpen, storeProducts, storeSha, quizId])
+  }, [isOpen, storeProducts, storeSha, quizSlug])
 
   const fetchProducts = async () => {
     const owner = repoOwnerFromLink || ""
@@ -98,10 +98,10 @@ export function LinkProductModal({
       // Update product store with fetched products
       setProductStoreProducts(fetchedProducts, fetchedSha)
       
-      // Pre-select products that already have this quiz assigned
+      // Pre-select products that already have this quiz assigned (by slug)
       const preSelected = new Set<string>()
       fetchedProducts.forEach((product: Product) => {
-        if (product.quiz === quizId) {
+        if (product.quiz === quizSlug) {
           preSelected.add(product.id)
         }
       })
@@ -144,10 +144,10 @@ export function LinkProductModal({
       const owner = repoOwnerFromLink || ""
       const repo = repoNameFromLink || ""
       
-      // Update products: set quiz field for selected products, clear for others
+      // Update products: set quiz field (slug) for selected products, clear for others
       const updatedProducts = products.map((product) => ({
         ...product,
-        quiz: selectedProductIds.has(product.id) ? quizId : (product.quiz === quizId ? null : product.quiz),
+        quiz: selectedProductIds.has(product.id) ? quizSlug : (product.quiz === quizSlug ? null : product.quiz),
       }))
 
       const url = `${API_BASE_URL}/api/products?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
@@ -259,7 +259,7 @@ export function LinkProductModal({
                           <div className="text-sm text-muted-foreground truncate">
                             {product.id}
                           </div>
-                          {product.quiz && product.quiz !== quizId && (
+                          {product.quiz && product.quiz !== quizSlug && (
                             <div className="text-xs text-amber-600 mt-1">
                               Currently linked to: {product.quiz}
                             </div>

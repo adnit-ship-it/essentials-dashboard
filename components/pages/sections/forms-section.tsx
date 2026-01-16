@@ -112,7 +112,7 @@ export function FormsSection() {
           <LinkProductModal
             isOpen={linkProductModalOpen}
             onClose={() => setLinkProductModalOpen(false)}
-            quizId={currentQuiz.id}
+            quizSlug={currentQuiz.slug}
             onSuccess={() => {
               // Optionally refresh quiz data or show success message
               fetchQuizData()

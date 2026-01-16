@@ -175,6 +175,7 @@ const QUIZ_CONFIG_URL = `${API_BASE_URL}/api/quizzes`
 
 type QuizOption = {
   id: string
+  slug: string
   name: string
   isManual?: boolean
 }
@@ -456,10 +457,12 @@ function validateProducts(products: Product[]) {
 }
 
 interface QuizDropdownProps {
-  value: string
-  onValueChange: (value: string) => void
+  value: string // This is now a slug, not an ID
+  onValueChange: (value: string) => void // Returns slug
   quizOptions: QuizOption[]
   quizNameById: Record<string, string>
+  quizSlugById: Record<string, string>
+  quizNameBySlug: Record<string, string>
   disabled?: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -474,6 +477,8 @@ function QuizDropdown({
   onValueChange,
   quizOptions,
   quizNameById,
+  quizSlugById,
+  quizNameBySlug,
   disabled,
   open,
   onOpenChange,
@@ -495,21 +500,40 @@ function QuizDropdown({
       options.push({
         id: option.id,
         label: `${option.name}${option.isManual ? " (Manual)" : ""}`,
-        value: option.id,
+        value: option.slug, // Use slug as value instead of ID
       })
     })
     
     // Add missing quiz if current value is not in options
-    if (value !== "none" && !quizNameById[value]) {
-      options.push({
-        id: value,
-        label: `${value} (not found in config)`,
-        value: value,
-      })
+    // Check both slug and ID for backward compatibility
+    // Also handle case where value is an ID - convert it to slug
+    if (value !== "none") {
+      const isSlug = quizNameBySlug[value]
+      const isId = quizNameById[value]
+      if (!isSlug && !isId) {
+        options.push({
+          id: value,
+          label: `${value} (not found in config)`,
+          value: value,
+        })
+      } else if (isId && !isSlug) {
+        // Value is an ID, convert to slug for new assignments
+        const slug = quizSlugById[value]
+        if (slug) {
+          // Don't add duplicate, but ensure we can find it
+          if (!options.find(opt => opt.value === slug)) {
+            options.push({
+              id: value,
+              label: `${quizNameById[value]} (migrating)`,
+              value: slug,
+            })
+          }
+        }
+      }
     }
     
     return options
-  }, [quizOptions, quizNameById, value])
+  }, [quizOptions, quizNameById, quizNameBySlug, quizSlugById, value])
 
   // Filter options based on search query
   const filteredOptions = useMemo(() => {
@@ -582,7 +606,13 @@ function QuizDropdown({
     onSelectedIndexChange(-1)
   }
 
-  const selectedQuiz = allOptions.find((opt) => opt.value === value)
+  // Find selected quiz - handle both slug (new) and ID (backward compatibility)
+  const selectedQuiz = allOptions.find((opt) => opt.value === value) || 
+    (value !== "none" && quizNameBySlug[value] 
+      ? { value, label: quizNameBySlug[value] }
+      : value !== "none" && quizNameById[value]
+      ? { value, label: quizNameById[value] }
+      : null)
 
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -712,6 +742,20 @@ export function ProductsSection() {
   const quizNameById = useMemo(() => {
     return quizOptions.reduce<Record<string, string>>((acc, option) => {
       acc[option.id] = option.name
+      return acc
+    }, {})
+  }, [quizOptions])
+  
+  const quizSlugById = useMemo(() => {
+    return quizOptions.reduce<Record<string, string>>((acc, option) => {
+      acc[option.id] = option.slug
+      return acc
+    }, {})
+  }, [quizOptions])
+  
+  const quizNameBySlug = useMemo(() => {
+    return quizOptions.reduce<Record<string, string>>((acc, option) => {
+      acc[option.slug] = option.name
       return acc
     }, {})
   }, [quizOptions])
@@ -1823,7 +1867,7 @@ export function ProductsSection() {
 
     const quizLabel =
       product.quiz && quizOptions.length > 0
-        ? quizNameById[product.quiz] || product.quiz
+        ? (quizNameBySlug[product.quiz] || quizNameById[product.quiz] || product.quiz)
         : product.quiz || null
 
     const previewMeta =
@@ -2372,13 +2416,24 @@ export function ProductsSection() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label>Quiz Assignment</Label>
-                          {activeEditor.draft.quiz && quizNameById[activeEditor.draft.quiz] && (
+                          {activeEditor.draft.quiz && (quizNameBySlug[activeEditor.draft.quiz] || quizNameById[activeEditor.draft.quiz]) && (
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                const quizId = activeEditor.draft.quiz!
+                                const quizSlugOrId = activeEditor.draft.quiz!
+                                // Find quiz ID from slug (or use as-is if it's already an ID for backward compatibility)
+                                // quizSlugById maps ID -> slug, so we need to reverse lookup
+                                let quizId = quizSlugOrId
+                                if (quizNameBySlug[quizSlugOrId]) {
+                                  // It's a slug, find the ID
+                                  const foundId = Object.keys(quizSlugById).find(id => quizSlugById[id] === quizSlugOrId)
+                                  if (foundId) {
+                                    quizId = foundId
+                                  }
+                                }
+                                // If it's already an ID (quizNameById exists), use it as-is
                                 // Close modal immediately
                                 setProductPreviewModalOpen(false)
                                 // Also close the product editor modal
@@ -2404,7 +2459,7 @@ export function ProductsSection() {
                                     ...prev,
                                     draft: {
                                       ...prev.draft,
-                                      quiz: value === "none" ? null : value,
+                                      quiz: value === "none" ? null : value, // Store slug
                                     },
                                   }
                                 : prev
@@ -2412,6 +2467,8 @@ export function ProductsSection() {
                           }}
                           quizOptions={quizOptions}
                           quizNameById={quizNameById}
+                          quizSlugById={quizSlugById}
+                          quizNameBySlug={quizNameBySlug}
                           disabled={quizOptions.length === 0 && !activeEditor.draft.quiz}
                           open={quizDropdownOpen}
                           onOpenChange={setQuizDropdownOpen}

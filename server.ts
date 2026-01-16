@@ -1002,9 +1002,10 @@ app.get("/api/quizzes", async (req: Request, res: Response) => {
       });
 
       const quizData = response.content;
-      // Extract quizzes with id, name, and isManual fields
+      // Extract quizzes with id, slug, name, and isManual fields
       const quizzes = (quizData.quizzes || []).map((quiz: any) => ({
         id: quiz.id,
+        slug: quiz.slug,
         name: quiz.name,
         isManual: quiz.isManual ?? false, // Default to false for backward compatibility
       }));

@@ -48,12 +48,12 @@ export function ProductLinksEditor({ quiz }: ProductLinksEditorProps) {
   }, [repoOwnerFromLink, repoNameFromLink])
 
   const linkedProducts = useMemo(() => {
-    return getProductsLinkedToQuiz(quiz.id, products)
-  }, [quiz.id, products])
+    return getProductsLinkedToQuiz(quiz.slug, products)
+  }, [quiz.slug, products])
 
   const unlinkedProducts = useMemo(() => {
-    return products.filter((product) => product.quiz !== quiz.id)
-  }, [products, quiz.id])
+    return products.filter((product) => product.quiz !== quiz.slug)
+  }, [products, quiz.slug])
 
   // Collect all bundle IDs from linked products
   const allBundleIds = useMemo(() => {
