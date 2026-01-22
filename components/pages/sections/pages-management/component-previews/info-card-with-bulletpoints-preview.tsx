@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { convertContentRepoPathToRawUrl } from "@/lib/utils/repo-paths"
-import { getCardTitle, getColorValueForDisplay } from "@/lib/utils/component-value-formatter"
-import { ColorSwatch } from "./shared/color-swatch"
+import { getCardTitle, getColorValueForDisplay, formatPropertyName } from "@/lib/utils/component-value-formatter"
+import { useBrandColors, resolveBrandColor, getTextColorForBackground } from "@/lib/utils/brand-colors"
 import type { BasePreviewProps } from "./shared/preview-props"
 
 export function InfoCardWithBulletpointsPreview({
@@ -16,6 +16,7 @@ export function InfoCardWithBulletpointsPreview({
   repoBranch = "main",
 }: BasePreviewProps) {
   const [iconError, setIconError] = useState(false)
+  const { colors: brandColors, loading } = useBrandColors(repoOwner, repoName)
 
   // Extract card title
   const title = getCardTitle(value, componentKey)
@@ -24,10 +25,10 @@ export function InfoCardWithBulletpointsPreview({
   // Extract bulletpoints array
   const bulletpoints = Array.isArray(value?.bulletpoints) ? value.bulletpoints : []
 
-  // Find first bulletpoint with showIcon: true, or first bulletpoint if none have showIcon
-  const firstBulletpointWithIcon = bulletpoints.find((bp: any) => bp?.showIcon !== false) || bulletpoints[0]
-  const firstBulletpointText = firstBulletpointWithIcon?.text || null
-  const shouldShowIcon = firstBulletpointWithIcon?.showIcon !== false
+  // Always use the first bulletpoint, regardless of showIcon property
+  const firstBulletpoint = bulletpoints.length > 0 ? bulletpoints[0] : null
+  const firstBulletpointText = firstBulletpoint?.text || null
+  const shouldShowIcon = firstBulletpoint?.showIcon !== false
 
   // Extract icon info
   const iconSrc = value?.bulletpointIcon?.src || ""
@@ -47,36 +48,70 @@ export function InfoCardWithBulletpointsPreview({
     onClick()
   }
 
-  const handleColorSwatchClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onClick()
+  // Handle loading state
+  if (loading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="text-sm text-muted-foreground text-center">
+          Loading colors...
+        </div>
+      </div>
+    )
   }
 
-  // If no bulletpoints, fallback to standard card preview
+  // Resolve color to hex value
+  const resolvedColor = colorValue ? resolveBrandColor(colorValue, brandColors) : null
+  const colorStripTextColor = resolvedColor ? getTextColorForBackground(resolvedColor, brandColors) : null
+  const colorNameForDisplay = colorValue
+    ? colorValue.startsWith("#")
+      ? colorValue
+      : formatPropertyName(colorValue)
+    : null
+
+  // If no bulletpoints, fallback to standard card preview with color strip
   if (bulletpoints.length === 0 || !firstBulletpointText) {
     return (
-      <div className="space-y-3">
-        <div className="text-xl font-semibold line-clamp-1 text-foreground">
-          {title}
+      <div
+        className="w-full h-full flex flex-col cursor-pointer rounded-md overflow-hidden"
+        onClick={onClick}
+      >
+        <div className="flex-1 flex items-center justify-center bg-muted">
+          <div className="text-xl font-semibold line-clamp-1 text-foreground text-center px-4">
+            {title || "No title"}
+          </div>
         </div>
-        {colorValue && (
-          <ColorSwatch colorValue={colorValue} onClick={handleColorSwatchClick} />
+        {resolvedColor && colorStripTextColor && (
+          <div
+            className="h-8 flex items-center justify-center"
+            style={{
+              backgroundColor: resolvedColor,
+              color: colorStripTextColor,
+            }}
+          >
+            <span className="text-xs font-medium text-center px-2">
+              {colorNameForDisplay}
+            </span>
+          </div>
         )}
       </div>
     )
   }
 
-  // Show card title + first bulletpoint with icon
+  // Show card title + first bulletpoint with icon + color strip
   return (
-    <div className="group relative w-full h-full space-y-3 flex flex-col items-center justify-center ">
-      <div className="text-xl font-semibold line-clamp-1 text-foreground">
-        {title}
-      </div>
-      {colorValue && (
-        <ColorSwatch colorValue={colorValue} onClick={handleColorSwatchClick} />
-      )}
-      <div className="relative w-full ">
-        <div className="w-full flex items-center justify-center gap-3 p-2 rounded-md transition-all group-hover:opacity-70">
+    <div
+      className="group relative w-full h-full flex flex-col cursor-pointer rounded-md overflow-hidden"
+      onClick={onClick}
+    >
+      {/* Content wrapper with blur on hover */}
+      <div className="flex-1 flex flex-col transition-all group-hover:blur-sm">
+        {/* Title */}
+        <div className="text-xl font-semibold line-clamp-1 text-foreground text-center px-4 pt-2">
+          {title}
+        </div>
+
+        {/* Bulletpoint with icon */}
+        <div className="flex-1 flex items-center gap-3 p-2">
           {displayIconSrc && !iconError && shouldShowIcon && (
             <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
               <img
@@ -92,19 +127,36 @@ export function InfoCardWithBulletpointsPreview({
             {firstBulletpointText}
           </div>
         </div>
-        {remainingCount > 0 && (
-          <div className="absolute inset-0 top-auto hidden group-hover:flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-md">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleButtonClick}
-              className="pointer-events-auto"
-            >
-              {remainingCount} more bulletpoint{remainingCount !== 1 ? "s" : ""}
-            </Button>
-          </div>
-        )}
       </div>
+
+      {/* Color strip at bottom */}
+      {resolvedColor && colorStripTextColor && (
+        <div
+          className="h-8 flex items-center justify-center transition-opacity group-hover:opacity-70"
+          style={{
+            backgroundColor: resolvedColor,
+            color: colorStripTextColor,
+          }}
+        >
+          <span className="text-xs font-medium text-center px-2">
+            {colorNameForDisplay}
+          </span>
+        </div>
+      )}
+
+      {/* Hover overlay */}
+      {remainingCount > 0 && (
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-black/20 backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
+          >
+            {remainingCount} more bulletpoint{remainingCount !== 1 ? "s" : ""}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

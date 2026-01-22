@@ -127,8 +127,8 @@ export function StatsEditor({
     const { active, over } = event
 
     if (over && active.id !== over.id) {
-      const oldIndex = cards.findIndex((_, i) => `stat-card-${i}` === active.id)
-      const newIndex = cards.findIndex((_, i) => `stat-card-${i}` === over.id)
+      const oldIndex = cards.findIndex((_item: any, i: number) => `stat-card-${i}` === active.id)
+      const newIndex = cards.findIndex((_item: any, i: number) => `stat-card-${i}` === over.id)
 
       const newCards = arrayMove(cards, oldIndex, newIndex)
       onUpdate(["cards"], newCards)
@@ -151,7 +151,7 @@ export function StatsEditor({
   }
 
   const handleRemoveCard = (index: number) => {
-    const updatedCards = cards.filter((_, i) => i !== index)
+    const updatedCards = cards.filter((_item: any, i: number) => i !== index)
     onUpdate(["cards"], updatedCards)
   }
 
@@ -187,9 +187,9 @@ export function StatsEditor({
             </div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={cards.map((_, i) => `stat-card-${i}`)} strategy={verticalListSortingStrategy}>
+              <SortableContext items={cards.map((_item: any, i: number) => `stat-card-${i}`)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2">
-                  {cards.map((item, index) => (
+                  {cards.map((item: any, index: number) => (
                     <SortableStatCard
                       key={index}
                       item={item}
