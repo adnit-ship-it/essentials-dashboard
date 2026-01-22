@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Upload, Save, X, RefreshCw, ExternalLink, ChevronDown, Trash2, Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOrganizationStore } from "@/lib/stores/organization-store";
+import { useAnimationKey } from "@/lib/hooks/use-animation-key";
+import { getStaggeredAnimationStyle } from "@/lib/utils/animation";
 
 type AssetCategory = "brand" | "before-after" | "client-logo";
 
@@ -556,14 +558,18 @@ export function ImagesAssetsSection() {
     }
   };
 
-  const renderAssetCard = (asset: AssetItem) => {
+  const renderAssetCard = (asset: AssetItem, index: number) => {
     const pendingAsset = pending[asset.path];
     const preview = pendingAsset?.preview || asset.url;
     const isSaving = Boolean(saving[asset.path]);
     const isDeleting = Boolean(deleting[asset.path]);
 
     return (
-      <Card key={asset.path}>
+      <Card
+        key={asset.path}
+        className={cn("animate-fade-in-staggered")}
+        style={getStaggeredAnimationStyle(index)}
+      >
         <CardHeader>
           <CardTitle className="text-base">{asset.label}</CardTitle>
           <CardDescription className="capitalize">
@@ -823,8 +829,11 @@ export function ImagesAssetsSection() {
                       </CardContent>
                     </Card>
                   ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                      {items.map(renderAssetCard)}
+                    <div
+                      key={`${category}-${items.length}-${items.map((i) => i.path).join("-")}`}
+                      className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+                    >
+                      {items.map((item, index) => renderAssetCard(item, index))}
                     </div>
                   )}
                 </div>

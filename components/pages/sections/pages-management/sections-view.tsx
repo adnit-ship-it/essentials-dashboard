@@ -10,6 +10,8 @@ import {
   updatePageSection,
 } from "@/lib/utils/pages-helpers"
 import { cn } from "@/lib/utils"
+import { useAnimationKey } from "@/lib/hooks/use-animation-key"
+import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import {
   DndContext,
   closestCenter,
@@ -47,11 +49,12 @@ function SortableSectionCard({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    ...(getStaggeredAnimationStyle(index) as React.CSSProperties),
   }
 
   return (
     <div ref={setNodeRef} style={style}>
-      <Card className="relative">
+      <Card className={cn("relative", !isDragging && "animate-fade-in-staggered")}>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3 flex-1">
@@ -114,6 +117,9 @@ export function SectionsView() {
 
   const sections = getSectionsForPage(pagesData, selectedPageKey)
 
+  // Generate animation key that changes when sections data changes
+  const animationKey = useAnimationKey(sections, (section) => section.name)
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -172,7 +178,7 @@ export function SectionsView() {
           items={sections.map((s) => s.name)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="space-y-2">
+          <div key={animationKey} className="space-y-2">
             {sections.map((section, index) => (
               <SortableSectionCard
                 key={section.name}

@@ -24,6 +24,8 @@ import { fileToPendingUpload } from "@/lib/utils/file-uploads"
 import { uploadLogoFile, getFileSha } from "@/lib/services/logo-registry"
 import { generateNextLogoKey, generateLogoFileName, isLogoInUse } from "@/lib/utils/logo-registry"
 import type { LogoRegistryEntry } from "@/lib/types/pages"
+import { useAnimationKey } from "@/lib/hooks/use-animation-key"
+import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 
 // Convert relative path to GitHub raw URL for preview
 function getLogoPreviewUrl(path: string, repoOwner?: string, repoName?: string): string {
@@ -56,6 +58,10 @@ export function LogoRegistryView() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const logoRegistry = pagesData?.logoRegistry || {}
+
+  // Generate animation key that changes when logoRegistry changes
+  const logoEntries = Object.entries(logoRegistry)
+  const animationKey = useAnimationKey(logoEntries, ([key]) => key)
 
   const handleAddLogo = async () => {
     if (!fileInputRef.current?.files?.[0]) {
@@ -307,9 +313,13 @@ export function LogoRegistryView() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Object.entries(logoRegistry).map(([key, entry]) => (
-          <Card key={key}>
+      <div key={animationKey} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Object.entries(logoRegistry).map(([key, entry], index) => (
+          <Card
+            key={key}
+            className={cn("animate-fade-in-staggered")}
+            style={getStaggeredAnimationStyle(index)}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">{key}</CardTitle>

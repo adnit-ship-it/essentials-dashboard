@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Save, Plus, Trash2, Star } from "lucide-react"
+import { useAnimationKey } from "@/lib/hooks/use-animation-key"
+import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
+import { cn } from "@/lib/utils"
 
 interface Review {
   id: string
@@ -43,6 +46,9 @@ export function ReviewsSection() {
       category: "general",
     },
   ])
+
+  // Generate animation key that changes when reviews data changes
+  const animationKey = useAnimationKey(reviews, (review) => review.id)
 
   const [newReview, setNewReview] = useState({
     name: "",
@@ -203,9 +209,13 @@ export function ReviewsSection() {
       </Card>
 
       {/* Reviews List */}
-      <div className="space-y-4">
-        {reviews.map((review) => (
-          <Card key={review.id}>
+      <div key={animationKey} className="space-y-4">
+        {reviews.map((review, index) => (
+          <Card
+            key={review.id}
+            className={cn("animate-fade-in-staggered")}
+            style={getStaggeredAnimationStyle(index)}
+          >
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">

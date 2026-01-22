@@ -52,6 +52,8 @@ import { useProductStore } from "@/lib/stores/product-store"
 import { fetchGraphQL } from "@/lib/services/graphql"
 import type { Product } from "@/lib/types/products"
 import { fileToPendingUpload } from "@/lib/utils/file-uploads"
+import { useAnimationKey } from "@/lib/hooks/use-animation-key"
+import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import {
   DndContext,
   closestCenter,
@@ -734,6 +736,9 @@ export function ProductsSection() {
   const [productPreviewModalOpen, setProductPreviewModalOpen] = useState(false)
   const [selectedFetchedProductIds, setSelectedFetchedProductIds] = useState<Set<string>>(new Set())
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set())
+
+  // Generate animation key that changes when fetchedProducts data changes
+  const animationKey = useAnimationKey(fetchedProducts, (product) => product.id)
 
   const originalProductsRef = useRef<Record<string, Product>>({})
   const originalOrderRef = useRef<Product[]>([])
@@ -1859,6 +1864,9 @@ export function ProductsSection() {
     })
   }, [draftProducts])
 
+  // Generate animation key that changes when sortedDraftProducts data changes
+  const draftAnimationKey = useAnimationKey(sortedDraftProducts, (product) => product._localId)
+
   // Sensors for drag and drop
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1897,7 +1905,7 @@ export function ProductsSection() {
   }
 
   // Sortable Product Card Component
-  function SortableProductCard({ product }: { product: DraftProduct }) {
+  function SortableProductCard({ product, index }: { product: DraftProduct; index: number }) {
     const lowestPrice = Object.values(product.prices || {}).reduce<number | null>(
       (acc, value) => {
         if (typeof value !== "number") {
@@ -1948,6 +1956,7 @@ export function ProductsSection() {
       transform: CSS.Transform.toString(transform),
       transition,
       opacity: isDragging ? 0.5 : 1,
+      ...(getStaggeredAnimationStyle(index) as React.CSSProperties),
     }
 
     return (
@@ -1965,6 +1974,7 @@ export function ProductsSection() {
           }}
           className={cn(
             "cursor-pointer transition hover:border-accent-color/60 hover:shadow-md",
+            !isDragging && "animate-fade-in-staggered",
             product._meta.isDeleted && "opacity-60",
             product._meta.isDirty && !product._meta.isDeleted && "border-accent-color/50",
             isSelected && "ring-2 ring-accent-color"
@@ -2258,9 +2268,9 @@ export function ProductsSection() {
                 items={sortedDraftProducts.map((p) => p._localId)}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {sortedDraftProducts.map((product) => (
-                    <SortableProductCard key={product._localId} product={product} />
+                <div key={draftAnimationKey} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {sortedDraftProducts.map((product, index) => (
+                    <SortableProductCard key={product._localId} product={product} index={index} />
                   ))}
                 </div>
               </SortableContext>
@@ -3034,8 +3044,8 @@ export function ProductsSection() {
                   No products to preview
                 </div>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {fetchedProducts.map((product) => {
+                <div key={animationKey} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {fetchedProducts.map((product, index) => {
                     const isSelected = selectedFetchedProductIds.has(product.id)
                     const hasMissingFields = true // All fetched products have missing fields
                     
@@ -3043,12 +3053,15 @@ export function ProductsSection() {
                       <Card
                         key={product.id}
                         className={cn(
-                          "relative transition-all",
+                          "relative transition-all animate-fade-in-staggered",
                           isSelected
                             ? "border-accent-color ring-2 ring-accent-color/20"
-                            : "border-border",
-                          !isSelected && "opacity-60"
+                            : "border-border"
                         )}
+                        style={{
+                          ...getStaggeredAnimationStyle(index),
+                          opacity: isSelected ? undefined : 0.6,
+                        }}
                       >
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between gap-2">

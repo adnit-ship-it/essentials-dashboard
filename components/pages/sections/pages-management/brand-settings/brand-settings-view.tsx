@@ -10,6 +10,7 @@ import { BrandColorsEditor } from "./brand-colors-editor"
 import { FaviconManager } from "./favicon-manager"
 import { LogoSizesEditorWrapper } from "./logo-sizes-editor-wrapper"
 import { PageMetadataEditor } from "./page-metadata-editor"
+import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 
 export function BrandSettingsView() {
   const {
@@ -21,6 +22,18 @@ export function BrandSettingsView() {
     discardChanges,
   } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
+  const { pagesData } = usePagesStore()
+
+  // Generate animation key based on pagesData to trigger animations on refresh
+  const animationKey = pagesData ? JSON.stringify(pagesData).slice(0, 50) : "loading"
+
+  const brandSettingComponents = [
+    { Component: PageMetadataEditor, key: "page-metadata" },
+    { Component: BrandColorsEditor, key: "brand-colors" },
+    { Component: LogoRegistryView, key: "logo-registry" },
+    { Component: LogoSizesEditorWrapper, key: "logo-sizes" },
+    { Component: FaviconManager, key: "favicon" },
+  ]
 
   return (
     <div className="space-y-6">
@@ -74,11 +87,17 @@ export function BrandSettingsView() {
         </div>
       </div>
 
-      <PageMetadataEditor />
-      <BrandColorsEditor />
-      <LogoRegistryView />
-      <LogoSizesEditorWrapper />
-      <FaviconManager />
+      <div key={animationKey}>
+        {brandSettingComponents.map(({ Component, key }, index) => (
+          <div
+            key={key}
+            className="animate-fade-in-staggered pb-2 last:pb-0"
+            style={getStaggeredAnimationStyle(index)}
+          >
+            <Component />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

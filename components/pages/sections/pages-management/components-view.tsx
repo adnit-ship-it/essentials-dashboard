@@ -9,6 +9,9 @@ import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { findSectionInSections } from "@/lib/utils/pages-helpers"
 import { ComponentMapper } from "./component-mapper"
 import { SectionPreviewEditor } from "./component-editors/section-preview-editor"
+import { useAnimationKey } from "@/lib/hooks/use-animation-key"
+import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
+import { cn } from "@/lib/utils"
 import {
   updateComponentNestedProperty,
   addArrayItem,
@@ -68,6 +71,15 @@ export function ComponentsView() {
 
   const page = pagesData[selectedPageKey] as any
   const section = findSectionInSections(sectionsData, selectedSectionName)
+
+  // Generate animation key that changes when section components change
+  const animationKey = useAnimationKey(
+    section ? [section, ...section.components] : [],
+    (item, index) => {
+      if (index === 0) return `section-${selectedSectionName}`
+      return `component-${index - 1}`
+    }
+  )
 
   if (!section) {
     return (
@@ -195,26 +207,37 @@ export function ComponentsView() {
       </div>
 
       {/* Section Preview and Component Editors in a flex layout */}
-      <div className="flex flex-wrap gap-4 [&_[data-slot=card]]:py-4 [&_[data-slot=card]]:gap-4 [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:pb-3 [&_[data-slot=card-content]]:px-4">
+      <div
+        key={animationKey}
+        className="flex flex-wrap gap-4 [&_[data-slot=card]]:py-4 [&_[data-slot=card]]:gap-4 [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:pb-3 [&_[data-slot=card-content]]:px-4"
+      >
         {/* Section Preview - shown once for the entire section */}
-        <div className="w-full md:w-[calc(50%-0.5rem)] max-w-md">
+        <div
+          className={cn("w-full md:w-[calc(50%-0.5rem)] max-w-md animate-fade-in-staggered")}
+          style={getStaggeredAnimationStyle(0)}
+        >
           <SectionPreviewEditor sectionName={selectedSectionName} templateName={templateName} />
         </div>
 
         {/* Component Editors */}
         {section.components.map((component, index) => (
-          <ComponentMapper
+          <div
             key={index}
-            component={component}
-            componentIndex={index}
-            sectionName={selectedSectionName}
-            templateName={templateName}
-            onUpdate={(path, value) => handleComponentUpdate(index, path, value)}
-            onArrayAdd={(arrayKey, item) => handleArrayAdd(index, arrayKey, item)}
-            onArrayRemove={(arrayKey, itemIndex) =>
-              handleArrayRemove(index, arrayKey, itemIndex)
-            }
-          />
+            className={cn("w-full md:w-[calc(50%-0.5rem)] animate-fade-in-staggered")}
+            style={getStaggeredAnimationStyle(index + 1)}
+          >
+            <ComponentMapper
+              component={component}
+              componentIndex={index}
+              sectionName={selectedSectionName}
+              templateName={templateName}
+              onUpdate={(path, value) => handleComponentUpdate(index, path, value)}
+              onArrayAdd={(arrayKey, item) => handleArrayAdd(index, arrayKey, item)}
+              onArrayRemove={(arrayKey, itemIndex) =>
+                handleArrayRemove(index, arrayKey, itemIndex)
+              }
+            />
+          </div>
         ))}
       </div>
     </div>

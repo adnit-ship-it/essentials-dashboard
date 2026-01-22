@@ -10,6 +10,8 @@ import { reorderPages, updatePage, getPageKeys } from "@/lib/utils/pages-helpers
 import type { PageKey } from "@/lib/types/pages"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
+import { useAnimationKey } from "@/lib/hooks/use-animation-key"
+import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import {
   DndContext,
   closestCenter,
@@ -56,11 +58,12 @@ function SortablePageCard({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    ...(getStaggeredAnimationStyle(index) as React.CSSProperties),
   }
 
   return (
     <div ref={setNodeRef} style={style}>
-      <Card>
+      <Card className={cn(!isDragging && "animate-fade-in-staggered")}>
         <CardHeader>
           <div className="flex items-center gap-4">
             <div
@@ -140,6 +143,9 @@ export function PagesView({ pages }: PagesViewProps) {
   const { pagesData, selectPage, updatePagesData } = usePagesStore()
   const [editingPage, setEditingPage] = useState<PageKey | null>(null)
   const [editTitle, setEditTitle] = useState("")
+
+  // Generate animation key that changes when pages data changes
+  const animationKey = useAnimationKey(pages, (p) => p.key)
 
   if (!pagesData) return null
 
@@ -244,7 +250,7 @@ export function PagesView({ pages }: PagesViewProps) {
             items={pages.map((p) => p.key)}
             strategy={verticalListSortingStrategy}
           >
-            <div className="space-y-2">
+            <div key={animationKey} className="space-y-2">
               {pages.map(({ key, page }, index) => (
                 <SortablePageCard
                   key={key}

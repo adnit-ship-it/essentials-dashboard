@@ -10,6 +10,9 @@ import { QuizModal } from "@/components/ui/quiz-modal"
 import { LinkProductModal } from "@/components/ui/link-product-modal"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { FormPageContainer } from "@/components/pages/form/form-page-container"
+import { useAnimationKey } from "@/lib/hooks/use-animation-key"
+import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
+import { cn } from "@/lib/utils"
 
 export function FormsSection() {
   const {
@@ -31,6 +34,9 @@ export function FormsSection() {
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null)
   const [linkProductModalOpen, setLinkProductModalOpen] = useState(false)
   const [shouldGlowLinkButton, setShouldGlowLinkButton] = useState(false)
+
+  // Generate animation key that changes when quizzes data changes
+  const animationKey = useAnimationKey(quizzes, (quiz) => quiz.id)
 
   useEffect(() => {
     fetchQuizData()
@@ -204,11 +210,14 @@ export function FormsSection() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {quizzes.map((quiz) => (
+        <div key={animationKey} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quizzes.map((quiz, index) => (
             <Card
               key={quiz.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className={cn(
+                "cursor-pointer hover:shadow-md transition-shadow animate-fade-in-staggered"
+              )}
+              style={getStaggeredAnimationStyle(index)}
               onClick={() => handleQuizClick(quiz.id)}
             >
               <CardHeader>

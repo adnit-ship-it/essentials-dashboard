@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useAnimationKey } from "@/lib/hooks/use-animation-key"
+import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import type {
   BrandingColors,
   HeroLogoHeights,
@@ -98,6 +100,10 @@ export function BrandDesignSection() {
   })
   const [originalLogos, setOriginalLogos] =
     useState<Record<LogoSlot, LogoState> | null>(null)
+
+  // Generate animation key that changes when logos data changes
+  const logoSlots: LogoSlot[] = ["primary", "secondary"]
+  const animationKey = useAnimationKey(logoSlots, (slot) => `${slot}-${logos[slot].path}-${logos[slot].sha || ""}`)
 
   const [logoPaths, setLogoPaths] = useState<Record<LogoSlot, string>>({
     primary: DEFAULT_LOGO_PATHS.primary,
@@ -720,7 +726,7 @@ export function BrandDesignSection() {
     }
   }
 
-  const renderLogoCard = (slot: LogoSlot) => {
+  const renderLogoCard = (slot: LogoSlot, index: number) => {
     const logo = logos[slot]
     const pending = logo.pendingUpload
     // Use pending upload data URL if available, otherwise use the logo URL
@@ -728,7 +734,11 @@ export function BrandDesignSection() {
     const preview = pending?.dataUrl || logo.url
 
     return (
-      <Card key={slot}>
+      <Card
+        key={slot}
+        className={cn("animate-fade-in-staggered")}
+        style={getStaggeredAnimationStyle(index)}
+      >
         <CardHeader className="flex flex-row items-start justify-between space-y-0">
           <div>
             <CardTitle>{LOGO_LABELS[slot]}</CardTitle>
@@ -900,8 +910,8 @@ export function BrandDesignSection() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-6 md:grid-cols-2">
-            {(["primary", "secondary"] as LogoSlot[]).map(renderLogoCard)}
+          <div key={animationKey} className="grid gap-6 md:grid-cols-2">
+            {(["primary", "secondary"] as LogoSlot[]).map((slot, index) => renderLogoCard(slot, index))}
           </div>
 
           <Card>
