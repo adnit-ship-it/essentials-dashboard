@@ -11,6 +11,7 @@ import { MediaPreview } from "./media-preview"
 import { BeforeAfterPreview } from "./before-after-preview"
 import { CardPreview } from "./card-preview"
 import { StatsPreview } from "./stats-preview"
+import { ReviewsPreview } from "./reviews-preview"
 import { ProductCardPreview } from "./product-card-preview"
 import { InfoCardWithBulletpointsPreview } from "./info-card-with-bulletpoints-preview"
 import { BackgroundPreview } from "./background-preview"
@@ -38,9 +39,12 @@ export function getPreviewComponent(editorType: EditorType): React.ComponentType
     case "steps":
     case "faq":
     case "features":
-    case "reviews":
     case "statistics":
       return ArrayCountPreview
+
+    // Reviews component (enhanced preview with stars and review text)
+    case "reviews":
+      return ReviewsPreview
 
     // Buttons array (rendered preview with stripes)
     case "buttons":
