@@ -195,6 +195,98 @@ export function QuestionModal({
 
   const optionIds = useMemo(() => options.map((opt) => opt.id), [options])
 
+  // Check for unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (!question) {
+      // New question - check if any fields are filled
+      return (
+        formData.slug.trim() !== "" ||
+        formData.question.trim() !== "" ||
+        formData.displayQuestion.trim() !== "" ||
+        formData.placeholder.trim() !== "" ||
+        options.length > 0 ||
+        formData.icon.trim() !== "" ||
+        formData.image.trim() !== "" ||
+        formData.beforeImage.trim() !== "" ||
+        formData.afterImage.trim() !== "" ||
+        formData.quote.trim() !== "" ||
+        Object.keys(formData.calculatedValues).length > 0 ||
+        formData.candidateStatement.trim() !== "" ||
+        formData.heading1.trim() !== "" ||
+        formData.subtext.trim() !== "" ||
+        formData.dynamicSubtext.trim() !== ""
+      )
+    }
+
+    // Existing question - compare current form data with original question
+    const migratedQuestion = migrateIsRequiredToValidation(question)
+    
+    // Compare basic fields
+    if (
+      formData.slug !== (question.slug || "") ||
+      formData.type !== question.type ||
+      formData.question !== (question.question || "") ||
+      formData.displayQuestion !== (question.displayQuestion || "") ||
+      formData.placeholder !== (question.placeholder || "") ||
+      formData.required !== (migratedQuestion.required ?? false) ||
+      formData.api_type !== (question.api_type || "TEXT") ||
+      JSON.stringify(formData.validation) !== JSON.stringify(migratedQuestion.validation || []) ||
+      formData.icon !== (question.icon || "") ||
+      formData.displayAsRow !== (question.displayAsRow || false) ||
+      JSON.stringify(formData.optionImages) !== JSON.stringify(question.optionImages || [])
+    ) {
+      return true
+    }
+
+    // Compare type-specific fields
+    if (formData.type === "MARKETING") {
+      if (
+        formData.image !== (question.image || "") ||
+        formData.displayStatistics !== (question.displayStatistics || false)
+      ) {
+        return true
+      }
+    }
+
+    if (formData.type === "BEFORE_AFTER") {
+      if (
+        formData.beforeImage !== (question.beforeImage || "") ||
+        formData.afterImage !== (question.afterImage || "") ||
+        formData.quote !== (question.quote || "")
+      ) {
+        return true
+      }
+    }
+
+    if (formData.type === "MEDICAL_REVIEW") {
+      if (
+        JSON.stringify(formData.calculatedValues) !== JSON.stringify(question.calculatedValues || {}) ||
+        formData.candidateStatement !== (question.candidateStatement || "")
+      ) {
+        return true
+      }
+    }
+
+    if (formData.type === "PERFECT") {
+      if (
+        formData.heading1 !== (question.heading1 || "") ||
+        formData.subtext !== (question.subtext || "") ||
+        formData.dynamicSubtext !== (question.dynamicSubtext || "")
+      ) {
+        return true
+      }
+    }
+
+    // Compare options
+    if (requiresOptions) {
+      if (JSON.stringify(options) !== JSON.stringify(question.options || [])) {
+        return true
+      }
+    }
+
+    return false
+  }, [formData, options, question, requiresOptions])
+
   // Reset form when modal opens/closes or question changes
   useEffect(() => {
     if (isOpen) {
@@ -465,7 +557,10 @@ export function QuestionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        preventOutsideClick={hasUnsavedChanges}
+      >
         <DialogHeader>
           <DialogTitle>{question ? "Edit Question" : "Create Question"}</DialogTitle>
           <DialogDescription>

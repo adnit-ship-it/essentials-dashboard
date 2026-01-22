@@ -69,6 +69,9 @@ export function ComponentEditModal({
     }
   }, [open, initialValue])
 
+  // Check for unsaved changes
+  const hasUnsavedChanges = JSON.stringify(tempValue) !== JSON.stringify(initialValue)
+
   const handleUpdate = (path: string[], val: any) => {
     if (path.length === 0) {
       // Updating the entire value
@@ -216,7 +219,10 @@ export function ComponentEditModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        preventOutsideClick={hasUnsavedChanges}
+      >
         <DialogHeader>
           <DialogTitle className="capitalize">
             Edit {componentKey.replace(/([A-Z])/g, " $1").replace(/-/g, " ")}

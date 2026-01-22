@@ -42,6 +42,9 @@ export function NewFormStepModal({ isOpen, onClose, quiz, defaultProgressStepId 
     }
   }, [isOpen, quiz.progressSteps, defaultProgressStepId])
 
+  // Check for unsaved changes
+  const hasUnsavedChanges = title.trim() !== "" || heading1.trim() !== ""
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -86,7 +89,7 @@ export function NewFormStepModal({ isOpen, onClose, quiz, defaultProgressStepId 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent preventOutsideClick={hasUnsavedChanges}>
         <DialogHeader>
           <DialogTitle>Create New Form Step</DialogTitle>
           <DialogDescription>Add a new step to your quiz</DialogDescription>

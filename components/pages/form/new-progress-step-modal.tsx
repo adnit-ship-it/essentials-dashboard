@@ -38,6 +38,9 @@ export function NewProgressStepModal({ isOpen, onClose, quiz }: NewProgressStepM
     }
   }, [isOpen])
 
+  // Check for unsaved changes
+  const hasUnsavedChanges = name.trim() !== "" || description.trim() !== "" || color !== "#3B82F6"
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -62,7 +65,7 @@ export function NewProgressStepModal({ isOpen, onClose, quiz }: NewProgressStepM
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent preventOutsideClick={hasUnsavedChanges}>
         <DialogHeader>
           <DialogTitle>Create New Progress Step</DialogTitle>
           <DialogDescription>Add a new progress section to your quiz</DialogDescription>

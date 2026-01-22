@@ -37,6 +37,7 @@ export function LinkProductModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set())
+  const [initialSelectedProductIds, setInitialSelectedProductIds] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState("")
   const [sha, setSha] = useState<string | null>(null)
 
@@ -58,6 +59,7 @@ export function LinkProductModal({
           }
         })
         setSelectedProductIds(preSelected)
+        setInitialSelectedProductIds(new Set(preSelected))
       } else {
         // Fetch products if not in store
         fetchProducts()
@@ -106,6 +108,7 @@ export function LinkProductModal({
         }
       })
       setSelectedProductIds(preSelected)
+      setInitialSelectedProductIds(new Set(preSelected))
     } catch (err) {
       console.error("Failed to fetch products:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch products")
@@ -191,9 +194,18 @@ export function LinkProductModal({
     product.id.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  // Check for unsaved changes by comparing selected products with initial selection
+  const hasUnsavedChanges = 
+    selectedProductIds.size !== initialSelectedProductIds.size ||
+    Array.from(selectedProductIds).some(id => !initialSelectedProductIds.has(id)) ||
+    Array.from(initialSelectedProductIds).some(id => !selectedProductIds.has(id))
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent 
+        className="max-w-2xl max-h-[90vh] flex flex-col"
+        preventOutsideClick={hasUnsavedChanges}
+      >
         <DialogHeader>
           <DialogTitle>Link Quiz to Products</DialogTitle>
           <DialogDescription>

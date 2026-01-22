@@ -32,6 +32,9 @@ export function NewQuizModal({ isOpen, onClose, onSuccess }: NewQuizModalProps) 
   const [productBundleIds, setProductBundleIds] = useState<string[]>([])
   const [productBundleInput, setProductBundleInput] = useState("")
 
+  // Check for unsaved changes
+  const hasUnsavedChanges = name.trim() !== "" || description.trim() !== "" || productBundleIds.length > 0
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -77,7 +80,10 @@ export function NewQuizModal({ isOpen, onClose, onSuccess }: NewQuizModalProps) 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent 
+        className="max-w-2xl"
+        preventOutsideClick={hasUnsavedChanges}
+      >
         <DialogHeader>
           <DialogTitle>Create New Quiz</DialogTitle>
           <DialogDescription>

@@ -15,7 +15,7 @@ import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { LogoSelector } from "./component-editors/shared/logo-selector"
 import type { PageKey } from "@/lib/types/pages"
 import { isValidHeight, formatHeight } from "@/lib/utils/validation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle, Plus, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -155,11 +155,24 @@ export function LayoutEditorModal({
   const { pagesData, updatePagesData } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [initialPageData, setInitialPageData] = useState<any>(null)
+
+  // Store initial page data when modal opens
+  useEffect(() => {
+    if (open && pagesData && pagesData[pageKey]) {
+      setInitialPageData(JSON.parse(JSON.stringify(pagesData[pageKey])))
+    }
+  }, [open, pagesData, pageKey])
 
   if (!pagesData) return null
 
   const page = pagesData[pageKey] as any
   if (!page) return null
+
+  // Check for unsaved changes
+  const hasUnsavedChanges = initialPageData 
+    ? JSON.stringify(page) !== JSON.stringify(initialPageData)
+    : false
 
   const validateAndUpdate = (field: string, value: string, updateFn: (val: string) => void) => {
     if (field.includes("height") || field.includes("size")) {
@@ -229,7 +242,10 @@ export function LayoutEditorModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="max-w-3xl max-h-[90vh] overflow-y-auto"
+        preventOutsideClick={hasUnsavedChanges}
+      >
         <DialogHeader>
           <DialogTitle>Edit Layout: {page.title}</DialogTitle>
           <DialogDescription>
