@@ -3,6 +3,12 @@ import { createClient } from '@/lib/supabase/client'
 import { Organization as DbOrganization } from '@/lib/types/database'
 import { fetchGraphQL } from '@/lib/services/graphql'
 
+interface RepoHistoryEntry {
+  repoOwner: string
+  repoName: string
+  linkedAt: string
+}
+
 interface OrganizationStore {
   organizations: Array<{ id: string; name: string }>
   selectedOrgId: string | null
@@ -33,7 +39,35 @@ interface OrganizationStore {
   updatePartnerIntegrationBillOfRights: (params: { repoOwner: string; repoName: string; linkName?: string }) => Promise<void>
   validateRepositoryExists: (owner: string, repo: string) => Promise<boolean>
   clearRepositoryLink: (orgId: string) => Promise<void>
+  addRepoToOrganizationHistory: (orgId: string, repoOwner: string, repoName: string) => void
+  getOrganizationRepoHistory: (orgId: string | null) => RepoHistoryEntry[]
   clearError: () => void
+}
+
+const STORAGE_KEY_REPO_HISTORY = "cv.organizationRepoHistory"
+
+// Helper function to load repo history from localStorage
+const loadRepoHistoryFromStorage = (): Record<string, RepoHistoryEntry[]> => {
+  if (typeof window === "undefined") return {}
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY_REPO_HISTORY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (error) {
+    console.error('Error loading repo history from localStorage:', error)
+  }
+  return {}
+}
+
+// Helper function to save repo history to localStorage
+const saveRepoHistoryToStorage = (history: Record<string, RepoHistoryEntry[]>) => {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(STORAGE_KEY_REPO_HISTORY, JSON.stringify(history))
+  } catch (error) {
+    console.error('Error saving repo history to localStorage:', error)
+  }
 }
 
 export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
@@ -416,6 +450,12 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
         repoValidationError: null, // Clear any previous validation errors
       })
       
+      // Add to organization history
+      const { selectedOrgId } = get()
+      if (selectedOrgId) {
+        get().addRepoToOrganizationHistory(selectedOrgId, repoOwner, repoName)
+      }
+      
       // Validate the new repository
       await get().validateRepositoryExists(repoOwner, repoName)
     } catch (error) {
@@ -425,6 +465,34 @@ export const useOrganizationStore = create<OrganizationStore>((set, get) => ({
         isLoading: false,
       })
     }
+  },
+
+  addRepoToOrganizationHistory: (orgId: string, repoOwner: string, repoName: string) => {
+    if (!orgId) return
+    
+    const history = loadRepoHistoryFromStorage()
+    const orgHistory = history[orgId] || []
+    
+    // Remove any existing entry for this repo (deduplicate)
+    const filteredHistory = orgHistory.filter(
+      entry => !(entry.repoOwner === repoOwner && entry.repoName === repoName)
+    )
+    
+    // Add new entry at the beginning (most recent first)
+    const newEntry: RepoHistoryEntry = {
+      repoOwner,
+      repoName,
+      linkedAt: new Date().toISOString()
+    }
+    
+    history[orgId] = [newEntry, ...filteredHistory]
+    saveRepoHistoryToStorage(history)
+  },
+
+  getOrganizationRepoHistory: (orgId: string | null): RepoHistoryEntry[] => {
+    if (!orgId) return []
+    const history = loadRepoHistoryFromStorage()
+    return history[orgId] || []
   },
 
   clearError: () => {

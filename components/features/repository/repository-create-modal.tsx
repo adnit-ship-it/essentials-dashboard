@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { X, Loader2, AlertCircle, GitBranch, Sparkles, Link2, Check, Search, ChevronDown } from "lucide-react"
+import { X, Loader2, AlertCircle, GitBranch, Sparkles, Link2, Check, Search, ChevronDown, Clock } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
@@ -28,7 +28,7 @@ export function RepositoryCreateModal({
   onRepositoryCreated,
 }: RepositoryCreateModalProps) {
   const { createRepoFromTemplate, fetchTemplateRepos, fetchAvailableRepos, availableRepos, isLoading } = useRepositoryStore()
-  const { selectedOrgId, repoOwnerFromLink, repoNameFromLink, updatePartnerIntegrationBillOfRights } = useOrganizationStore()
+  const { selectedOrgId, repoOwnerFromLink, repoNameFromLink, updatePartnerIntegrationBillOfRights, addRepoToOrganizationHistory, getOrganizationRepoHistory } = useOrganizationStore()
   
   const [mode, setMode] = useState<Mode>("create")
   const [templates, setTemplates] = useState<TemplateRepo[]>([])
@@ -139,6 +139,22 @@ export function RepositoryCreateModal({
   }
 
   const selectedRepo = adnitRepos.find(repo => repo.id === selectedExistingRepo)
+  
+  // Get previously used repositories for the selected organization
+  const previouslyUsedRepos = selectedOrgId ? getOrganizationRepoHistory(selectedOrgId) : []
+  
+  // Create a set of previously used repo IDs for quick lookup
+  const previouslyUsedRepoIds = new Set(
+    previouslyUsedRepos.map(entry => `${entry.repoOwner}/${entry.repoName}`)
+  )
+  
+  // Filter previously used repos to only include those that exist in availableRepos
+  const availablePreviouslyUsedRepos = previouslyUsedRepos
+    .map(entry => {
+      const repoId = `${entry.repoOwner}/${entry.repoName}`
+      return adnitRepos.find(repo => repo.id === repoId)
+    })
+    .filter((repo): repo is NonNullable<typeof repo> => repo !== undefined)
 
   const loadTemplates = async () => {
     setLoadingTemplates(true)
@@ -196,11 +212,14 @@ export function RepositoryCreateModal({
             repoOwner: actualRepoOwner,
             repoName: actualRepoName,
           })
+          // Repository history is tracked in updatePartnerIntegrationBillOfRights
           toast.success(`Repository linked to organization successfully!`)
           onRepositoryCreated(actualRepoOwner, actualRepoName)
           onClose()
         } catch (linkError) {
           console.error("Error linking repository:", linkError)
+          // Still track the repo creation even if linking fails
+          addRepoToOrganizationHistory(selectedOrgId, actualRepoOwner, actualRepoName)
           // Still notify parent about creation, but don't link
           onRepositoryCreated(actualRepoOwner, actualRepoName)
           onClose()
@@ -465,6 +484,52 @@ export function RepositoryCreateModal({
             </form>
           ) : (
             <form onSubmit={handleLink} className="space-y-6">
+              {/* Previously Used Repositories Section */}
+              {selectedOrgId && availablePreviouslyUsedRepos.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Previously Used Repositories</Label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {availablePreviouslyUsedRepos.map((repo) => {
+                      const repoId = repo.id
+                      const isSelected = selectedExistingRepo === repoId
+                      return (
+                        <button
+                          key={repoId}
+                          type="button"
+                          onClick={() => handleRepoSelect(repoId)}
+                          className={cn(
+                            "flex items-center gap-3 p-3 rounded-md border-2 text-left transition-all",
+                            "hover:bg-accent-color hover:text-background-color",
+                            isSelected
+                              ? "border-[#DDF0E3] bg-gradient-to-r from-[#DDF0E3] to-[#D3EBEB]"
+                              : "border-border hover:border-[#DDF0E3]/50 bg-card"
+                          )}
+                        >
+                          <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <div className={cn(
+                              "font-medium truncate",
+                              isSelected ? "text-black" : "text-foreground"
+                            )}>
+                              {repo.repo}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {repoId}
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <Check className="h-4 w-4 shrink-0 text-black" />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Repositories previously linked to this organization
+                  </p>
+                </div>
+              )}
+
               {/* Existing Repository Selection */}
               <div className="space-y-2">
                 <Label htmlFor="existing-repo-select">Select Repository</Label>
@@ -550,7 +615,14 @@ export function RepositoryCreateModal({
                                 )}
                               >
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-medium">{repo.repo}</div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="font-medium">{repo.repo}</div>
+                                    {previouslyUsedRepoIds.has(repo.id) && (
+                                      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">
+                                        Previously used
+                                      </span>
+                                    )}
+                                  </div>
                                   <div className="text-xs text-muted-foreground">{repo.id}</div>
                                   {repo.description && (
                                     <div className="text-xs text-muted-foreground mt-0.5">
