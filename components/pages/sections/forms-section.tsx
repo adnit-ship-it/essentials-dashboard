@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useQuizStore } from "@/lib/stores/quiz-store"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Loader2, AlertCircle, ChevronLeft, Link2 } from "lucide-react"
+import { Plus, Loader2, AlertCircle, AlertTriangle, CheckCircle2, ChevronLeft, Link2 } from "lucide-react"
 import { NewQuizModal } from "@/components/ui/new-quiz-modal"
 import { QuizModal } from "@/components/ui/quiz-modal"
 import { LinkProductModal } from "@/components/ui/link-product-modal"
@@ -194,9 +194,21 @@ export function FormsSection() {
       </div>
 
       {feedback?.message && (
-        <Alert variant={feedback.type === "error" ? "destructive" : "default"}>
-          <AlertDescription>{feedback.message}</AlertDescription>
-        </Alert>
+        <div
+          className={cn(
+            "fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-lg border p-3 text-sm shadow-lg animate-in slide-in-from-top-2",
+            feedback.type === "error"
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          )}
+        >
+          {feedback.type === "error" ? (
+            <AlertTriangle className="h-4 w-4" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4" />
+          )}
+          <span>{feedback.message}</span>
+        </div>
       )}
 
       {quizzes.length === 0 ? (

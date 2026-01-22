@@ -2197,7 +2197,7 @@ export function ProductsSection() {
         {feedback && (
           <div
             className={cn(
-              "flex items-center gap-2 rounded-lg border p-3 text-sm",
+              "fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-lg border p-3 text-sm shadow-lg animate-in slide-in-from-top-2",
               feedback.type === "success"
                 ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                 : "border-red-200 bg-red-50 text-red-700"
