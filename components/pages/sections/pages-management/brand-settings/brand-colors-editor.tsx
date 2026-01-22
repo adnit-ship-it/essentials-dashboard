@@ -117,12 +117,24 @@ export function BrandColorsEditor() {
     }
   }
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger if clicking on input fields or buttons
+    const target = e.target as HTMLElement
+    if (
+      target.closest("button") ||
+      target.closest("input")
+    ) {
+      return
+    }
+    setIsOpen(!isOpen)
+  }
+
   return (
-    <Card>
-      <CardHeader 
-        className="cursor-pointer hover:bg-muted/50 transition-colors"
-        onClick={() => setIsOpen(!isOpen)}
-      >
+    <Card 
+      className="cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200"
+      onClick={handleCardClick}
+    >
+      <CardHeader>
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Brand Colors</CardTitle>
@@ -139,7 +151,7 @@ export function BrandColorsEditor() {
         </div>
       </CardHeader>
       {isOpen && (
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="grid gap-6 md:grid-cols-2">
           {(Object.keys(colors) as Array<keyof BrandingColors>).map((key) => (
             <div key={key} className="space-y-2">
