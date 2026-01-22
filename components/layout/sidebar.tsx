@@ -167,7 +167,7 @@ export function Sidebar({
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-sidebar border-r border-sidebar-border transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+          "fixed inset-y-0 left-0 z-50 bg-sidebar  border-r border-sidebar-border transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
           isCollapsed ? "w-16" : "w-80",
           isCollapsed ? "cursor-pointer" : ""
@@ -236,10 +236,10 @@ export function Sidebar({
 
               {/* Repository Info Card */}
               {repoNameFromLink && (
-                <Card className="bg-sidebar border-sidebar-border mt-2">
-                  <CardContent className="p-3 space-y-2">
+                <Card className="bg-sidebar border-sidebar-border ">
+                  <CardContent className="p-0">
                     {repoValidationError && (
-                      <div className="mb-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                      <div className="mb-2  bg-destructive/10 border border-destructive/20 rounded-md mx-3 mt-3">
                         <div className="flex items-start gap-2">
                           <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
@@ -264,67 +264,81 @@ export function Sidebar({
                       </div>
                     )}
                     {isValidatingRepo && (
-                      <div className="mb-2 p-2 bg-muted border border-border rounded-md">
+                      <div className="mb-2 p-2 bg-muted border border-border rounded-md mx-3 mt-3">
                         <div className="flex items-center gap-2">
                           <div className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-sidebar-foreground"></div>
                           <span className="text-xs text-sidebar-foreground/70">Validating repository...</span>
                         </div>
                       </div>
                     )}
-                    <div className="space-y-1.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1">
-                            Current Repository
-                          </div>
-                          <div className="text-sm font-medium text-sidebar-foreground truncate">
-                            {repoNameFromLink}
-                          </div>
+                    <div className="flex flex-col">
+                      {/* Strip 1: Current Repository */}
+                      <div className="flex-1 flex flex-col justify-center px-3 py-3">
+                        <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1">
+                          Repository 
+                        </div>
+                        <div className="text-sm font-medium text-sidebar-foreground truncate">
+                          {repoNameFromLink}
                         </div>
                       </div>
 
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1">
-                            Template
-                          </div>
-                          <div className="text-sm text-sidebar-foreground/80">
-                            {hostTemplateInfo?.templateName || "Unknown"}
-                          </div>
+                      {/* Divider */}
+                      <div className="h-px bg-sidebar-border mx-3"></div>
+
+                      {/* Strip 2: Template */}
+                      <div className="flex-1 flex flex-col justify-center px-3 py-3">
+                        <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1">
+                          Template
+                        </div>
+                        <div className="text-sm text-sidebar-foreground/80">
+                          {hostTemplateInfo?.templateName || "Unknown"}
                         </div>
                       </div>
-                      {/* Host Button - only show if repo exists and not already hosted */}
-                      {repoNameFromLink && !hostTemplateInfo?.hostedAt && (
-                        <Button
-                          onClick={handleHost}
-                          disabled={isHosting}
-                          className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] active:bg-gradient-to-r active:from-[#DDF0E3] active:to-[#D3EBEB] hover:text-black active:text-black transition-all duration-200 justify-start gap-3 px-3 disabled:opacity-50"
-                        >
-                          <Globe className="h-4 w-4 flex-shrink-0" />
-                          <span className="transition-opacity duration-300 whitespace-nowrap">
-                            {isHosting ? "Hosting..." : "Host"}
-                          </span>
-                        </Button>
-                      )}
 
-                      {hostTemplateInfo?.hostedAt && (
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1">
-                              Hosted At
+                      {/* Divider */}
+                      <div className="h-px bg-sidebar-border mx-3"></div>
+
+                      {/* Strip 3: Hosted At or Host Button */}
+                      <div className="flex-1 flex flex-col justify-center px-3 py-3 relative group">
+                        {hostTemplateInfo?.hostedAt ? (
+                          <>
+                            {/* Content wrapper with blur on hover */}
+                            <div className="transition-all group-hover:blur-sm">
+                              <div className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1">
+                                Hosted At
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-blue-600">
+                                <span className="truncate">{hostTemplateInfo.hostedAt}</span>
+                                <ExternalLink className="h-3 w-3 opacity-50 flex-shrink-0" />
+                              </div>
                             </div>
-                            <a
-                              href={hostTemplateInfo.hostedAt}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:underline transition-colors group"
+                            {/* Hover overlay */}
+                            <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm rounded-md">
+                              <Button
+                                onClick={() => window.open(hostTemplateInfo.hostedAt, '_blank', 'noopener,noreferrer')}
+                                variant="default"
+                                size="sm"
+                                className="pointer-events-auto"
+                              >
+                                Visit Link
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          repoNameFromLink && (
+                            <Button
+                              onClick={handleHost}
+                              disabled={isHosting}
+                              className="w-full bg-transparent border-sidebar-border text-sidebar-foreground hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] active:bg-gradient-to-r active:from-[#DDF0E3] active:to-[#D3EBEB] hover:text-black active:text-black transition-all duration-200 justify-start gap-3 px-3 disabled:opacity-50"
                             >
-                              <span className="truncate">{hostTemplateInfo.hostedAt}</span>
-                              <ExternalLink className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                            </a>
-                          </div>
-                        </div>
-                      )}
+                              <Globe className="h-4 w-4 flex-shrink-0" />
+                              <span className="transition-opacity duration-300 whitespace-nowrap">
+                                {isHosting ? "Hosting..." : "Host"}
+                              </span>
+                            </Button>
+                          )
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
