@@ -4,9 +4,11 @@ import type { EditorType } from "../component-mapper"
 import type { BasePreviewProps } from "./shared/preview-props"
 import { TextButtonPreview } from "./text-button-preview"
 import { ArrayCountPreview } from "./array-count-preview"
+import { BulletPointsPreview } from "./bulletpoints-preview"
 import { MediaPreview } from "./media-preview"
 import { BeforeAfterPreview } from "./before-after-preview"
 import { CardPreview } from "./card-preview"
+import { InfoCardWithBulletpointsPreview } from "./info-card-with-bulletpoints-preview"
 import { UIComponentPreview } from "./ui-component-preview"
 import { SimplePreview } from "./simple-preview"
 import { GenericPreview } from "./generic-preview"
@@ -26,13 +28,16 @@ export function getPreviewComponent(editorType: EditorType): React.ComponentType
 
     // Array count components
     case "buttons":
-    case "bulletPoints":
     case "steps":
     case "faq":
     case "features":
     case "reviews":
     case "statistics":
       return ArrayCountPreview
+
+    // Bulletpoints component (enhanced preview)
+    case "bulletPoints":
+      return BulletPointsPreview
 
     // Media components
     case "logo":
@@ -47,9 +52,12 @@ export function getPreviewComponent(editorType: EditorType): React.ComponentType
     // Card components
     case "productCard":
     case "infoCard":
-    case "infoCardWithBulletpoints":
     case "stats":
       return CardPreview
+
+    // Info card with bulletpoints (enhanced preview)
+    case "infoCardWithBulletpoints":
+      return InfoCardWithBulletpointsPreview
 
     // UI components
     case "badge":
