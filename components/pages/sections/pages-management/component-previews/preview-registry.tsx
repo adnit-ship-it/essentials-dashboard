@@ -8,6 +8,7 @@ import { BulletPointsPreview } from "./bulletpoints-preview"
 import { MediaPreview } from "./media-preview"
 import { BeforeAfterPreview } from "./before-after-preview"
 import { CardPreview } from "./card-preview"
+import { ProductCardPreview } from "./product-card-preview"
 import { InfoCardWithBulletpointsPreview } from "./info-card-with-bulletpoints-preview"
 import { BackgroundPreview } from "./background-preview"
 import { UIComponentPreview } from "./ui-component-preview"
@@ -51,10 +52,13 @@ export function getPreviewComponent(editorType: EditorType): React.ComponentType
       return BeforeAfterPreview
 
     // Card components
-    case "productCard":
     case "infoCard":
     case "stats":
       return CardPreview
+
+    // Product card (enhanced preview with image)
+    case "productCard":
+      return ProductCardPreview
 
     // Info card with bulletpoints (enhanced preview)
     case "infoCardWithBulletpoints":

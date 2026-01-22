@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Expand } from "lucide-react"
 import { getSectionPreviewImagePath } from "@/lib/utils/section-preview-images"
+import { cn } from "@/lib/utils"
 
 interface SectionPreviewEditorProps {
   sectionName: string
@@ -21,7 +22,13 @@ export function SectionPreviewEditor({ sectionName, templateName, onExpandClick 
   }
 
   return (
-    <Card className="aspect-square flex flex-col h-full">
+    <Card 
+      className={cn(
+        "aspect-square flex flex-col h-full",
+        onExpandClick && "cursor-pointer transition-all hover:shadow-md"
+      )}
+      onClick={onExpandClick}
+    >
       <CardHeader className="pb-2 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm">Section Preview</CardTitle>
@@ -30,7 +37,10 @@ export function SectionPreviewEditor({ sectionName, templateName, onExpandClick 
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={onExpandClick}
+              onClick={(e) => {
+                e.stopPropagation()
+                onExpandClick()
+              }}
               title="Expand"
             >
               <Expand className="h-4 w-4" />
