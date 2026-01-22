@@ -26,7 +26,12 @@ const DEFAULT_COLORS: BrandingColors = {
   accentColor2: "#F8F2EC",
 }
 
-export function BrandColorsEditor() {
+interface BrandColorsEditorProps {
+  isOpen?: boolean
+  onToggle?: () => void
+}
+
+export function BrandColorsEditor({ isOpen: controlledIsOpen, onToggle }: BrandColorsEditorProps = {}) {
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [colors, setColors] = useState<BrandingColors>(DEFAULT_COLORS)
   const [colorInputs, setColorInputs] = useState<BrandingColors>(DEFAULT_COLORS)
@@ -34,7 +39,11 @@ export function BrandColorsEditor() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [tailwindSha, setTailwindSha] = useState<string | null>(null)
-  const [isOpen, setIsOpen] = useState(false)
+  const [localIsOpen, setLocalIsOpen] = useState(false)
+  
+  // Use controlled state if provided, otherwise use local state
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : localIsOpen
+  const handleToggle = onToggle || (() => setLocalIsOpen(!localIsOpen))
 
   // Load colors and tailwind SHA on mount
   useEffect(() => {
@@ -126,7 +135,7 @@ export function BrandColorsEditor() {
     ) {
       return
     }
-    setIsOpen(!isOpen)
+    handleToggle()
   }
 
   return (

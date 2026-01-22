@@ -47,15 +47,24 @@ function getLogoPreviewUrl(path: string, repoOwner?: string, repoName?: string):
   return path
 }
 
-export function LogoRegistryView() {
+interface LogoRegistryViewProps {
+  isOpen?: boolean
+  onToggle?: () => void
+}
+
+export function LogoRegistryView({ isOpen: controlledIsOpen, onToggle }: LogoRegistryViewProps = {}) {
   const { pagesData, sectionsData, updatePagesData } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isOpen, setIsOpen] = useState(false)
+  const [localIsOpen, setLocalIsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Use controlled state if provided, otherwise use local state
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : localIsOpen
+  const handleToggle = onToggle || (() => setLocalIsOpen(!localIsOpen))
 
   const logoRegistry = pagesData?.logoRegistry || {}
 
@@ -275,7 +284,7 @@ export function LogoRegistryView() {
     ) {
       return
     }
-    setIsOpen(!isOpen)
+    handleToggle()
   }
 
   return (

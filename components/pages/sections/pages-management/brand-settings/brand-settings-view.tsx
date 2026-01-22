@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Loader2, RefreshCw, Save, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -24,6 +25,9 @@ export function BrandSettingsView() {
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const { pagesData } = usePagesStore()
 
+  // Track which component is currently open (only one at a time)
+  const [openComponentKey, setOpenComponentKey] = useState<string | null>(null)
+
   // Generate animation key based on pagesData to trigger animations on refresh
   const animationKey = pagesData ? JSON.stringify(pagesData).slice(0, 50) : "loading"
 
@@ -34,6 +38,11 @@ export function BrandSettingsView() {
     { Component: LogoSizesEditorWrapper, key: "logo-sizes" },
     { Component: FaviconManager, key: "favicon" },
   ]
+
+  const handleToggle = (key: string) => {
+    // If clicking the same component, close it. Otherwise, open the clicked one and close others
+    setOpenComponentKey(openComponentKey === key ? null : key)
+  }
 
   return (
     <div className="space-y-6">
@@ -94,7 +103,10 @@ export function BrandSettingsView() {
             className="animate-fade-in-staggered pb-2 last:pb-0"
             style={getStaggeredAnimationStyle(index)}
           >
-            <Component />
+            <Component 
+              isOpen={openComponentKey === key}
+              onToggle={() => handleToggle(key)}
+            />
           </div>
         ))}
       </div>

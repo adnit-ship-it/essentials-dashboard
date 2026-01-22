@@ -49,11 +49,20 @@ function convertLogoSizes(pagesData: any): {
   }
 }
 
-export function LogoSizesEditorWrapper() {
+interface LogoSizesEditorWrapperProps {
+  isOpen?: boolean
+  onToggle?: () => void
+}
+
+export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle }: LogoSizesEditorWrapperProps = {}) {
   const { pagesData, updatePagesData } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
-  const [isOpen, setIsOpen] = useState(false)
+  const [localIsOpen, setLocalIsOpen] = useState(false)
   const [templateName, setTemplateName] = useState<string | null>(null)
+  
+  // Use controlled state if provided, otherwise use local state
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : localIsOpen
+  const handleToggle = onToggle || (() => setLocalIsOpen(!localIsOpen))
 
   // Fetch template name from hostTemplate.json
   useEffect(() => {
@@ -117,7 +126,7 @@ export function LogoSizesEditorWrapper() {
     ) {
       return
     }
-    setIsOpen(!isOpen)
+    handleToggle()
   }
 
   return (

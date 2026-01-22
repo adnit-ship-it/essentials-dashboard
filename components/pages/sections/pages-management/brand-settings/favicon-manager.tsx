@@ -13,13 +13,22 @@ import { cn } from "@/lib/utils"
 
 const FAVICON_PATH = "public/favicon.ico"
 
-export function FaviconManager() {
+interface FaviconManagerProps {
+  isOpen?: boolean
+  onToggle?: () => void
+}
+
+export function FaviconManager({ isOpen: controlledIsOpen, onToggle }: FaviconManagerProps = {}) {
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [isOpen, setIsOpen] = useState(false)
+  const [localIsOpen, setLocalIsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Use controlled state if provided, otherwise use local state
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : localIsOpen
+  const handleToggle = onToggle || (() => setLocalIsOpen(!localIsOpen))
 
   const getFaviconUrl = () => {
     if (!repoOwnerFromLink || !repoNameFromLink) return ""
@@ -100,7 +109,7 @@ export function FaviconManager() {
     ) {
       return
     }
-    setIsOpen(!isOpen)
+    handleToggle()
   }
 
   return (

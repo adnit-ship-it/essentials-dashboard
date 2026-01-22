@@ -9,9 +9,18 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
-export function PageMetadataEditor() {
+interface PageMetadataEditorProps {
+  isOpen?: boolean
+  onToggle?: () => void
+}
+
+export function PageMetadataEditor({ isOpen: controlledIsOpen, onToggle }: PageMetadataEditorProps = {}) {
   const { pagesData, updatePagesData } = usePagesStore()
-  const [isOpen, setIsOpen] = useState(false)
+  const [localIsOpen, setLocalIsOpen] = useState(false)
+  
+  // Use controlled state if provided, otherwise use local state
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : localIsOpen
+  const handleToggle = onToggle || (() => setLocalIsOpen(!localIsOpen))
 
   if (!pagesData) {
     return (
@@ -61,7 +70,7 @@ export function PageMetadataEditor() {
     ) {
       return
     }
-    setIsOpen(!isOpen)
+    handleToggle()
   }
 
   return (
