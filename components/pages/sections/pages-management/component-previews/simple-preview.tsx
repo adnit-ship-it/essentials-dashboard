@@ -13,7 +13,7 @@ export function SimplePreview({ editorType, value }: SimplePreviewProps) {
   if (editorType === "number") {
     const numValue = typeof value === "number" ? value : (typeof value === "string" ? parseFloat(value) : 0)
     return (
-      <div className="text-3xl font-bold text-foreground">
+      <div className="text-3xl font-bold text-foreground  text-center" >
         {isNaN(numValue) ? "—" : numValue}
       </div>
     )

@@ -9,6 +9,7 @@ import { MediaPreview } from "./media-preview"
 import { BeforeAfterPreview } from "./before-after-preview"
 import { CardPreview } from "./card-preview"
 import { InfoCardWithBulletpointsPreview } from "./info-card-with-bulletpoints-preview"
+import { BackgroundPreview } from "./background-preview"
 import { UIComponentPreview } from "./ui-component-preview"
 import { SimplePreview } from "./simple-preview"
 import { GenericPreview } from "./generic-preview"
@@ -61,8 +62,11 @@ export function getPreviewComponent(editorType: EditorType): React.ComponentType
 
     // UI components
     case "badge":
-    case "background":
       return UIComponentPreview
+
+    // Background component (full-color preview)
+    case "background":
+      return BackgroundPreview
 
     // Simple components
     case "number":
