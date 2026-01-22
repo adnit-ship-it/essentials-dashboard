@@ -7,8 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { findSectionInSections } from "@/lib/utils/pages-helpers"
-import { ComponentMapper } from "./component-mapper"
+import { getComponentEditors } from "./component-mapper"
 import { SectionPreviewEditor } from "./component-editors/section-preview-editor"
+import { ComponentPreviewCard } from "./component-preview-card"
+import { ComponentEditModal } from "./component-edit-modal"
+import { PreviewImageModal } from "./preview-image-modal"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import { cn } from "@/lib/utils"
@@ -30,6 +33,14 @@ export function ComponentsView() {
   
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [templateName, setTemplateName] = useState<string | null>(null)
+  const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [editingComponent, setEditingComponent] = useState<{
+    key: string
+    componentIndex: number
+    componentKey: string
+    value: any
+    editorType: string
+  } | null>(null)
 
   // Fetch template name from hostTemplate.json
   useEffect(() => {
@@ -185,6 +196,32 @@ export function ComponentsView() {
     })
   }
 
+  const handleShowToggle = (componentIndex: number, componentKey: string, checked: boolean) => {
+    // Get the current component value
+    const component = section.components[componentIndex]
+    const currentValue = component[componentKey]
+    
+    // Update the show property
+    if (typeof currentValue === "object" && currentValue !== null && !Array.isArray(currentValue)) {
+      handleComponentUpdate(componentIndex, [componentKey, "show"], checked)
+    } else {
+      // If value is not an object, wrap it in an object with show property
+      handleComponentUpdate(componentIndex, [componentKey], { value: currentValue, show: checked })
+    }
+  }
+
+  // Flatten all component editors into a single array
+  const allEditors = section.components.flatMap((component, compIndex) =>
+    getComponentEditors(
+      component,
+      compIndex,
+      selectedSectionName,
+      (path, value) => handleComponentUpdate(compIndex, path, value),
+      (arrayKey, item) => handleArrayAdd(compIndex, arrayKey, item),
+      (arrayKey, itemIndex) => handleArrayRemove(compIndex, arrayKey, itemIndex)
+    )
+  )
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -206,40 +243,106 @@ export function ComponentsView() {
         </div>
       </div>
 
-      {/* Section Preview and Component Editors in a flex layout */}
+      {/* Grid Layout: Preview card + Component preview cards */}
       <div
         key={animationKey}
-        className="flex flex-wrap gap-4 [&_[data-slot=card]]:py-4 [&_[data-slot=card]]:gap-4 [&_[data-slot=card-header]]:px-4 [&_[data-slot=card-header]]:pb-3 [&_[data-slot=card-content]]:px-4"
+        className="flex flex-wrap gap-4 justify-center"
       >
-        {/* Section Preview - shown once for the entire section */}
+        {/* Section Preview - first item */}
         <div
-          className={cn("w-full md:w-[calc(50%-0.5rem)] max-w-md animate-fade-in-staggered")}
+          className={cn(
+            "w-full md:w-[350px] lg:w-[300px] aspect-square animate-fade-in-staggered max-w-full"
+          )}
           style={getStaggeredAnimationStyle(0)}
         >
-          <SectionPreviewEditor sectionName={selectedSectionName} templateName={templateName} />
+          <SectionPreviewEditor
+            sectionName={selectedSectionName}
+            templateName={templateName}
+            onExpandClick={() => setPreviewModalOpen(true)}
+          />
         </div>
 
-        {/* Component Editors */}
-        {section.components.map((component, index) => (
-          <div
-            key={index}
-            className={cn("w-full md:w-[calc(50%-0.5rem)] animate-fade-in-staggered")}
-            style={getStaggeredAnimationStyle(index + 1)}
-          >
-            <ComponentMapper
-              component={component}
-              componentIndex={index}
-              sectionName={selectedSectionName}
-              templateName={templateName}
-              onUpdate={(path, value) => handleComponentUpdate(index, path, value)}
-              onArrayAdd={(arrayKey, item) => handleArrayAdd(index, arrayKey, item)}
-              onArrayRemove={(arrayKey, itemIndex) =>
-                handleArrayRemove(index, arrayKey, itemIndex)
-              }
-            />
-          </div>
-        ))}
+        {/* Component Preview Cards */}
+        {allEditors.map((editor, index) => {
+          const showValue =
+            typeof editor.value === "object" &&
+            editor.value !== null &&
+            !Array.isArray(editor.value)
+              ? editor.value.show !== false
+              : true
+
+          return (
+            <div
+              key={editor.key}
+              className={cn(
+                "w-full md:w-[350px] lg:w-[300px] aspect-square animate-fade-in-staggered max-w-full"
+              )}
+              style={getStaggeredAnimationStyle(index + 1)}
+            >
+              <ComponentPreviewCard
+                componentKey={editor.componentKey}
+                value={editor.value}
+                componentIndex={editor.componentIndex}
+                editorType={editor.editorType}
+                onClick={() =>
+                  setEditingComponent({
+                    key: editor.key,
+                    componentIndex: editor.componentIndex,
+                    componentKey: editor.componentKey,
+                    value: editor.value,
+                    editorType: editor.editorType,
+                  })
+                }
+                onShowToggle={(checked) =>
+                  handleShowToggle(editor.componentIndex, editor.componentKey, checked)
+                }
+                show={showValue}
+              />
+            </div>
+          )
+        })}
       </div>
+
+      {/* Preview Image Modal */}
+      <PreviewImageModal
+        open={previewModalOpen}
+        onOpenChange={setPreviewModalOpen}
+        sectionName={selectedSectionName}
+        templateName={templateName}
+      />
+
+      {/* Component Edit Modal */}
+      {editingComponent && (
+        <ComponentEditModal
+          open={!!editingComponent}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingComponent(null)
+            }
+          }}
+          componentKey={editingComponent.componentKey}
+          value={editingComponent.value}
+          componentIndex={editingComponent.componentIndex}
+          sectionName={selectedSectionName}
+          editorType={editingComponent.editorType as any}
+          onSave={(path, value) => {
+            if (path.length === 0) {
+              // Updating the entire component value
+              handleComponentUpdate(editingComponent.componentIndex, [editingComponent.componentKey], value)
+            } else {
+              // Updating nested properties
+              handleComponentUpdate(editingComponent.componentIndex, [editingComponent.componentKey, ...path], value)
+            }
+            setEditingComponent(null)
+          }}
+          onArrayAdd={(arrayKey, item) => {
+            handleArrayAdd(editingComponent.componentIndex, `${editingComponent.componentKey}.${arrayKey}`, item)
+          }}
+          onArrayRemove={(arrayKey, itemIndex) => {
+            handleArrayRemove(editingComponent.componentIndex, `${editingComponent.componentKey}.${arrayKey}`, itemIndex)
+          }}
+        />
+      )}
     </div>
   )
 }

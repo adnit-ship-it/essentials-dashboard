@@ -27,6 +27,48 @@ import { ReviewsArrayEditor } from "./component-editors/reviews-array-editor"
 import { StatisticsArrayEditor } from "./component-editors/statistics-array-editor"
 import { GenericEditor } from "./component-editors/generic-editor"
 
+export type EditorType =
+  | "text"
+  | "button"
+  | "logo"
+  | "media"
+  | "bulletPoints"
+  | "logos"
+  | "steps"
+  | "faq"
+  | "before-after"
+  | "buttons"
+  | "number"
+  | "productCard"
+  | "stats"
+  | "infoCard"
+  | "infoCardWithBulletpoints"
+  | "badge"
+  | "boolean"
+  | "simpleText"
+  | "background"
+  | "features"
+  | "reviews"
+  | "statistics"
+  | "generic"
+
+export interface EditorMetadata {
+  key: string // unique identifier: `${componentIndex}-${componentKey}`
+  componentIndex: number
+  componentKey: string
+  value: any
+  editorType: EditorType
+  editorProps: {
+    componentKey: string
+    value: any
+    sectionName: string
+    componentIndex: number
+    onUpdate: (path: string[], value: any) => void
+    onArrayAdd?: (arrayKey: string, item: any) => void
+    onArrayRemove?: (arrayKey: string, itemIndex: number) => void
+  }
+}
+
 interface ComponentEditorProps {
   component: Component
   componentIndex: number
@@ -38,7 +80,148 @@ interface ComponentEditorProps {
 }
 
 /**
+ * Gets the editor type for a given component key
+ */
+function getEditorType(key: string): EditorType {
+  if (key === "heading" || key === "subheading" || key === "paragraph") {
+    return "text"
+  }
+
+  if (key === "ctaButton" || key === "button" || key === "button1" || key === "button2") {
+    return "button"
+  }
+
+  if (key === "logo") {
+    return "logo"
+  }
+
+  if (key === "media") {
+    return "media"
+  }
+
+  if (key === "bulletPoints") {
+    return "bulletPoints"
+  }
+
+  if (key === "logos") {
+    return "logos"
+  }
+
+  if (key === "steps") {
+    return "steps"
+  }
+
+  if (key === "faq") {
+    return "faq"
+  }
+
+  if (key === "before-after") {
+    return "before-after"
+  }
+
+  if (key === "buttons") {
+    return "buttons"
+  }
+
+  if (key === "marqueeSpeed") {
+    return "number"
+  }
+
+  if (key === "productCard") {
+    return "productCard"
+  }
+
+  if (key === "stats") {
+    return "stats"
+  }
+
+  if (key === "infoCard") {
+    return "infoCard"
+  }
+
+  if (key === "infoCard with bulletpoint") {
+    return "infoCardWithBulletpoints"
+  }
+
+  if (key === "product-card-badge" || key === "title-bar") {
+    return "badge"
+  }
+
+  if (key === "features") {
+    return "features"
+  }
+
+  if (key === "reviews") {
+    return "reviews"
+  }
+
+  if (key === "statistics") {
+    return "statistics"
+  }
+
+  if (key === "background") {
+    return "background"
+  }
+
+  if (key === "reverse" || key === "marqueePauseOnHover") {
+    return "boolean"
+  }
+
+  if (key === "shippingInfo" || key === "providerText") {
+    return "simpleText"
+  }
+
+  return "generic"
+}
+
+/**
+ * Returns a flat array of editor metadata for a component
+ * Maintains order: by component index, then by key name
+ */
+export function getComponentEditors(
+  component: Component,
+  componentIndex: number,
+  sectionName: string,
+  onUpdate: (path: string[], value: any) => void,
+  onArrayAdd?: (arrayKey: string, item: any) => void,
+  onArrayRemove?: (arrayKey: string, itemIndex: number) => void
+): EditorMetadata[] {
+  const keys = Object.keys(component).sort() // Sort keys for consistent ordering
+
+  return keys.map((key) => {
+    const value = component[key]
+    const uniqueKey = `${componentIndex}-${key}`
+    const editorType = getEditorType(key)
+
+    const editorProps = {
+      componentKey: key,
+      value,
+      sectionName,
+      componentIndex,
+      onUpdate: (path: string[], val: any) => onUpdate([key, ...path], val),
+      onArrayAdd: onArrayAdd
+        ? (arrayKey: string, item: any) => onArrayAdd(`${key}.${arrayKey}`, item)
+        : undefined,
+      onArrayRemove: onArrayRemove
+        ? (arrayKey: string, itemIndex: number) => onArrayRemove(`${key}.${arrayKey}`, itemIndex)
+        : undefined,
+    }
+
+    return {
+      key: uniqueKey,
+      componentIndex,
+      componentKey: key,
+      value,
+      editorType,
+      editorProps,
+    }
+  })
+}
+
+/**
  * Maps component keys to their appropriate editor components
+ * @deprecated This component is kept for backward compatibility during migration.
+ * Use getComponentEditors() instead for the new grid layout.
  */
 export function ComponentMapper({
   component,

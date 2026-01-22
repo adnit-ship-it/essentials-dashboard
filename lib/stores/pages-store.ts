@@ -104,6 +104,20 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
         fetchSectionsData(owner, repo),
       ])
 
+      // Log all components and their types
+      const componentsList: Array<{ section: string; componentIndex: number; types: string[] }> = []
+      sectionsResponse.sections.forEach((section) => {
+        section.components.forEach((component, componentIndex) => {
+          const componentTypes = Object.keys(component)
+          componentsList.push({
+            section: section.name,
+            componentIndex,
+            types: componentTypes,
+          })
+        })
+      })
+      console.log("Page Data - All Components and Types:", componentsList)
+
       set({
         originalPagesData: pagesResponse.pages,
         originalSectionsData: sectionsResponse.sections,
