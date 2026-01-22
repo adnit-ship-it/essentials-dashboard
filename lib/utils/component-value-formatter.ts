@@ -2,6 +2,28 @@
  * Utility functions for formatting component values for display in preview cards
  */
 
+export type TemplateType = "medivora" | "vitalara" | "serenova" | null
+
+/**
+ * Normalizes template name to standardized template type
+ */
+export function normalizeTemplateName(templateName: string | null): TemplateType {
+  if (!templateName) return null
+  
+  const normalized = templateName.toLowerCase().trim()
+  if (normalized === "medivora" || normalized.includes("medivora")) {
+    return "medivora"
+  }
+  if (normalized === "vitalara" || normalized.includes("vitalara")) {
+    return "vitalara"
+  }
+  if (normalized === "serenova" || normalized.includes("serenova")) {
+    return "serenova"
+  }
+  
+  return null
+}
+
 export function formatValueForDisplay(value: any, componentKey: string): string {
   if (value === null || value === undefined) {
     return "—"
@@ -168,33 +190,68 @@ export function getColorValueForDisplay(value: any, componentKey: string): strin
 /**
  * Extract image source from media/logo components
  */
-export function getImageSource(value: any): string | null {
+export function getImageSource(value: any, templateType: TemplateType = null): string | null {
   if (typeof value === "string") {
     return value
   }
 
   if (typeof value === "object" && value !== null) {
-    // Single media/logo object
-    if (value.src) {
-      return value.src
-    }
-    if (value.path) {
-      return value.path
-    }
-    // Array - get first item
+    // Handle arrays - check first item's structure based on template
     if (Array.isArray(value) && value.length > 0) {
       const first = value[0]
       if (typeof first === "object" && first !== null) {
+        // For before-after arrays, check image.src
+        if (first.image?.src) {
+          return first.image.src
+        }
+        // Fallback to common paths
         return first.src || first.path || null
       }
     }
-  }
 
-  if (Array.isArray(value) && value.length > 0) {
-    const first = value[0]
-    if (typeof first === "object" && first !== null) {
-      return first.src || first.path || null
+    // Single media/logo object - check template-specific paths
+    let objectToCheck: any = value
+
+    switch (templateType) {
+      case "medivora":
+      case "serenova":
+        // Check Medivora/Serenova specific paths
+        if (value.background?.src) return value.background.src
+        if (value.foreground?.src) return value.foreground.src
+        if (value.product?.src) return value.product.src
+        if (value.avatar?.src) return value.avatar.src
+        if (value.star?.src) return value.star.src
+        if (value.progressLine?.src) return value.progressLine.src
+        if (value.progressDots?.src) return value.progressDots.src
+        // Fall through to common paths
+        break
+      case "vitalara":
+        // Check Vitalara specific paths
+        if (value.background?.src) return value.background.src
+        if (value.foreground?.src) return value.foreground.src
+        if (value.product?.src) return value.product.src
+        if (value.avatar?.src) return value.avatar.src
+        if (value.star?.src) return value.star.src
+        if (value.progressLine?.src) return value.progressLine.src
+        if (value.progressDots?.src) return value.progressDots.src
+        // Fall through to common paths
+        break
+      default:
+        // For null template type, try all possible paths
+        if (value.background?.src) return value.background.src
+        if (value.foreground?.src) return value.foreground.src
+        if (value.product?.src) return value.product.src
+        if (value.avatar?.src) return value.avatar.src
+        if (value.star?.src) return value.star.src
+        if (value.progressLine?.src) return value.progressLine.src
+        if (value.progressDots?.src) return value.progressDots.src
+        break
     }
+
+    // Common paths for all templates
+    if (value.image?.src) return value.image.src
+    if (value.src) return value.src
+    if (value.path) return value.path
   }
 
   return null
@@ -203,12 +260,30 @@ export function getImageSource(value: any): string | null {
 /**
  * Format array count display text
  */
-export function getArrayDisplayText(value: any, componentKey: string): string {
-  if (!Array.isArray(value)) {
-    return ""
+export function getArrayDisplayText(value: any, componentKey: string, templateType: TemplateType = null): string {
+  let count = 0
+  let arrayToUse: any[] | null = null
+  
+  switch (true) {
+    case Array.isArray(value):
+      // Direct array (logos, reviews, steps, faq, buttons, before-after, statistics, features)
+      arrayToUse = value
+      count = value.length
+      break
+    case Array.isArray((value as any)?.items):
+      // Nested array with items property (bulletPoints.items)
+      arrayToUse = (value as any).items
+      count = (value as any).items.length
+      break
+    case templateType === "medivora" && componentKey === "stats" && Array.isArray((value as any)?.cards):
+      // Medivora: stats.cards[] (nested array)
+      arrayToUse = (value as any).cards
+      count = (value as any).cards.length
+      break
+    default:
+      return ""
   }
-
-  const count = value.length
+  
   const componentName = componentKey
     .replace(/([A-Z])/g, " $1")
     .replace(/-/g, " ")
@@ -234,6 +309,9 @@ export function getArrayDisplayText(value: any, componentKey: string): string {
     return `${count} Review${count !== 1 ? "s" : ""}`
   }
   if (componentKey === "statistics") {
+    return `${count} Statistic${count !== 1 ? "s" : ""}`
+  }
+  if (componentKey === "stats") {
     return `${count} Statistic${count !== 1 ? "s" : ""}`
   }
   if (componentKey === "before-after") {

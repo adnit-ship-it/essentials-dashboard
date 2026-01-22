@@ -284,6 +284,10 @@ export function ComponentsView() {
                 value={editor.value}
                 componentIndex={editor.componentIndex}
                 editorType={editor.editorType}
+                templateName={templateName}
+                repoOwner={repoOwnerFromLink}
+                repoName={repoNameFromLink}
+                repoBranch="main"
                 onClick={() =>
                   setEditingComponent({
                     key: editor.key,

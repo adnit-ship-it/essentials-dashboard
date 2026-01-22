@@ -50,6 +50,45 @@ export function repoPathToAssetSrc(repoPath: string): string {
   return `/${withoutPublic.replace(/^\/+/, "")}`
 }
 
+/**
+ * Converts a content repo image path to a GitHub raw URL
+ * @param imagePath - The image path from content repo (e.g., "/assets/images/logo.svg" or "public/assets/images/logo.svg")
+ * @param repoOwner - GitHub repository owner
+ * @param repoName - GitHub repository name
+ * @param branch - Repository branch (defaults to "main")
+ * @returns GitHub raw URL or original path if repo info is missing
+ */
+export function convertContentRepoPathToRawUrl(
+  imagePath: string | null | undefined,
+  repoOwner?: string | null,
+  repoName?: string | null,
+  branch: string = "main"
+): string | null {
+  if (!imagePath) return null
+  
+  // If already a full URL, return as-is
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath
+  }
+  
+  // If we don't have repo info, return null (can't construct URL)
+  if (!repoOwner || !repoName) {
+    return null
+  }
+  
+  // Remove leading slash if present
+  const cleanPath = imagePath.startsWith("/") ? imagePath.slice(1) : imagePath
+  
+  // Ensure it starts with "public/" if it's an asset path
+  const repoPath = cleanPath.startsWith("public/") ? cleanPath : `public/${cleanPath}`
+  
+  // Encode the path for URL
+  const encodedPath = encodeURIComponent(repoPath)
+  
+  // Construct GitHub raw URL
+  return `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${branch}/${encodedPath}`
+}
+
 
 
 

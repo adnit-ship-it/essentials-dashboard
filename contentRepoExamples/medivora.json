@@ -1,0 +1,752 @@
+[
+    {
+      "name": "Home Hero",
+      "components": [
+        {
+          "logo": {
+            "src": "/assets/images/brand/logo-primary-1.svg",
+            "alt": "Medivora logo",
+            "type": "svg-image",
+            "sizes": {
+              "mobile": "25px",
+              "tablet": "28px",
+              "desktop": "65px"
+            },
+            "show": true
+          },
+          "heading": {
+            "text": "Confidence, We Got You",
+            "type": "text",
+            "color": "accentColor1",
+            "show": true
+          },
+          "subheading": {
+            "text": "Personalized GLP-1 asdasMedication",
+            "type": "text",
+            "color": "accentColor1",
+            "show": true
+          },
+          "bulletPoints": {
+            "show": true,
+            "type": "bulletpoints",
+            "icon": {
+              "src": "/assets/images/brand/check.svg",
+              "color": "accentColor1"
+            },
+            "items": [
+              "Trusted by expasderts",
+              "Data-Driven Approasdach",
+              "Exceptional cardasdase"
+            ]
+          },
+          "ctaButton": {
+            "type": "button",
+            "text": "Take the Assessment",
+            "color": "white",
+            "backgroundColor": "accentColor1",
+            "show": true
+          },
+          "media": {
+            "background": {
+              "src": "/assets/images/brand/hero-bg.png",
+              "alt": "Abstract orange gradient background",
+              "type": "image",
+              "show": true
+            },
+            "foreground": {
+              "src": "/assets/images/brand/hero-img.png",
+              "alt": "Hand holding a GLP-1 medication vial",
+              "type": "image",
+              "sizes": {
+                "mobile": "222px",
+                "tablet": "480px",
+                "desktop": "600px"
+              },
+              "show": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Home Trusted By",
+      "components": [
+        {
+          "background": {
+            "color": "white"
+          },
+          "heading": {
+            "text": "Trusted By",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          },
+          "marqueeSpeed": 50,
+          "logos": [
+            {
+              "src": "/assets/images/clients/bloomberg.png",
+              "alt": "Bloomberg logo"
+            },
+            {
+              "src": "/assets/images/clients/forbes.png",
+              "alt": "Forbes logo"
+            },
+            {
+              "src": "/assets/images/clients/fortune.png",
+              "alt": "Fortune logo"
+            },
+            {
+              "src": "/assets/images/clients/new-york-times.png",
+              "alt": "The New York Times logo"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Home Discover",
+      "components": [
+        {
+          "heading": {
+            "text": "Discover Our Products",
+            "type": "text",
+            "color": "accentColor2",
+            "show": true
+          },
+          "subheading": {
+            "text": "Lose Weight Today",
+            "type": "text",
+            "color": "accentColor2",
+            "show": true
+          },
+          "productCard": {
+            "type": "product",
+            "productId": null,
+            "button": {
+              "text": "Buy Now",
+              "type": "button",
+              "color": "accentColor1",
+              "show": true
+            }
+          },
+          "background": {
+            "color": "white"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Home Testimonials",
+      "components": [
+        {
+          "background": {
+            "color": "white"
+          },
+          "heading": {
+            "text": "What Our Customers Have To Say",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          },
+          "marqueeSpeed": 50,
+          "media": {
+            "avatar": {
+              "src": "/assets/images/user.svg",
+              "alt": "User avatar icon",
+              "color": "accentColor1"
+            },
+            "star": {
+              "src": "/assets/images/star.svg",
+              "alt": "Star rating icon",
+              "color": "#AA992C"
+            }
+          },
+          "reviews": [
+            {
+              "name": "Jamie L.",
+              "stars": 5,
+              "review": "I feel so much more confident in my body thanks to Medivora.",
+              "order": 1
+            },
+            {
+              "name": "Sarah M.",
+              "stars": 5,
+              "review": "The weight loss journey has been incredible. I've never felt better!",
+              "order": 2
+            },
+            {
+              "name": "Michael R.",
+              "stars": 5,
+              "review": "Medivora changed my life. I'm down 30 pounds and feeling amazing.",
+              "order": 3
+            },
+            {
+              "name": "Emily T.",
+              "stars": 5,
+              "review": "Finally found a solution that actually works. Highly recommend!",
+              "order": 4
+            },
+            {
+              "name": "David K.",
+              "stars": 5,
+              "review": "The support team is incredible. They've been with me every step.",
+              "order": 5
+            },
+            {
+              "name": "Lisa P.",
+              "stars": 5,
+              "review": "I've tried everything before. This is the real deal.",
+              "order": 6
+            },
+            {
+              "name": "Robert W.",
+              "stars": 5,
+              "review": "Amazing results in just a few months. I'm so grateful.",
+              "order": 7
+            },
+            {
+              "name": "Jennifer H.",
+              "stars": 5,
+              "review": "The program is so easy to follow. I love the results!",
+              "order": 8
+            },
+            {
+              "name": "Thomas B.",
+              "stars": 5,
+              "review": "Best decision I ever made for my health and confidence.",
+              "order": 9
+            },
+            {
+              "name": "Amanda F.",
+              "stars": 5,
+              "review": "I can't believe how much my life has changed. Thank you Medivora!",
+              "order": 10
+            },
+            {
+              "name": "Jessica R.",
+              "stars": 5,
+              "review": "The transformation has been incredible. I feel like a new person.",
+              "order": 11
+            },
+            {
+              "name": "Christopher L.",
+              "stars": 5,
+              "review": "Finally found something that works for me. Amazing results!",
+              "order": 12
+            },
+            {
+              "name": "Nicole M.",
+              "stars": 5,
+              "review": "I'm so happy with my progress. This program is life-changing.",
+              "order": 13
+            },
+            {
+              "name": "Kevin S.",
+              "stars": 5,
+              "review": "The support and results are beyond my expectations.",
+              "order": 14
+            },
+            {
+              "name": "Rachel G.",
+              "stars": 5,
+              "review": "I've never felt more confident and healthy in my life.",
+              "order": 15
+            },
+            {
+              "name": "Daniel T.",
+              "stars": 5,
+              "review": "This is exactly what I needed. The results speak for themselves.",
+              "order": 16
+            },
+            {
+              "name": "Melissa K.",
+              "stars": 5,
+              "review": "I'm amazed at how much I've accomplished. Thank you!",
+              "order": 17
+            },
+            {
+              "name": "Andrew P.",
+              "stars": 5,
+              "review": "The best investment I've ever made in myself.",
+              "order": 18
+            },
+            {
+              "name": "Stephanie W.",
+              "stars": 5,
+              "review": "I can't recommend this enough. It's truly life-changing.",
+              "order": 19
+            },
+            {
+              "name": "Brandon H.",
+              "stars": 5,
+              "review": "The results have exceeded all my expectations. Incredible!",
+              "order": 20
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Home Statistics",
+      "components": [
+        {
+          "heading": {
+            "text": "Clinically Proven To Help You Lose Weight",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          },
+          "media": {
+            "image": {
+              "src": "/assets/images/wl-graph.png",
+              "alt": "Weight loss progress graph",
+              "type": "image",
+              "show": true
+            }
+          },
+          "stats": {
+            "type": "stats",
+            "show": true,
+            "cards": [
+              {
+                "value": "14.9%",
+                "description": "Average reduction in body weight"
+              },
+              {
+                "value": "6x",
+                "description": "More weight loss than diet\nand exercise alone"
+              },
+              {
+                "value": "100%",
+                "description": "Online Personalized Support"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Home Journey",
+      "components": [
+        {
+          "heading": {
+            "text": "Your Weight Loss Journey",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          },
+          "media": {
+            "progressLine": {
+              "color": "accentColor1"
+            },
+            "background": {
+              "color": "bodyColor"
+            },
+            "progressDots": {
+              "color": "accentColor1"
+            }
+          },
+          "steps": [
+            {
+              "title": "Case Created",
+              "subtext": "Fill out the form and get excited!",
+              "icon": {
+                "src": "/assets/images/case-created.svg",
+                "alt": "Case created icon",
+                "type": "case-created",
+                "color": "#A75809"
+              },
+              "order": 1
+            },
+            {
+              "title": "Virtual Consult",
+              "subtext": "Get matched and meet with a provider",
+              "icon": {
+                "src": "/assets/images/virtual-consult.svg",
+                "alt": "Virtual consult icon",
+                "type": "virtual-consult",
+                "color": "#A75809"
+              },
+              "order": 2
+            },
+            {
+              "title": "Patient Approved",
+              "subtext": "Receive customer service support along the way",
+              "icon": {
+                "src": "/assets/images/patient-approved.svg",
+                "alt": "Patient approved icon",
+                "type": "patient-approved",
+                "color": "#A75809"
+              },
+              "order": 3
+            },
+            {
+              "title": "Prescription Sent",
+              "subtext": "Fast and free shipping and delivery",
+              "icon": {
+                "src": "/assets/images/prescription.svg",
+                "alt": "Prescription sent icon",
+                "type": "prescription",
+                "color": "#A75809"
+              },
+              "order": 4
+            },
+            {
+              "title": "Case Closed",
+              "subtext": "Start seeing results! Look into other products",
+              "icon": {
+                "src": "/assets/images/case-closed.svg",
+                "alt": "Case closed icon",
+                "type": "case-closed",
+                "color": "#A75809"
+              },
+              "order": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Home CTA",
+      "components": [
+        {
+          "heading": {
+            "text": "Real Results",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          },
+          "subheading": {
+            "text": "See why Medivora is the #1 choice for GLP-1 Medications",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          },
+          "media": {
+            "product": {
+              "src": "/assets/images/products.png",
+              "alt": "Assortment of Medivora products",
+              "type": "image",
+              "heights": {
+                "mobile": "222px",
+                "desktop": "auto"
+              },
+              "show": true
+            }
+          }
+        },
+        {
+          "buttons": [
+            {
+              "text": "1000+ Patients",
+              "type": "button",
+              "color": "accentColor1",
+              "backgroundColor": "e6cfb6",
+              "show": true
+            },
+            {
+              "text": "Worldwide Care",
+              "type": "button",
+              "color": "accentColor1",
+              "backgroundColor": "#e6cfb6",
+              "show": true
+            }
+          ]
+        },
+        {
+          "bulletPoints": {
+            "show": true,
+            "type": "bulletpoints",
+            "icon": {
+              "src": "/assets/images/checkmark-star.svg",
+              "color": "#AA992C"
+            },
+            "items": [
+              "No Hidden Fees",
+              "Free, Expedited Delivery",
+              "Doctor-led Pldsans & Coaching",
+              "Money Back Guarantee"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Home Before After",
+      "components": [
+        {
+          "heading": {
+            "text": "Before & After Medivora",
+            "type": "text",
+            "color": "accentColor1",
+            "show": true
+          }
+        },
+        {
+          "before-after": [
+            {
+              "image": {
+                "src": "/assets/images/before-after-1.png",
+                "alt": "Before and after photo 1",
+                "type": "image",
+                "order": 1
+              }
+            },
+            {
+              "image": {
+                "src": "/assets/images/before-after-2.png",
+                "alt": "Before and after photo 2",
+                "type": "image",
+                "order": 2
+              }
+            },
+            {
+              "image": {
+                "src": "/assets/images/before-after-3.png",
+                "alt": "Before and after photo 3",
+                "type": "image",
+                "order": 3
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Home IntakeForm",
+      "components": [
+        {
+          "heading": {
+            "text": "Reach your goal weight",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          },
+          "paragraph": {
+            "text": "fast and easy with Medivora",
+            "type": "text",
+            "color": "accentColor1",
+            "show": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "About Hero",
+      "components": [
+        {
+          "logo": {
+            "src": "/assets/images/brand/logo-primary-1.svg",
+            "alt": "Medivora primary logo",
+            "type": "svg-image",
+            "show": true
+          }
+        },
+        {
+          "heading": {
+            "text": "About Us",
+            "type": "text",
+            "color": "accentColor1",
+            "show": true
+          }
+        },
+        {
+          "subheading": {
+            "text": "Quality is our guarantee!",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          }
+        },
+        {
+          "paragraph": {
+            "text": "Medivora works asdto change the game in the health and wellness space allowing for certified medical care, made simple and effective.",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          }
+        },
+        {
+          "media": {
+            "image": {
+              "src": "/assets/images/products-alt.png",
+              "alt": "Medivora product assortment",
+              "type": "image",
+              "show": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "About Trusted By",
+      "components": [
+        {
+          "heading": {
+            "text": "Trusted By",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          }
+        },
+        {
+          "marqueeSpeed": 50,
+          "logos": [
+            {
+              "src": "/assets/images/clients/bloomberg.png",
+              "alt": "Bloomberg logo"
+            },
+            {
+              "src": "/assets/images/clients/forbes.png",
+              "alt": "Forbes logo"
+            },
+            {
+              "src": "/assets/images/clients/fortune.png",
+              "alt": "Fortune logo"
+            },
+            {
+              "src": "/assets/images/clients/new-york-times.png",
+              "alt": "The New York Times logo"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "About Stats",
+      "components": [
+        {
+          "heading": {
+            "text": "Your Satisfaction Is Our Priority",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          }
+        },
+        {
+          "bulletPoints": {
+            "show": true,
+            "type": "bulletpoints",
+            "icon": {
+              "src": "/assets/images/checkmark-star.svg",
+              "color": "#AA992C"
+            },
+            "items": [
+              "No Hidden Fees",
+              "Expedited Delivery",
+              "Doctor-led Plans & Coaching",
+              "Money Back Guarantee"
+            ]
+          }
+        },
+        {
+          "infoCard": {
+            "type": "info-card",
+            "show": true,
+            "title": "Unlimited 24/7 Support Included",
+            "description": "Medivora provides 24/7 access to a dedicated team of specialists, ensuring you have the support you need around the clock. With unlimited appointments, messaging and support, you can confidently reach out for guidance, ask questions, or address concerns at any time."
+          }
+        },
+        {
+          "infoCard with bulletpoint": {
+            "type": "info-card-with-bulletpoint",
+            "show": true,
+            "title": "Hand Selected Providers",
+            "description": "Medivora physicians are here to guide you every step of the way, bringing both their expertise and genuine care to keep you supported.",
+            "bulletpoints": [
+              {
+                "text": "Certified doctors and clinicians",
+                "showIcon": false
+              }
+            ],
+            "bulletpointIcon": {
+              "src": "/assets/images/checkmark-star.svg",
+              "color": "#AA992C"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contact Hero",
+      "components": [
+        {
+          "logo": {
+            "src": "/assets/images/brand/logo-secondary-1.svg",
+            "alt": "Medivora secondary logo",
+            "type": "svg-image",
+            "show": true
+          },
+          "heading": {
+            "text": "Contact Us: Fill out the form and hear back from us",
+            "type": "text",
+            "color": "bodyColor",
+            "show": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products Hero",
+      "components": [
+        {
+          "heading": {
+            "text": "Explore Our Products",
+            "type": "text",
+            "color": "accentColor1",
+            "show": true
+          }
+        },
+        {
+          "subheading": {
+            "text": "Personalized GLP-1 Medication",
+            "type": "text",
+            "color": "accentColor1",
+            "show": true
+          }
+        },
+        {
+          "logo": {
+            "src": "/assets/images/brand/logo-primary-1.svg",
+            "alt": "Medivora primary logo",
+            "type": "svg-image",
+            "sizes": {
+              "mobile": "24px",
+              "tablet": "28px",
+              "desktop": "28px"
+            },
+            "show": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products Discover",
+      "components": [
+        {
+          "heading": {
+            "text": "Discover Our Products",
+            "type": "text",
+            "color": "white",
+            "show": true
+          },
+          "subheading": {
+            "text": "Lose Weight Today",
+            "type": "text",
+            "color": "white",
+            "show": true
+          },
+          "productCard": {
+            "type": "product",
+            "productId": null,
+            "button": {
+              "text": "Buy Now",
+              "type": "button",
+              "color": "accentColor1",
+              "show": true
+            }
+          }
+        }
+      ]
+    }
+  ]

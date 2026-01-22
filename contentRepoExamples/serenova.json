@@ -1,0 +1,593 @@
+[
+    {
+        "name": "Home Hero",
+        "components": [
+            {
+                "logo": {
+                    "src": "/assets/images/brand/logo-primary-1.svg",
+                    "alt": "brand logo",
+                    "type": "svg-image",
+                    "show": true
+                },
+                "heading": {
+                    "text": "Confidence, We Got You",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                },
+                "subheading": {
+                    "text": "Personalized GLP-1 Medication",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                },
+                "bulletPoints": {
+                    "show": true,
+                    "type": "bulletpoints",
+                    "icon": {
+                        "src": "/assets/images/brand/check.svg",
+                        "color": "accentColor1"
+                    },
+                    "items": [
+                        "Trusted by experts",
+                        "Data-Driven Approach",
+                        "Exceptional care"
+                    ]
+                },
+                "ctaButton": {
+                    "type": "button",
+                    "text": "Take the Assessment",
+                    "color": "white",
+                    "backgroundColor": "accentColor1",
+                    "show": true
+                },
+                "media": {
+                    "background": {
+                        "src": "/assets/images/brand/hero-bg.png",
+                        "alt": "Abstract orange gradient background"
+                    },
+                    "foreground": {
+                        "src": "/assets/images/brand/hero-img.png",
+                        "alt": "Hand holding a GLP-1 medication vial",
+                        "sizes": {
+                            "mobile": "222px",
+                            "tablet": "480px",
+                            "desktop": "600px"
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "name": "Home Discover",
+        "components": [
+            {
+                "heading": {
+                    "text": "Discover Our Products",
+                    "type": "text",
+                    "color": "white",
+                    "show": true
+                },
+                "subheading": {
+                    "text": "Lose Weight Today",
+                    "type": "text",
+                    "color": "white",
+                    "show": true
+                },
+                "media": {
+                    "background": {
+                        "src": "/assets/images/discover-bg.png",
+                        "alt": "Abstract orange gradient background"
+                    }
+                },
+                "productCard": {
+                    "type": "product",
+                    "productId": "ozempic-injection",
+                    "button": {
+                        "text": "Buy Now",
+                        "type": "button",
+                        "color": "accentColor1",
+                        "show": true
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "name": "Trusted By",
+        "components": [
+            {
+                "heading": {
+                    "text": "Trusted By",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                },
+                "marqueeSpeed": 50,
+                "logos": [
+                    {
+                        "src": "/assets/images/clients/bloomberg.png",
+                        "alt": "Bloomberg logo"
+                    },
+                    {
+                        "src": "/assets/images/clients/forbes.png",
+                        "alt": "Forbes logo"
+                    },
+                    {
+                        "src": "/assets/images/clients/fortune.png",
+                        "alt": "Fortune logo"
+                    },
+                    {
+                        "src": "/assets/images/clients/healthline.png",
+                        "alt": "Healthline logo"
+                    },
+                    {
+                        "src": "/assets/images/clients/new-york-times.png",
+                        "alt": "The New York Times logo"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "Home Journey",
+        "components": [
+            {
+                "heading": {
+                    "text": "Our Journey",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                },
+                "button": {
+                    "text": "Start Today",
+                    "type": "button",
+                    "color": "accentColor1",
+                    "backgroundColor": "accentColor1",
+                    "show": true
+                },
+                "media": {
+                    "progressLine": {
+                        "color": "#d9d9d9"
+                    },
+                    "progressDots": {
+                        "color": "accentColor1"
+                    }
+                },
+                "steps": [
+                    {
+                        "title": "Case Created",
+                        "subtext": "Fill out the form and get excited!",
+                        "icon": {
+                            "src": "/assets/images/case-created.svg",
+                            "alt": "Case created icon",
+                            "type": "svg-image",
+                            "color": "#A75809"
+                        },
+                        "order": 1
+                    },
+                    {
+                        "title": "Virtual Consult",
+                        "subtext": "Get matched and meet with a provider",
+                        "icon": {
+                            "src": "/assets/images/virtual-consult.svg",
+                            "alt": "Virtual consult icon",
+                            "type": "svg-image",
+                            "color": "#A75809"
+                        },
+                        "order": 2
+                    },
+                    {
+                        "title": "Patient Approved",
+                        "subtext": "Receive customer service support along the way",
+                        "icon": {
+                            "src": "/assets/images/patient-approved.svg",
+                            "alt": "Patient approved icon",
+                            "type": "svg-image",
+                            "color": "#A75809"
+                        },
+                        "order": 3
+                    },
+                    {
+                        "title": "Prescription Sent",
+                        "subtext": "Fast and free shipping and delivery",
+                        "icon": {
+                            "src": "/assets/images/prescription.svg",
+                            "alt": "Prescription sent icon",
+                            "type": "svg-image",
+                            "color": "#A75809"
+                        },
+                        "order": 4
+                    },
+                    {
+                        "title": "Case Closed",
+                        "subtext": "Start seeing results! Look into other products",
+                        "icon": {
+                            "src": "/assets/images/case-closed.svg",
+                            "alt": "Case closed icon",
+                            "type": "svg-image",
+                            "color": "#A75809"
+                        },
+                        "order": 5
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "Home Results",
+        "components": [
+            {
+                "heading": {
+                    "text": "Results",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                }
+            },
+            {
+                "subheading": {
+                    "text": "See why Serenova is the #1 choice for GLP-1 Medications",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                }
+            },
+            {
+                "buttons": [
+                    {
+                        "text": "1000+ Patients",
+                        "type": "button",
+                        "color": "accentColor1",
+                        "backgroundColor": "accentColor1",
+                        "show": true
+                    },
+                    {
+                        "text": "Worldwide Care",
+                        "type": "button",
+                        "color": "accentColor1",
+                        "backgroundColor": "accentColor1",
+                        "show": true
+                    }
+                ]
+            },
+            {
+                "bulletPoints": {
+                    "show": true,
+                    "type": "bulletpoints",
+                    "icon": {
+                        "src": "/assets/images/checkmark-star.svg",
+                        "color": "accentColor1"
+                    },
+                    "items": [
+                        "No Hidden Fees",
+                        "Free, Expedited Delivery",
+                        "Doctor-led Plans & Coaching",
+                        "Money Back Guarantee"
+
+                    ]
+                }
+            },
+            {
+                "media": {
+                    "product": {
+                        "src": "/assets/images/products.png",
+                        "alt": "Assortment of Serenova products"
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "name": "Home Before After",
+        "components": [
+            {
+                "heading": {
+                    "text": "Before & After",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                }
+            },
+            {
+                "before-after": [
+                    {
+                        "image": {
+                            "src": "/assets/images/before-after/1.png",
+                            "alt": "Before image",
+                            "type": "image",
+                            "stars": 4,
+                            "testimonial": "The questions are to the point and easy to navigate. I'm able to voice my concerns if needed and ask questions of Serenova. They are quick to respond and keep me updated on my prescription.",
+                            "name": "Anna K",
+                            "order": 1
+                        }
+                    },
+                    {
+                        "image": {
+                            "src": "/assets/images/before-after/2.png",
+                            "alt": "After image",
+                            "type": "image",
+                            "stars": 5,
+                            "testimonial": "Amazing results! I've never felt better.",
+                            "name": "Sarah M.",
+                            "order": 2
+                        }
+                    },
+                    {
+                        "image": {
+                            "src": "/assets/images/before-after/3.png",
+                            "alt": "After image",
+                            "type": "image",
+                            "stars": 5,
+                            "testimonial": "This program is life-changing. Highly recommend!",
+                            "name": "Michael R.",
+                            "order": 3
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "Home Products",
+        "components": [
+            {
+                "product-card-badge": {
+                    "type": "badge",
+                    "color": "bodyColor",
+                    "backgroundColor": "backgroundColor",
+                    "show": true
+                }
+            },
+            {
+                "title-bar": {
+                    "type": "title-bar",
+                    "color": "bodyColor",
+                    "backgroundColor": "backgroundColor",
+                    "show": true
+                }
+            }
+        ]
+    },
+    {
+        "name": "Home FAQ",
+        "components": [
+            {
+                "heading": {
+                    "text": "Frequently Asked Questions",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                }
+            },
+            {
+                "faq": [
+                    {
+                        "question": "How long is the process on average?",
+                        "answer": "The entire process typically takes 2-3 weeks from initial consultation to receiving your medication. This includes the consultation, prescription review, and expedited delivery to your doorstep.",
+                        "order": 1
+                    },
+                    {
+                        "question": "Are there any additional fees?",
+                        "answer": "No hidden fees! Our transparent pricing includes everything: consultation, prescription, and expedited delivery. What you see is what you pay.",
+                        "order": 2
+                    },
+                    {
+                        "question": "How is my provider selected?",
+                        "answer": "We carefully match you with a licensed healthcare provider based on your medical history, preferences, and specific needs. All our providers are board-certified and experienced in weight loss management.",
+                        "order": 3
+                    },
+                    {
+                        "question": "Do GLP-1s actually work?",
+                        "answer": "Yes! GLP-1 medications have been clinically proven to help with weight loss. Studies show patients typically lose 10-15% of their body weight when combined with lifestyle changes. Results vary by individual.",
+                        "order": 4
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "Home IntakeForm",
+        "components": [
+            {
+                "heading": {
+                    "text": "Reach your goal weight",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                }
+            }
+        ]
+    },
+    {
+        "name": "About Hero",
+        "components": [
+            {
+                "logo": {
+                    "src": "/assets/images/brand/logo-secondary-1.svg",
+                    "alt": "brand logo",
+                    "type": "svg-image",
+                    "show": true
+                }
+            },
+            {
+                "heading": {
+                    "text": "About Us",
+                    "type": "text",
+                    "color": "accentColor1",
+                    "show": true
+                }
+            },
+            {
+                "subheading": {
+                    "text": "Quality is our guarantee!",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                }
+            },
+            {
+                "paragraph": {
+                    "text": "We are a team of dedicated professionals who are passionate about helping people achieve their goals. We are a team of dedicated professionals who are passionate about helping people achieve their goals.",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                }
+            },
+            {
+                "media": {
+                    "image": {
+                        "src": "/assets/images/brand/hero-bg.png",
+                        "alt": "About hero image",
+                        "type": "image",
+                        "show": true
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "name": "About Trusted By",
+        "components": [
+            {
+                "heading": {
+                    "text": "Trusted By",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                },
+                "marqueeSpeed": 50,
+                "logos": [
+                    {
+                        "src": "/assets/images/clients/bloomberg.png",
+                        "alt": "Bloomberg logo"
+                    },
+                    {
+                        "src": "/assets/images/clients/forbes.png",
+                        "alt": "Forbes logo"
+                    },
+                    {
+                        "src": "/assets/images/clients/fortune.png",
+                        "alt": "Fortune logo"
+                    },
+                    {
+                        "src": "/assets/images/clients/healthline.png",
+                        "alt": "Healthline logo"
+                    },
+                    {
+                        "src": "/assets/images/clients/new-york-times.png",
+                        "alt": "The New York Times logo"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "name": "About Stats",
+        "components": [
+            {
+                "heading": {
+                    "text": "Your Satisfaction Is Our Priority",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                }
+            },
+            {
+                "bulletPoints": {
+                    "show": true,
+                    "type": "bulletpoints",
+                    "icon": {
+                        "src": "/assets/images/checkmark.svg",
+                        "color": "accentColor1"
+                    },
+                    "items": [
+                        "No Hidden Fees",
+                        "Free, Expedited Delivery",
+                        "Doctor-led Plans & Coaching",
+                        "Money Back Guarantee"
+                    ]
+                }
+            },
+            {
+                "infoCard": {
+                    "type": "info-card",
+                    "show": true,
+                    "title": "Unlimited 24/7 Support Included",
+                    "description": "Serenova provides 24/7 access to a dedicated team of specialists, ensuring you have the support you need around the clock. With unlimited appointments, messaging and support, you can confidently reach out for guidance, ask questions, or address concerns at any time."
+                },
+                "infoCard with bulletpoint": {
+                    "type": "info-card-with-bulletpoint",
+                    "show": true,
+                    "title": "Unlimited 24/7 Support Included",
+                    "description": "Serenova provides 24/7 access to a dedicated team of specialists, ensuring you have the support you need around the clock. With unlimited appointments, messaging and support, you can confidently reach out for guidance, ask questions, or address concerns at any time.",
+                    "bulletpoints": [
+                        {
+                            "text": "Unlimited appointments",
+                            "showIcon": true
+                        }
+                    ],
+                    "bulletpointIcon": {
+                        "src": "/assets/images/checkmark.svg",
+                        "color": "accentColor1"
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "name": "Contact Hero",
+        "components": [
+            {
+                "logo": {
+                    "src": "/assets/images/brand/logo-primary-1.svg",
+                    "alt": "brand logo",
+                    "type": "svg-image",
+                    "show": true
+                },
+                "heading": {
+                    "text": "Contact Us: Fill out the form and hear back from us",
+                    "type": "text",
+                    "color": "bodyColor",
+                    "show": true
+                }
+            }
+        ]
+    },
+    {
+        "name": "Products Hero",
+        "components": [
+            {
+                "heading": {
+                    "text": "Explore Our Products",
+                    "type": "text",
+                    "color": "black",
+                    "show": true
+                }
+            },
+            {
+                "subheading": {
+                    "text": "Personalized GLP-1 Medication",
+                    "type": "text",
+                    "color": "black",
+                    "show": true
+                }
+            },
+            {
+                "logo": {
+                    "src": "/assets/images/brand/logo-primary-1.svg",
+                    "alt": "brand logo",
+                    "type": "svg-image",
+                    "sizes": {
+                        "mobile": "34px",
+                        "tablet": "38px",
+                        "desktop": "62px"
+                    },
+                    "show": true
+                }
+              
+            }
+        ]
+    }
+]
