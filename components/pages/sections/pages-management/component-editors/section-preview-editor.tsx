@@ -39,11 +39,11 @@ export function SectionPreviewEditor({ sectionName, templateName, onExpandClick 
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex items-center justify-center p-4">
-        <div className="relative w-full h-full overflow-hidden rounded-md border bg-muted aspect-square">
+        <div className="relative w-full h-full overflow-hidden rounded-md border bg-muted ">
           <img
             src={previewImagePath}
             alt={`${sectionName} preview`}
-            className="w-full h-full object-contain p-2"
+            className="w-full h-full object-contain "
             onError={() => {
               setImageError(true)
             }}
