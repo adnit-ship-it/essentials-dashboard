@@ -258,6 +258,70 @@ export function getImageSource(value: any, templateType: TemplateType = null): s
 }
 
 /**
+ * Check if media object has any image sources
+ */
+export function hasImageSource(value: any, templateType: TemplateType = null): boolean {
+  return getImageSource(value, templateType) !== null
+}
+
+/**
+ * Extract color properties from media object
+ * Returns array of { propertyName: string, color: string }
+ * Only includes properties that have a color property and NO src property
+ */
+export function extractColorProperties(value: any): Array<{ propertyName: string; color: string }> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return []
+  }
+
+  const colorProperties: Array<{ propertyName: string; color: string }> = []
+
+  // Iterate through all properties in the media object
+  for (const [key, propValue] of Object.entries(value)) {
+    if (typeof propValue === "object" && propValue !== null && !Array.isArray(propValue)) {
+      const prop = propValue as Record<string, any>
+      // Check if this property has a color property
+      const colorValue = prop.color
+      if (colorValue !== undefined && typeof colorValue === "string") {
+        // Only include if it doesn't have a src property (prioritize images)
+        const srcValue = prop.src
+        const pathValue = prop.path
+        if (srcValue === undefined && pathValue === undefined) {
+          colorProperties.push({
+            propertyName: key,
+            color: colorValue,
+          })
+        }
+      }
+    }
+  }
+
+  return colorProperties
+}
+
+/**
+ * Format property name for display
+ * Converts camelCase/kebab-case to formatted display name
+ */
+export function formatPropertyName(propertyName: string): string {
+  if (!propertyName) return ""
+  
+  // Handle camelCase: insert space before capital letters
+  let formatted = propertyName.replace(/([A-Z])/g, " $1")
+  
+  // Handle kebab-case: replace hyphens with spaces
+  formatted = formatted.replace(/-/g, " ")
+  
+  // Capitalize first letter of each word
+  formatted = formatted
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ")
+  
+  return formatted.trim()
+}
+
+/**
  * Format array count display text
  */
 export function getArrayDisplayText(value: any, componentKey: string, templateType: TemplateType = null): string {
