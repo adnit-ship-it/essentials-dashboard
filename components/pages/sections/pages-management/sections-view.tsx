@@ -52,16 +52,38 @@ function SortableSectionCard({
     ...(getStaggeredAnimationStyle(index) as React.CSSProperties),
   }
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger if clicking on buttons or drag handle
+    const target = e.target as HTMLElement
+    if (
+      target.closest("button") ||
+      target.closest("[role='button']") ||
+      target.closest("[data-drag-handle]")
+    ) {
+      return
+    }
+    onSelectSection(section.name)
+  }
+
   return (
     <div ref={setNodeRef} style={style}>
-      <Card className={cn("relative", !isDragging && "animate-fade-in-staggered")}>
+      <Card 
+        className={cn(
+          "relative", 
+          !isDragging && "animate-fade-in-staggered",
+          "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200"
+        )}
+        onClick={handleCardClick}
+      >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3 flex-1">
               <div
                 {...attributes}
                 {...listeners}
+                data-drag-handle
                 className="cursor-grab active:cursor-grabbing"
+                onClick={(e) => e.stopPropagation()}
               >
                 <GripVertical className="h-5 w-5 text-muted-foreground" />
               </div>
@@ -78,14 +100,15 @@ function SortableSectionCard({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onToggleShow(section.name)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleShow(section.name)
+                }}
                 className={cn("gap-2", !section.show && "text-muted-foreground")}
               >
                 {section.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => onSelectSection(section.name)}>
-                Edit Components
-              </Button>
+         
             </div>
           </div>
         </CardHeader>

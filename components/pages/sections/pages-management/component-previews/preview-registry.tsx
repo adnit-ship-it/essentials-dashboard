@@ -3,6 +3,8 @@
 import type { EditorType } from "../component-mapper"
 import type { BasePreviewProps } from "./shared/preview-props"
 import { TextButtonPreview } from "./text-button-preview"
+import { ButtonPreview } from "./button-preview"
+import { ButtonsPreview } from "./buttons-preview"
 import { ArrayCountPreview } from "./array-count-preview"
 import { BulletPointsPreview } from "./bulletpoints-preview"
 import { MediaPreview } from "./media-preview"
@@ -23,19 +25,25 @@ type PreviewComponent = React.ComponentType<BasePreviewProps & { editorType?: Ed
  */
 export function getPreviewComponent(editorType: EditorType): React.ComponentType<BasePreviewProps & { editorType: EditorType }> {
   switch (editorType) {
-    // Text/Button components
+    // Text component
     case "text":
-    case "button":
       return TextButtonPreview
 
+    // Button component (rendered preview)
+    case "button":
+      return ButtonPreview
+
     // Array count components
-    case "buttons":
     case "steps":
     case "faq":
     case "features":
     case "reviews":
     case "statistics":
       return ArrayCountPreview
+
+    // Buttons array (rendered preview with stripes)
+    case "buttons":
+      return ButtonsPreview
 
     // Bulletpoints component (enhanced preview)
     case "bulletPoints":

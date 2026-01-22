@@ -61,24 +61,46 @@ function SortablePageCard({
     ...(getStaggeredAnimationStyle(index) as React.CSSProperties),
   }
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger if clicking on buttons, drag handle, or input fields
+    const target = e.target as HTMLElement
+    if (
+      target.closest("button") ||
+      target.closest("[role='button']") ||
+      target.closest("input") ||
+      target.closest("[data-drag-handle]")
+    ) {
+      return
+    }
+    onSelectPage(pageKey)
+  }
+
   return (
     <div ref={setNodeRef} style={style}>
-      <Card className={cn(!isDragging && "animate-fade-in-staggered")}>
+      <Card 
+        className={cn(
+          !isDragging && "animate-fade-in-staggered",
+          "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200"
+        )}
+        onClick={handleCardClick}
+      >
         <CardHeader>
           <div className="flex items-center gap-4">
             <div
               {...attributes}
               {...listeners}
+              data-drag-handle
               className={cn(
                 isHomePage ? "cursor-not-allowed opacity-50" : "cursor-grab active:cursor-grabbing"
               )}
+              onClick={(e) => e.stopPropagation()}
             >
               <GripVertical className="h-5 w-5 text-muted-foreground" />
             </div>
 
             <div className="flex-1">
               {editingPage === pageKey ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <Input
                     value={editTitle}
                     onChange={(e) => onSetEditTitle(e.target.value)}
@@ -102,7 +124,10 @@ function SortablePageCard({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onStartEdit(pageKey)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onStartEdit(pageKey)
+                    }}
                     className="h-6 w-6 p-0"
                   >
                     <Edit2 className="h-3 w-3" />
@@ -118,7 +143,10 @@ function SortablePageCard({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => !isHomePage && onToggleShow(pageKey)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!isHomePage) onToggleShow(pageKey)
+                }}
                 disabled={isHomePage}
                 className={cn(
                   "gap-2",
@@ -128,9 +156,7 @@ function SortablePageCard({
               >
                 {page.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => onSelectPage(pageKey)}>
-                View Sections
-              </Button>
+              
             </div>
               </div>
             </CardHeader>
