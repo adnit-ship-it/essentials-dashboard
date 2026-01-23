@@ -56,7 +56,9 @@ export function BrandColorsPreview({ onEdit, repoOwner, repoName }: BrandColorsP
       {/* Content wrapper with blur on hover */}
       <div className="w-full h-full flex flex-col transition-all group-hover:blur-sm">
         {COLOR_ORDER.map((colorKey, index) => {
-          const colorValue = colors[colorKey] || "#FFFFFF"
+          // Fix: avoid index signature error by enforcing keyof typeof COLOR_LABELS
+          const colorValue =
+            colors[colorKey as keyof typeof colors] || "#FFFFFF"
           const resolvedColor = resolveBrandColor(colorValue, brandColors)
           const textColor = getTextColorForBackground(resolvedColor, brandColors)
           const label = COLOR_LABELS[colorKey] || colorKey

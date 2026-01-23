@@ -53,7 +53,8 @@ const DialogContent = React.forwardRef<
     }
     // Otherwise, call the custom handler if provided
     if (onInteractOutside) {
-      onInteractOutside(event)
+      // Cast event to expected Radix type, as permitted by the DialogPrimitive
+      onInteractOutside(event as any)
     }
     // Hide alert when closing is allowed
     setShowUnsavedAlert(false)
