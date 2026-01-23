@@ -3,15 +3,20 @@
 import { useState } from "react"
 import { Loader2, RefreshCw, Save, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
-import { LogoRegistryView } from "./logo-registry-view"
-import { BrandColorsEditor } from "./brand-colors-editor"
-import { FaviconManager } from "./favicon-manager"
-import { LogoSizesEditorWrapper } from "./logo-sizes-editor-wrapper"
-import { PageMetadataEditor } from "./page-metadata-editor"
-import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
+import { PageMetadataPreview } from "./previews/page-metadata-preview"
+import { BrandColorsPreview } from "./previews/brand-colors-preview"
+import { LogoRegistryPreview } from "./previews/logo-registry-preview"
+import { LogoSizesPreview } from "./previews/logo-sizes-preview"
+import { FaviconPreview } from "./previews/favicon-preview"
+import { PageMetadataModal } from "./modals/page-metadata-modal"
+import { BrandColorsModal } from "./modals/brand-colors-modal"
+import { LogoRegistryModal } from "./modals/logo-registry-modal"
+import { LogoSizesModal } from "./modals/logo-sizes-modal"
+import { FaviconModal } from "./modals/favicon-modal"
 
 export function BrandSettingsView() {
   const {
@@ -23,25 +28,51 @@ export function BrandSettingsView() {
     discardChanges,
   } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
-  const { pagesData } = usePagesStore()
 
-  // Track which component is currently open (only one at a time)
-  const [openComponentKey, setOpenComponentKey] = useState<string | null>(null)
-
-  // Generate animation key based on pagesData to trigger animations on refresh
-  const animationKey = pagesData ? JSON.stringify(pagesData).slice(0, 50) : "loading"
+  // Track which modal is currently open
+  const [openModalKey, setOpenModalKey] = useState<string | null>(null)
 
   const brandSettingComponents = [
-    { Component: PageMetadataEditor, key: "page-metadata" },
-    { Component: BrandColorsEditor, key: "brand-colors" },
-    { Component: LogoRegistryView, key: "logo-registry" },
-    { Component: LogoSizesEditorWrapper, key: "logo-sizes" },
-    { Component: FaviconManager, key: "favicon" },
+    {
+      key: "page-metadata",
+      title: "Page Metadata",
+      PreviewComponent: PageMetadataPreview,
+      ModalComponent: PageMetadataModal,
+    },
+    {
+      key: "brand-colors",
+      title: "Brand Colors",
+      PreviewComponent: BrandColorsPreview,
+      ModalComponent: BrandColorsModal,
+    },
+    {
+      key: "logo-registry",
+      title: "Logo Registry",
+      PreviewComponent: LogoRegistryPreview,
+      ModalComponent: LogoRegistryModal,
+    },
+    {
+      key: "logo-sizes",
+      title: "Logo Sizes",
+      PreviewComponent: LogoSizesPreview,
+      ModalComponent: LogoSizesModal,
+    },
+    {
+      key: "favicon",
+      title: "Favicon",
+      PreviewComponent: FaviconPreview,
+      ModalComponent: FaviconModal,
+    },
   ]
 
-  const handleToggle = (key: string) => {
-    // If clicking the same component, close it. Otherwise, open the clicked one and close others
-    setOpenComponentKey(openComponentKey === key ? null : key)
+  const handleEdit = (key: string) => {
+    setOpenModalKey(key)
+  }
+
+  const handleModalClose = (open: boolean) => {
+    if (!open) {
+      setOpenModalKey(null)
+    }
   }
 
   return (
@@ -96,17 +127,34 @@ export function BrandSettingsView() {
         </div>
       </div>
 
-      <div key={animationKey}>
-        {brandSettingComponents.map(({ Component, key }, index) => (
-          <div
-            key={key}
-            className="animate-fade-in-staggered pb-2 last:pb-0"
-            style={getStaggeredAnimationStyle(index)}
-          >
-            <Component 
-              isOpen={openComponentKey === key}
-              onToggle={() => handleToggle(key)}
-            />
+      <div className="flex flex-wrap gap-4 justify-center">
+        {brandSettingComponents.map(({ key, title, PreviewComponent, ModalComponent }) => (
+          <div key={key} className="w-full md:w-[350px] lg:w-[300px] aspect-square max-w-full">
+            <Card
+              className={cn(
+                "cursor-pointer transition-all hover:shadow-md aspect-square",
+                "flex flex-col h-full"
+              )}
+            >
+              <CardHeader className="pb-2 flex-shrink-0">
+                <CardTitle className="text-sm capitalize line-clamp-1">
+                  {title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col justify-center overflow-hidden p-4">
+                <PreviewComponent
+                  onEdit={() => handleEdit(key)}
+                  repoOwner={repoOwnerFromLink}
+                  repoName={repoNameFromLink}
+                />
+              </CardContent>
+            </Card>
+            {openModalKey === key && (
+              <ModalComponent
+                open={true}
+                onOpenChange={handleModalClose}
+              />
+            )}
           </div>
         ))}
       </div>

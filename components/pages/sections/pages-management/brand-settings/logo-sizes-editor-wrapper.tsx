@@ -52,9 +52,10 @@ function convertLogoSizes(pagesData: any): {
 interface LogoSizesEditorWrapperProps {
   isOpen?: boolean
   onToggle?: () => void
+  hideCard?: boolean
 }
 
-export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle }: LogoSizesEditorWrapperProps = {}) {
+export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle, hideCard = false }: LogoSizesEditorWrapperProps = {}) {
   const { pagesData, updatePagesData } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [localIsOpen, setLocalIsOpen] = useState(false)
@@ -129,6 +130,19 @@ export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle }: L
     handleToggle()
   }
 
+  const content = (
+    <LogoSizesEditor 
+      logoSizes={logoSizes} 
+      onLogoSizesChange={handleLogoSizesChange} 
+      hideHeader={true}
+      templateName={templateName}
+    />
+  )
+
+  if (hideCard) {
+    return content
+  }
+
   return (
     <Card 
       className="cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200"
@@ -152,12 +166,7 @@ export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle }: L
       </CardHeader>
       {isOpen && (
         <CardContent className="p-6" onClick={(e) => e.stopPropagation()}>
-          <LogoSizesEditor 
-            logoSizes={logoSizes} 
-            onLogoSizesChange={handleLogoSizesChange} 
-            hideHeader={true}
-            templateName={templateName}
-          />
+          {content}
         </CardContent>
       )}
     </Card>

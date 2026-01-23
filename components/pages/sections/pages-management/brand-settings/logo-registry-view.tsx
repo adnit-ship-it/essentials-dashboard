@@ -50,9 +50,10 @@ function getLogoPreviewUrl(path: string, repoOwner?: string, repoName?: string):
 interface LogoRegistryViewProps {
   isOpen?: boolean
   onToggle?: () => void
+  hideCard?: boolean
 }
 
-export function LogoRegistryView({ isOpen: controlledIsOpen, onToggle }: LogoRegistryViewProps = {}) {
+export function LogoRegistryView({ isOpen: controlledIsOpen, onToggle, hideCard = false }: LogoRegistryViewProps = {}) {
   const { pagesData, sectionsData, updatePagesData } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
@@ -287,52 +288,35 @@ export function LogoRegistryView({ isOpen: controlledIsOpen, onToggle }: LogoReg
     handleToggle()
   }
 
-  return (
-    <Card 
-      className="cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200"
-      onClick={handleCardClick}
-    >
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <CardTitle>Logo Registry</CardTitle>
-            <CardDescription>
-              Manage logos that can be used across pages, sections, and layouts.
-            </CardDescription>
-            {(!repoOwnerFromLink || !repoNameFromLink) && (
-              <p className="text-xs text-yellow-600 mt-1">
-                ⚠️ Repository not configured. Logo previews may not work. Please configure organization settings.
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              onClick={(e) => {
-                e.stopPropagation()
-                setIsAddDialogOpen(true)
-              }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Logo
-            </Button>
-            <ChevronDown 
-              className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform",
-                isOpen && "rotate-180"
-              )}
-            />
-          </div>
-        </div>
-      </CardHeader>
-      {isOpen && (
-        <CardContent className="space-y-6" onClick={(e) => e.stopPropagation()}>
-
+  const content = (
+    <div className="space-y-6">
       {error && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      <div className="flex items-center justify-between mb-4">
+        {!hideCard && (
+          <div className="flex-1">
+            {(!repoOwnerFromLink || !repoNameFromLink) && (
+              <p className="text-xs text-yellow-600">
+                ⚠️ Repository not configured. Logo previews may not work. Please configure organization settings.
+              </p>
+            )}
+          </div>
+        )}
+        <Button 
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsAddDialogOpen(true)
+          }}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Logo
+        </Button>
+      </div>
 
       <div key={animationKey} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {Object.entries(logoRegistry).map(([key, entry], index) => (
@@ -456,19 +440,66 @@ export function LogoRegistryView({ isOpen: controlledIsOpen, onToggle }: LogoReg
         </DialogContent>
       </Dialog>
 
-          {/* Edit Dialog */}
-          {editingKey && logoRegistry[editingKey] && (
-            <EditLogoDialog
-              key={editingKey}
-              logoKey={editingKey}
-              entry={logoRegistry[editingKey]}
-              onSave={(description, file) => handleEditLogo(editingKey, description, file)}
-              onClose={() => setEditingKey(null)}
-              uploading={uploading}
-              repoOwner={repoOwnerFromLink ?? undefined}
-              repoName={repoNameFromLink ?? undefined}
+      {/* Edit Dialog */}
+      {editingKey && logoRegistry[editingKey] && (
+        <EditLogoDialog
+          key={editingKey}
+          logoKey={editingKey}
+          entry={logoRegistry[editingKey]}
+          onSave={(description, file) => handleEditLogo(editingKey, description, file)}
+          onClose={() => setEditingKey(null)}
+          uploading={uploading}
+          repoOwner={repoOwnerFromLink ?? undefined}
+          repoName={repoNameFromLink ?? undefined}
+        />
+      )}
+    </div>
+  )
+
+  if (hideCard) {
+    return content
+  }
+
+  return (
+    <Card 
+      className="cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200"
+      onClick={handleCardClick}
+    >
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <CardTitle>Logo Registry</CardTitle>
+            <CardDescription>
+              Manage logos that can be used across pages, sections, and layouts.
+            </CardDescription>
+            {(!repoOwnerFromLink || !repoNameFromLink) && (
+              <p className="text-xs text-yellow-600 mt-1">
+                ⚠️ Repository not configured. Logo previews may not work. Please configure organization settings.
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsAddDialogOpen(true)
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Logo
+            </Button>
+            <ChevronDown 
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform",
+                isOpen && "rotate-180"
+              )}
             />
-          )}
+          </div>
+        </div>
+      </CardHeader>
+      {isOpen && (
+        <CardContent className="space-y-6" onClick={(e) => e.stopPropagation()}>
+          {content}
         </CardContent>
       )}
     </Card>
