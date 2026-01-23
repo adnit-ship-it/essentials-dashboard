@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { convertContentRepoPathToRawUrl } from "@/lib/utils/repo-paths"
 import { getCardTitle, getColorValueForDisplay, formatPropertyName } from "@/lib/utils/component-value-formatter"
 import { useBrandColors, resolveBrandColor, getTextColorForBackground } from "@/lib/utils/brand-colors"
+import { formatComponentNameForEdit } from "./shared/format-component-name"
 import type { BasePreviewProps } from "./shared/preview-props"
 
 export function InfoCardWithBulletpointsPreview({
@@ -37,6 +38,7 @@ export function InfoCardWithBulletpointsPreview({
   // Calculate remaining count
   const totalCount = bulletpoints.length
   const remainingCount = totalCount > 1 ? totalCount - 1 : 0
+  const componentName = formatComponentNameForEdit(componentKey)
 
   // Convert icon path to GitHub raw URL if needed
   const displayIconSrc = iconSrc && shouldShowIcon
@@ -47,6 +49,11 @@ export function InfoCardWithBulletpointsPreview({
     e.stopPropagation()
     onClick()
   }
+
+  // Determine button text
+  const buttonText = remainingCount > 0
+    ? `Edit ${componentName} (${remainingCount} more bulletpoint${remainingCount !== 1 ? "s" : ""})`
+    : `Edit ${componentName}`
 
   // Handle loading state
   if (loading) {
@@ -71,28 +78,39 @@ export function InfoCardWithBulletpointsPreview({
   // If no bulletpoints, fallback to standard card preview with color strip
   if (bulletpoints.length === 0 || !firstBulletpointText) {
     return (
-      <div
-        className="w-full h-full flex flex-col cursor-pointer rounded-md overflow-hidden"
-        onClick={onClick}
-      >
-        <div className="flex-1 flex items-center justify-center bg-muted">
-          <div className="text-xl font-semibold line-clamp-1 text-foreground text-center px-4">
-            {title || "No title"}
+      <div className="group relative w-full h-full flex flex-col cursor-pointer rounded-md overflow-hidden">
+        {/* Content wrapper with blur on hover */}
+        <div className="w-full h-full flex flex-col transition-all group-hover:blur-sm" onClick={onClick}>
+          <div className="flex-1 flex items-center justify-center bg-muted">
+            <div className="text-xl font-semibold line-clamp-1 text-foreground text-center px-4">
+              {title || "No title"}
+            </div>
           </div>
+          {resolvedColor && colorStripTextColor && (
+            <div
+              className="h-8 flex items-center justify-center"
+              style={{
+                backgroundColor: resolvedColor,
+                color: colorStripTextColor,
+              }}
+            >
+              <span className="text-xs font-medium text-center px-2">
+                {colorNameForDisplay}
+              </span>
+            </div>
+          )}
         </div>
-        {resolvedColor && colorStripTextColor && (
-          <div
-            className="h-8 flex items-center justify-center"
-            style={{
-              backgroundColor: resolvedColor,
-              color: colorStripTextColor,
-            }}
+        {/* Hover overlay */}
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
           >
-            <span className="text-xs font-medium text-center px-2">
-              {colorNameForDisplay}
-            </span>
-          </div>
-        )}
+            Edit {componentName}
+          </Button>
+        </div>
       </div>
     )
   }
@@ -104,7 +122,7 @@ export function InfoCardWithBulletpointsPreview({
       onClick={onClick}
     >
       {/* Content wrapper with blur on hover */}
-      <div className="flex-1 flex flex-col transition-all group-hover:blur-sm">
+      <div className="w-full h-full flex flex-col transition-all group-hover:blur-sm">
         {/* Title */}
         <div className="text-xl font-semibold line-clamp-1 text-foreground text-center px-4 pt-2">
           {title}
@@ -127,36 +145,34 @@ export function InfoCardWithBulletpointsPreview({
             {firstBulletpointText}
           </div>
         </div>
+
+        {/* Color strip at bottom */}
+        {resolvedColor && colorStripTextColor && (
+          <div
+            className="h-8 flex items-center justify-center"
+            style={{
+              backgroundColor: resolvedColor,
+              color: colorStripTextColor,
+            }}
+          >
+            <span className="text-xs font-medium text-center px-2">
+              {colorNameForDisplay}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Color strip at bottom */}
-      {resolvedColor && colorStripTextColor && (
-        <div
-          className="h-8 flex items-center justify-center transition-opacity group-hover:opacity-70"
-          style={{
-            backgroundColor: resolvedColor,
-            color: colorStripTextColor,
-          }}
-        >
-          <span className="text-xs font-medium text-center px-2">
-            {colorNameForDisplay}
-          </span>
-        </div>
-      )}
-
       {/* Hover overlay */}
-      {remainingCount > 0 && (
-        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-black/20 backdrop-blur-sm">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleButtonClick}
-            className="pointer-events-auto"
-          >
-            {remainingCount} more bulletpoint{remainingCount !== 1 ? "s" : ""}
-          </Button>
-        </div>
-      )}
+      <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleButtonClick}
+          className="pointer-events-auto"
+        >
+          {buttonText}
+        </Button>
+      </div>
     </div>
   )
 }

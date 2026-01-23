@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
 import { useBrandColors, resolveBrandColor, getTextColorForBackground } from "@/lib/utils/brand-colors"
 import { convertContentRepoPathToRawUrl } from "@/lib/utils/repo-paths"
+import { formatComponentNameForEdit } from "./shared/format-component-name"
 import type { BasePreviewProps } from "./shared/preview-props"
 import type { Product } from "@/lib/types/products"
 
@@ -68,17 +70,33 @@ export function ProductCardPreview({
 
   // Button text
   const buttonText = button?.text || ""
+  const componentName = formatComponentNameForEdit(componentKey)
 
   const handleImageError = () => {
     setImageError(true)
   }
 
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onClick()
+  }
+
   // Handle loading states
   if (loadingProducts || loadingBrandColors) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-sm text-muted-foreground text-center">
+      <div className="group relative w-full h-full flex items-center justify-center cursor-pointer rounded-md">
+        <div className="text-sm text-muted-foreground text-center transition-all group-hover:blur-sm">
           Loading...
+        </div>
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
+          >
+            Edit {componentName}
+          </Button>
         </div>
       </div>
     )
@@ -87,23 +105,36 @@ export function ProductCardPreview({
   // Handle no productId
   if (!productId) {
     return (
-      <div className="w-full h-full flex flex-col">
-        <div className="flex-[2] flex items-center justify-center bg-muted rounded-t-md">
-          <div className="text-sm text-muted-foreground text-center px-4">
-            No product selected
+      <div className="group relative w-full h-full flex flex-col cursor-pointer rounded-md overflow-hidden">
+        {/* Content wrapper with blur on hover */}
+        <div className="w-full h-full flex flex-col transition-all group-hover:blur-sm" onClick={onClick}>
+          <div className="flex-[2] flex items-center justify-center bg-muted rounded-t-md">
+            <div className="text-sm text-muted-foreground text-center px-4">
+              No product selected
+            </div>
+          </div>
+          <div
+            className="flex-[1] flex items-center justify-center rounded-b-md"
+            style={{
+              backgroundColor: resolvedButtonColor,
+              color: textColor,
+            }}
+          >
+            <span className="text-sm font-medium text-center px-4">
+              {buttonText || "Button"}
+            </span>
           </div>
         </div>
-        <div
-          className="flex-[1] flex items-center justify-center rounded-b-md transition-opacity hover:opacity-90 cursor-pointer"
-          onClick={onClick}
-          style={{
-            backgroundColor: resolvedButtonColor,
-            color: textColor,
-          }}
-        >
-          <span className="text-sm font-medium text-center px-4">
-            {buttonText || "Button"}
-          </span>
+        {/* Hover overlay */}
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
+          >
+            Edit {componentName}
+          </Button>
         </div>
       </div>
     )
@@ -112,15 +143,66 @@ export function ProductCardPreview({
   // Handle product not found
   if (productId && !product) {
     return (
-      <div className="w-full h-full flex flex-col">
-        <div className="flex-[2] flex items-center justify-center bg-muted rounded-t-md">
-          <div className="text-sm text-muted-foreground text-center px-4">
-            Product not found
+      <div className="group relative w-full h-full flex flex-col cursor-pointer rounded-md overflow-hidden">
+        {/* Content wrapper with blur on hover */}
+        <div className="w-full h-full flex flex-col transition-all group-hover:blur-sm" onClick={onClick}>
+          <div className="flex-[2] flex items-center justify-center bg-muted rounded-t-md">
+            <div className="text-sm text-muted-foreground text-center px-4">
+              Product not found
+            </div>
+          </div>
+          <div
+            className="flex-[1] flex items-center justify-center rounded-b-md"
+            style={{
+              backgroundColor: resolvedButtonColor,
+              color: textColor,
+            }}
+          >
+            <span className="text-sm font-medium text-center px-4">
+              {buttonText || "Button"}
+            </span>
           </div>
         </div>
+        {/* Hover overlay */}
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
+          >
+            Edit {componentName}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Render product card preview
+  return (
+    <div className="group relative w-full h-full flex flex-col cursor-pointer rounded-md overflow-hidden">
+      {/* Content wrapper with blur on hover */}
+      <div className="w-full h-full flex flex-col transition-all group-hover:blur-sm" onClick={onClick}>
+        {/* Image section - 2/3 height */}
+        <div className="flex-[2] overflow-hidden rounded-t-md bg-muted flex items-center justify-center">
+          {displayImageSrc && !imageError ? (
+            <img
+              src={displayImageSrc}
+              alt={product?.name || "Product image"}
+              className="w-full h-full object-contain"
+              onError={handleImageError}
+              loading="lazy"
+            />
+          ) : (
+            <div className="text-sm text-muted-foreground text-center px-4">
+              {imageError ? "Image not found" : "No image"}
+            </div>
+          )}
+        </div>
+
+        {/* Colored strip section - 1/3 height */}
         <div
-          className="flex-[1] flex items-center justify-center rounded-b-md transition-opacity hover:opacity-90 cursor-pointer"
-          onClick={onClick}
+          className="flex-[1] flex items-center justify-center rounded-b-md"
           style={{
             backgroundColor: resolvedButtonColor,
             color: textColor,
@@ -131,40 +213,17 @@ export function ProductCardPreview({
           </span>
         </div>
       </div>
-    )
-  }
 
-  // Render product card preview
-  return (
-    <div className="w-full h-full flex flex-col cursor-pointer" onClick={onClick}>
-      {/* Image section - 2/3 height */}
-      <div className="flex-[2] overflow-hidden rounded-t-md bg-muted flex items-center justify-center">
-        {displayImageSrc && !imageError ? (
-          <img
-            src={displayImageSrc}
-            alt={product?.name || "Product image"}
-            className="w-full h-full object-contain"
-            onError={handleImageError}
-            loading="lazy"
-          />
-        ) : (
-          <div className="text-sm text-muted-foreground text-center px-4">
-            {imageError ? "Image not found" : "No image"}
-          </div>
-        )}
-      </div>
-
-      {/* Colored strip section - 1/3 height */}
-      <div
-        className="flex-[1] flex items-center justify-center rounded-b-md transition-opacity hover:opacity-90"
-        style={{
-          backgroundColor: resolvedButtonColor,
-          color: textColor,
-        }}
-      >
-        <span className="text-sm font-medium text-center px-4">
-          {buttonText || "Button"}
-        </span>
+      {/* Hover overlay */}
+      <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleButtonClick}
+          className="pointer-events-auto"
+        >
+          Edit {componentName}
+        </Button>
       </div>
     </div>
   )

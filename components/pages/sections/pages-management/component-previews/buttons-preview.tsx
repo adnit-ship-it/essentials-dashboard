@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { useBrandColors, resolveBrandColor } from "@/lib/utils/brand-colors"
+import { formatComponentNameForEdit } from "./shared/format-component-name"
 import type { BasePreviewProps } from "./shared/preview-props"
 
 export function ButtonsPreview({
@@ -21,12 +22,34 @@ export function ButtonsPreview({
   const displayButtons = buttons.slice(0, 3)
   const remainingCount = totalCount > 3 ? totalCount - 3 : 0
 
+  const componentName = formatComponentNameForEdit(componentKey)
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onClick()
+  }
+
+  // Determine button text
+  const buttonText = remainingCount > 0
+    ? `Edit ${componentName} (${remainingCount} more button${remainingCount !== 1 ? "s" : ""})`
+    : `Edit ${componentName}`
+
   // Handle loading state
   if (loading) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-sm text-muted-foreground text-center">
+      <div className="group relative w-full h-full flex items-center justify-center cursor-pointer rounded-md">
+        <div className="text-sm text-muted-foreground text-center transition-all group-hover:blur-sm">
           Loading colors...
+        </div>
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
+          >
+            Edit {componentName}
+          </Button>
         </div>
       </div>
     )
@@ -35,22 +58,22 @@ export function ButtonsPreview({
   // Handle empty array
   if (totalCount === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-xl font-semibold text-foreground text-center">
+      <div className="group relative w-full h-full flex items-center justify-center cursor-pointer rounded-md">
+        <div className="text-xl font-semibold text-foreground text-center transition-all group-hover:blur-sm" onClick={onClick}>
           No buttons
+        </div>
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
+          >
+            Edit {componentName}
+          </Button>
         </div>
       </div>
     )
-  }
-
-  // Determine hover text
-  const hoverText = remainingCount > 0
-    ? `${remainingCount} more button${remainingCount !== 1 ? "s" : ""}`
-    : "Edit buttons"
-
-  const handleButtonClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onClick()
   }
 
   return (
@@ -58,41 +81,44 @@ export function ButtonsPreview({
       className="group relative w-full h-full flex flex-col cursor-pointer rounded-md overflow-hidden"
       onClick={onClick}
     >
-      {/* Display up to 3 button stripes */}
-      {displayButtons.map((button: any, index: number) => {
-        const buttonText = button?.text || "Button"
-        const textColor = button?.color || "accentColor1"
-        const backgroundColor = button?.backgroundColor || "accentColor1"
+      {/* Content wrapper with blur on hover */}
+      <div className="w-full h-full flex flex-col transition-all group-hover:blur-sm">
+        {/* Display up to 3 button stripes */}
+        {displayButtons.map((button: any, index: number) => {
+          const buttonText = button?.text || "Button"
+          const textColor = button?.color || "accentColor1"
+          const backgroundColor = button?.backgroundColor || "accentColor1"
 
-        // Resolve colors
-        const resolvedTextColor = resolveBrandColor(textColor, brandColors)
-        const resolvedBackgroundColor = resolveBrandColor(backgroundColor, brandColors)
+          // Resolve colors
+          const resolvedTextColor = resolveBrandColor(textColor, brandColors)
+          const resolvedBackgroundColor = resolveBrandColor(backgroundColor, brandColors)
 
-        return (
-          <div
-            key={index}
-            className="flex-1 flex items-center justify-center transition-opacity group-hover:opacity-70"
-            style={{
-              backgroundColor: resolvedBackgroundColor,
-              color: resolvedTextColor,
-            }}
-          >
-            <span className="text-sm font-medium text-center px-4 line-clamp-1">
-              {buttonText}
-            </span>
-          </div>
-        )
-      })}
+          return (
+            <div
+              key={index}
+              className="flex-1 flex items-center justify-center"
+              style={{
+                backgroundColor: resolvedBackgroundColor,
+                color: resolvedTextColor,
+              }}
+            >
+              <span className="text-sm font-medium text-center px-4 line-clamp-1">
+                {buttonText}
+              </span>
+            </div>
+          )
+        })}
+      </div>
 
       {/* Hover overlay */}
-      <div className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-black/20 backdrop-blur-sm">
+      <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
         <Button
           variant="default"
           size="sm"
           onClick={handleButtonClick}
           className="pointer-events-auto"
         >
-          {hoverText}
+          {buttonText}
         </Button>
       </div>
     </div>

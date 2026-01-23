@@ -2,6 +2,7 @@
 
 import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { formatComponentNameForEdit } from "./shared/format-component-name"
 import type { BasePreviewProps } from "./shared/preview-props"
 
 export function ReviewsPreview({
@@ -17,17 +18,35 @@ export function ReviewsPreview({
   const firstReview = reviews.length > 0 ? reviews[0] : null
   const totalCount = reviews.length
   const remainingCount = totalCount > 1 ? totalCount - 1 : 0
+  const componentName = formatComponentNameForEdit(componentKey)
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     onClick()
   }
 
+  // Determine button text
+  const buttonText = remainingCount > 0
+    ? `Edit ${componentName} (${remainingCount} more review${remainingCount !== 1 ? "s" : ""})`
+    : `Edit ${componentName}`
+
   // If no reviews, show fallback
   if (!firstReview || totalCount === 0) {
     return (
-      <div className="text-xl font-semibold text-foreground">
-        {totalCount === 0 ? "No reviews" : "0 Reviews"}
+      <div className="group relative w-full h-full flex items-center justify-center cursor-pointer rounded-md">
+        <div className="text-xl font-semibold text-foreground transition-all group-hover:blur-sm" onClick={onClick}>
+          {totalCount === 0 ? "No reviews" : "0 Reviews"}
+        </div>
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
+          >
+            Edit {componentName}
+          </Button>
+        </div>
       </div>
     )
   }
@@ -71,18 +90,16 @@ export function ReviewsPreview({
       </div>
 
       {/* Hover overlay */}
-      {remainingCount > 0 && (
-        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-black/20 backdrop-blur-sm">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleButtonClick}
-            className="pointer-events-auto"
-          >
-            {remainingCount} more review{remainingCount !== 1 ? "s" : ""}
-          </Button>
-        </div>
-      )}
+      <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleButtonClick}
+          className="pointer-events-auto"
+        >
+          {buttonText}
+        </Button>
+      </div>
     </div>
   )
 }

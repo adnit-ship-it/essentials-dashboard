@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { normalizeTemplateName } from "@/lib/utils/component-value-formatter"
+import { formatComponentNameForEdit } from "./shared/format-component-name"
 import type { BasePreviewProps } from "./shared/preview-props"
 
 export function StatsPreview({
@@ -27,17 +28,35 @@ export function StatsPreview({
   const firstCard = cards.length > 0 ? cards[0] : null
   const totalCount = cards.length
   const remainingCount = totalCount > 1 ? totalCount - 1 : 0
+  const componentName = formatComponentNameForEdit(componentKey)
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     onClick()
   }
 
+  // Determine button text
+  const buttonText = remainingCount > 0
+    ? `Edit ${componentName} (${remainingCount} more statistic${remainingCount !== 1 ? "s" : ""})`
+    : `Edit ${componentName}`
+
   // If no cards, show fallback
   if (!firstCard || totalCount === 0) {
     return (
-      <div className="text-xl font-semibold text-foreground">
-        {totalCount === 0 ? "No statistics" : "0 Statistics"}
+      <div className="group relative w-full h-full flex items-center justify-center cursor-pointer rounded-md">
+        <div className="text-xl font-semibold text-foreground transition-all group-hover:blur-sm" onClick={onClick}>
+          {totalCount === 0 ? "No statistics" : "0 Statistics"}
+        </div>
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
+          >
+            Edit {componentName}
+          </Button>
+        </div>
       </div>
     )
   }
@@ -80,18 +99,16 @@ export function StatsPreview({
       </div>
 
       {/* Hover overlay */}
-      {remainingCount > 0 && (
-        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-black/20 backdrop-blur-sm">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleButtonClick}
-            className="pointer-events-auto"
-          >
-            {remainingCount} more statistic{remainingCount !== 1 ? "s" : ""}
-          </Button>
-        </div>
-      )}
+      <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleButtonClick}
+          className="pointer-events-auto"
+        >
+          {buttonText}
+        </Button>
+      </div>
     </div>
   )
 }

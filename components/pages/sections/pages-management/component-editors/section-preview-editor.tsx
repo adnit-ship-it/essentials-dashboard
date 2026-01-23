@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Expand } from "lucide-react"
 import { getSectionPreviewImagePath } from "@/lib/utils/section-preview-images"
 import { cn } from "@/lib/utils"
 
@@ -17,6 +16,13 @@ export function SectionPreviewEditor({ sectionName, templateName, onExpandClick 
   const previewImagePath = getSectionPreviewImagePath(sectionName, templateName)
   const [imageError, setImageError] = useState(false)
 
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onExpandClick) {
+      onExpandClick()
+    }
+  }
+
   if (!previewImagePath || imageError) {
     return null
   }
@@ -24,41 +30,37 @@ export function SectionPreviewEditor({ sectionName, templateName, onExpandClick 
   return (
     <Card 
       className={cn(
-        "aspect-square flex flex-col h-full",
+        "aspect-square flex flex-col h-full group",
         onExpandClick && "cursor-pointer transition-all hover:shadow-md"
       )}
       onClick={onExpandClick}
     >
       <CardHeader className="pb-2 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm">Section Preview</CardTitle>
-          {onExpandClick && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={(e) => {
-                e.stopPropagation()
-                onExpandClick()
-              }}
-              title="Expand"
-            >
-              <Expand className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+        <CardTitle className="text-sm">Section Preview</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 flex items-center justify-center p-4">
-        <div className="relative w-full h-full overflow-hidden rounded-md border bg-muted ">
+      <CardContent className="flex-1 flex items-center justify-center p-4 relative">
+        <div className="relative w-full h-full overflow-hidden rounded-md border bg-muted">
           <img
             src={previewImagePath}
             alt={`${sectionName} preview`}
-            className="w-full h-full object-contain "
+            className="w-full h-full object-contain transition-all group-hover:blur-sm"
             onError={() => {
               setImageError(true)
             }}
           />
         </div>
+        {onExpandClick && (
+          <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm rounded-md">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleButtonClick}
+              className="pointer-events-auto"
+            >
+              Edit Section Preview
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

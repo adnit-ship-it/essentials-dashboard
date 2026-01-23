@@ -3,6 +3,7 @@
 import { getImageSource, getArrayCount, normalizeTemplateName, hasImageSource } from "@/lib/utils/component-value-formatter"
 import { ImagePreviewWithHover } from "./shared/image-preview-with-hover"
 import { ColorMediaPreview } from "./color-media-preview"
+import { formatComponentNameForEdit } from "./shared/format-component-name"
 import type { BasePreviewProps } from "./shared/preview-props"
 
 export function MediaPreview({ componentKey, value, onClick, templateName, repoOwner, repoName, repoBranch }: BasePreviewProps) {
@@ -31,10 +32,12 @@ export function MediaPreview({ componentKey, value, onClick, templateName, repoO
   const isArray = Array.isArray(value)
   const count = isArray ? value.length : 0
   const remainingCount = isArray && count > 0 ? count - 1 : 0
+  const componentName = formatComponentNameForEdit(componentKey)
 
+  // Determine button text
   const hoverText = remainingCount > 0
-    ? `${remainingCount} more ${componentKey === "logos" ? "logos" : "images"}`
-    : "Update Media"
+    ? `Edit ${componentName} (${remainingCount} more ${componentKey === "logos" ? "logos" : "images"})`
+    : `Edit ${componentName}`
 
   const fallbackText = isArray
     ? `${count} ${componentKey === "logos" ? "Logos" : "Images"}`

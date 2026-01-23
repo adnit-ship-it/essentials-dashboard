@@ -1,7 +1,9 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
 import { useBrandColors, resolveBrandColor, getTextColorForBackground } from "@/lib/utils/brand-colors"
 import { formatPropertyName } from "@/lib/utils/component-value-formatter"
+import { formatComponentNameForEdit } from "./shared/format-component-name"
 import type { BasePreviewProps } from "./shared/preview-props"
 
 export function ButtonPreview({
@@ -19,12 +21,29 @@ export function ButtonPreview({
   const backgroundColor = value?.backgroundColor || null
   const show = value?.show !== false
 
+  const componentName = formatComponentNameForEdit(componentKey)
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onClick()
+  }
+
   // Handle loading state
   if (loading) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-sm text-muted-foreground text-center">
+      <div className="group relative w-full h-full flex items-center justify-center cursor-pointer rounded-md">
+        <div className="text-sm text-muted-foreground text-center transition-all group-hover:blur-sm">
           Loading colors...
+        </div>
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
+          >
+            Edit {componentName}
+          </Button>
         </div>
       </div>
     )
@@ -39,17 +58,31 @@ export function ButtonPreview({
   // Handle buttons with backgroundColor (full card fill)
   if (resolvedBackgroundColor) {
     return (
-      <div
-        className="w-full h-full flex items-center justify-center cursor-pointer transition-opacity hover:opacity-90 rounded-md"
-        onClick={onClick}
-        style={{
-          backgroundColor: resolvedBackgroundColor,
-          color: resolvedTextColor,
-        }}
-      >
-        <span className="text-lg font-medium text-center px-4">
-          {buttonText || "Button"}
-        </span>
+      <div className="group relative w-full h-full flex items-center justify-center cursor-pointer rounded-md overflow-hidden">
+        {/* Content wrapper with blur on hover */}
+        <div
+          className="w-full h-full flex items-center justify-center transition-all group-hover:blur-sm"
+          onClick={onClick}
+          style={{
+            backgroundColor: resolvedBackgroundColor,
+            color: resolvedTextColor,
+          }}
+        >
+          <span className="text-lg font-medium text-center px-4">
+            {buttonText || "Button"}
+          </span>
+        </div>
+        {/* Hover overlay */}
+        <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleButtonClick}
+            className="pointer-events-auto"
+          >
+            Edit {componentName}
+          </Button>
+        </div>
       </div>
     )
   }
@@ -62,28 +95,40 @@ export function ButtonPreview({
   const bottomStripTextColor = getTextColorForBackground(resolvedColor, brandColors)
 
   return (
-    <div
-      className="w-full h-full flex flex-col cursor-pointer transition-opacity hover:opacity-90 rounded-md overflow-hidden"
-      onClick={onClick}
-    >
-      {/* Top strip: Button text */}
-      <div className="flex-1 flex items-center justify-center bg-muted">
-        <span className="text-lg font-medium text-center px-4 text-foreground">
-          {buttonText || "Button"}
-        </span>
+    <div className="group relative w-full h-full flex flex-col cursor-pointer rounded-md overflow-hidden">
+      {/* Content wrapper with blur on hover */}
+      <div className="w-full h-full flex flex-col transition-all group-hover:blur-sm" onClick={onClick}>
+        {/* Top strip: Button text */}
+        <div className="flex-1 flex items-center justify-center bg-muted">
+          <span className="text-lg font-medium text-center px-4 text-foreground">
+            {buttonText || "Button"}
+          </span>
+        </div>
+
+        {/* Bottom strip: Color with color name */}
+        <div
+          className="flex-1 flex items-center justify-center"
+          style={{
+            backgroundColor: resolvedColor,
+            color: bottomStripTextColor,
+          }}
+        >
+          <span className="text-lg font-medium text-center px-4">
+            {colorNameForDisplay}
+          </span>
+        </div>
       </div>
 
-      {/* Bottom strip: Color with color name */}
-      <div
-        className="flex-1 flex items-center justify-center"
-        style={{
-          backgroundColor: resolvedColor,
-          color: bottomStripTextColor,
-        }}
-      >
-        <span className="text-lg font-medium text-center px-4">
-          {colorNameForDisplay}
-        </span>
+      {/* Hover overlay */}
+      <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm">
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleButtonClick}
+          className="pointer-events-auto"
+        >
+          Edit {componentName}
+        </Button>
       </div>
     </div>
   )
