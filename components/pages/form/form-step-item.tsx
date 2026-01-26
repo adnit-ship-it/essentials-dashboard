@@ -4,15 +4,17 @@ import { QuizFormStep } from "@/lib/types/quiz"
 import { cn } from "@/lib/utils"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVertical } from "lucide-react"
+import { GripVertical, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface FormStepItemProps {
   step: QuizFormStep
   isSelected: boolean
   onClick: () => void
+  onDelete?: (stepId: string) => void
 }
 
-export function FormStepItem({ step, isSelected, onClick }: FormStepItemProps) {
+export function FormStepItem({ step, isSelected, onClick, onDelete }: FormStepItemProps) {
   const {
     attributes,
     listeners,
@@ -32,6 +34,13 @@ export function FormStepItem({ step, isSelected, onClick }: FormStepItemProps) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  }
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onDelete) {
+      onDelete(step.id)
+    }
   }
 
   return (
@@ -58,6 +67,16 @@ export function FormStepItem({ step, isSelected, onClick }: FormStepItemProps) {
           <div className="text-xs text-muted-foreground truncate">{step.heading1}</div>
         )}
       </div>
+      {onDelete && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+          onClick={handleDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   )
 }

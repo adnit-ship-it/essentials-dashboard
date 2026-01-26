@@ -18,6 +18,7 @@ interface FormSidebarProps {
     progressStepId: string,
     newOrder: number
   ) => void
+  onDeleteStep?: (stepId: string) => void
 }
 
 export function FormSidebar({
@@ -26,6 +27,7 @@ export function FormSidebar({
   selectedStepId,
   onReorderStep,
   onReorderProgressStep,
+  onDeleteStep,
 }: FormSidebarProps) {
   return (
     <div className="flex flex-col h-full">
@@ -37,6 +39,7 @@ export function FormSidebar({
           selectedStepId={selectedStepId}
           onReorderStep={onReorderStep}
           onReorderProgressStep={onReorderProgressStep}
+          onDeleteStep={onDeleteStep}
         />
       </div>
     </div>

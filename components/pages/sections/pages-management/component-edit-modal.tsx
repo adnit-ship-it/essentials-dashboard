@@ -91,6 +91,36 @@ export function ComponentEditModal({
     }
   }
 
+  const handleArrayAddLocal = (arrayKey: string, item: any) => {
+    if (arrayKey === "") {
+      // Direct array - tempValue is the array itself
+      const currentArray = Array.isArray(tempValue) ? tempValue : []
+      setTempValue([...currentArray, item])
+    } else {
+      // Nested array - tempValue[arrayKey] is the array
+      const currentArray = Array.isArray(tempValue?.[arrayKey]) ? tempValue[arrayKey] : []
+      setTempValue({
+        ...tempValue,
+        [arrayKey]: [...currentArray, item]
+      })
+    }
+  }
+
+  const handleArrayRemoveLocal = (arrayKey: string, itemIndex: number) => {
+    if (arrayKey === "") {
+      // Direct array - tempValue is the array itself
+      const currentArray = Array.isArray(tempValue) ? tempValue : []
+      setTempValue(currentArray.filter((_, i) => i !== itemIndex))
+    } else {
+      // Nested array - tempValue[arrayKey] is the array
+      const currentArray = Array.isArray(tempValue?.[arrayKey]) ? tempValue[arrayKey] : []
+      setTempValue({
+        ...tempValue,
+        [arrayKey]: currentArray.filter((_, i) => i !== itemIndex)
+      })
+    }
+  }
+
   const handleSave = () => {
     // Save the temporary value
     onSave([], tempValue)
@@ -109,12 +139,8 @@ export function ComponentEditModal({
     sectionName,
     componentIndex,
     onUpdate: handleUpdate,
-    onArrayAdd: onArrayAdd
-      ? (arrayKey: string, item: any) => onArrayAdd(`${componentKey}.${arrayKey}`, item)
-      : undefined,
-    onArrayRemove: onArrayRemove
-      ? (arrayKey: string, itemIndex: number) => onArrayRemove(`${componentKey}.${arrayKey}`, itemIndex)
-      : undefined,
+    onArrayAdd: handleArrayAddLocal,
+    onArrayRemove: handleArrayRemoveLocal,
   }
 
   const renderEditor = () => {
@@ -133,40 +159,43 @@ export function ComponentEditModal({
         return (
           <LogosArrayEditor
             {...editorProps}
-            onArrayAdd={onArrayAdd ? () => onArrayAdd(componentKey, { src: "", alt: "" }) : undefined}
-            onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(componentKey, index) : undefined}
+            onArrayAdd={() => {
+              const currentArray = Array.isArray(editorProps.value) ? editorProps.value : []
+              handleArrayAddLocal("", { src: "", alt: `Logo ${currentArray.length + 1}` })
+            }}
+            onArrayRemove={(_, index) => handleArrayRemoveLocal("", index)}
           />
         )
       case "steps":
         return (
           <StepsArrayEditor
             {...editorProps}
-            onArrayAdd={onArrayAdd ? () => onArrayAdd(componentKey, { title: "", subtext: "", icon: { src: "", alt: "", type: "svg-image", color: "accentColor1" } }) : undefined}
-            onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(componentKey, index) : undefined}
+            onArrayAdd={() => handleArrayAddLocal("", { title: "", subtext: "", icon: { src: "", alt: "", type: "svg-image", color: "accentColor1" } })}
+            onArrayRemove={(_, index) => handleArrayRemoveLocal("", index)}
           />
         )
       case "faq":
         return (
           <FAQArrayEditor
             {...editorProps}
-            onArrayAdd={onArrayAdd ? () => onArrayAdd(componentKey, { question: "", answer: "" }) : undefined}
-            onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(componentKey, index) : undefined}
+            onArrayAdd={() => handleArrayAddLocal("", { question: "", answer: "" })}
+            onArrayRemove={(_, index) => handleArrayRemoveLocal("", index)}
           />
         )
       case "before-after":
         return (
           <BeforeAfterArrayEditor
             {...editorProps}
-            onArrayAdd={onArrayAdd ? (item: any) => onArrayAdd(componentKey, item) : undefined}
-            onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(componentKey, index) : undefined}
+            onArrayAdd={(item: any) => handleArrayAddLocal("", item)}
+            onArrayRemove={(_, index) => handleArrayRemoveLocal("", index)}
           />
         )
       case "buttons":
         return (
           <ButtonsArrayEditor
             {...editorProps}
-            onArrayAdd={onArrayAdd ? () => onArrayAdd(componentKey, { text: "", type: "button", color: "accentColor1", backgroundColor: "accentColor1", show: true }) : undefined}
-            onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(componentKey, index) : undefined}
+            onArrayAdd={() => handleArrayAddLocal("", { text: "", type: "button", color: "accentColor1", backgroundColor: "accentColor1", show: true })}
+            onArrayRemove={(_, index) => handleArrayRemoveLocal("", index)}
           />
         )
       case "number":
@@ -191,24 +220,24 @@ export function ComponentEditModal({
         return (
           <FeaturesArrayEditor
             {...editorProps}
-            onArrayAdd={onArrayAdd ? () => onArrayAdd(componentKey, { text: "", iconType: "checkmark-star", iconColor: "#AA992C" }) : undefined}
-            onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(componentKey, index) : undefined}
+            onArrayAdd={() => handleArrayAddLocal("", { text: "", iconType: "checkmark-star", iconColor: "#AA992C" })}
+            onArrayRemove={(_, index) => handleArrayRemoveLocal("", index)}
           />
         )
       case "reviews":
         return (
           <ReviewsArrayEditor
             {...editorProps}
-            onArrayAdd={onArrayAdd ? () => onArrayAdd(componentKey, { name: "", stars: 5, review: "", order: 1 }) : undefined}
-            onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(componentKey, index) : undefined}
+            onArrayAdd={() => handleArrayAddLocal("", { name: "", stars: 5, review: "", order: 1 })}
+            onArrayRemove={(_, index) => handleArrayRemoveLocal("", index)}
           />
         )
       case "statistics":
         return (
           <StatisticsArrayEditor
             {...editorProps}
-            onArrayAdd={onArrayAdd ? () => onArrayAdd(componentKey, { value: "", description: "", order: 1, icon: { src: "", alt: "", type: "svg-image", color: "#337168" }, showBulletpoint: false }) : undefined}
-            onArrayRemove={onArrayRemove ? (_, index) => onArrayRemove(componentKey, index) : undefined}
+            onArrayAdd={() => handleArrayAddLocal("", { value: "", description: "", order: 1, icon: { src: "", alt: "", type: "svg-image", color: "#337168" }, showBulletpoint: false })}
+            onArrayRemove={(_, index) => handleArrayRemoveLocal("", index)}
           />
         )
       case "generic":

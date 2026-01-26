@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -45,11 +45,13 @@ function SortableButtonItem({
   index,
   onUpdate,
   onRemove,
+  shouldExpand,
 }: {
   item: any
   index: number
   onUpdate: (updates: any) => void
   onRemove: () => void
+  shouldExpand?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `button-${index}`,
@@ -61,7 +63,19 @@ function SortableButtonItem({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(shouldExpand || false)
+  const textInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (shouldExpand && !expanded) {
+      setExpanded(true)
+    }
+    if (expanded && shouldExpand && textInputRef.current) {
+      setTimeout(() => {
+        textInputRef.current?.focus()
+      }, 100)
+    }
+  }, [shouldExpand, expanded])
 
   return (
     <div ref={setNodeRef} style={style} className="border rounded p-3 space-y-3">
@@ -93,6 +107,7 @@ function SortableButtonItem({
           <div className="space-y-2">
             <Label>Text</Label>
             <Input
+              ref={textInputRef}
               value={item.text || ""}
               onChange={(e) => onUpdate({ ...item, text: e.target.value })}
               placeholder="Button text"
@@ -136,6 +151,7 @@ export function ButtonsArrayEditor({
   onArrayRemove,
 }: ButtonsArrayEditorProps) {
   const items = Array.isArray(value) ? value : []
+  const [newlyAddedIndex, setNewlyAddedIndex] = useState<number | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -162,6 +178,19 @@ export function ButtonsArrayEditor({
     onUpdate([], updated)
   }
 
+  const handleAdd = () => {
+    const newIndex = items.length
+    setNewlyAddedIndex(newIndex)
+    onArrayAdd?.("", {
+      text: "",
+      type: "button",
+      color: "accentColor1",
+      backgroundColor: "accentColor1",
+      show: true,
+    })
+    setTimeout(() => setNewlyAddedIndex(null), 500)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -170,15 +199,7 @@ export function ButtonsArrayEditor({
           <Button
             size="sm"
             variant="outline"
-            onClick={() =>
-              onArrayAdd?.("", {
-                text: "",
-                type: "button",
-                color: "accentColor1",
-                backgroundColor: "accentColor1",
-                show: true,
-              })
-            }
+            onClick={handleAdd}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Button
@@ -196,6 +217,7 @@ export function ButtonsArrayEditor({
                   index={index}
                   onUpdate={(updates) => handleItemUpdate(index, updates)}
                   onRemove={() => onArrayRemove?.("", index)}
+                  shouldExpand={newlyAddedIndex === index}
                 />
               ))}
             </div>

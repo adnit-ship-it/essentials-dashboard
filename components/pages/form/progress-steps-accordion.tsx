@@ -47,6 +47,7 @@ interface ProgressStepsAccordionProps {
     newOrder: number
   ) => void
   onAddFormStep?: (progressStepId: string) => void
+  onDeleteStep?: (stepId: string) => void
 }
 
 function DroppableProgressStep({
@@ -139,6 +140,7 @@ export function ProgressStepsAccordion({
   onReorderStep,
   onReorderProgressStep,
   onAddFormStep,
+  onDeleteStep,
 }: ProgressStepsAccordionProps) {
   const progressSteps = [...(quiz.progressSteps || [])].sort(
     (a, b) => a.order - b.order
@@ -356,6 +358,7 @@ export function ProgressStepsAccordion({
                                 step={fs}
                                 isSelected={fs.id === selectedStepId}
                                 onClick={() => onStepSelect(fs)}
+                                onDelete={onDeleteStep}
                               />
                             ) : null
                           )}

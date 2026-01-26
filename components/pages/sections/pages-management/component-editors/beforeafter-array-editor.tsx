@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -49,11 +49,13 @@ function SortableItem({
   index,
   onUpdate,
   onRemove,
+  shouldExpand,
 }: {
   item: any
   index: number
   onUpdate: (updates: any) => void
   onRemove: () => void
+  shouldExpand?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `item-${index}`,
@@ -65,7 +67,19 @@ function SortableItem({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(shouldExpand || false)
+  const altInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (shouldExpand && !expanded) {
+      setExpanded(true)
+    }
+    if (expanded && shouldExpand && altInputRef.current) {
+      setTimeout(() => {
+        altInputRef.current?.focus()
+      }, 100)
+    }
+  }, [shouldExpand, expanded])
 
   return (
     <div ref={setNodeRef} style={style} className="border rounded p-3 space-y-3">
@@ -102,6 +116,7 @@ function SortableItem({
           <div className="space-y-2">
             <Label>Alt Text</Label>
             <Input
+              ref={altInputRef}
               value={item.image?.alt || ""}
               onChange={(e) =>
                 onUpdate({ ...item, image: { ...item.image, alt: e.target.value } })
@@ -163,6 +178,7 @@ export function BeforeAfterArrayEditor({
   onArrayRemove,
 }: BeforeAfterArrayEditorProps) {
   const items = Array.isArray(value) ? value : []
+  const [newlyAddedIndex, setNewlyAddedIndex] = useState<number | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -194,6 +210,23 @@ export function BeforeAfterArrayEditor({
     onUpdate([], updated)
   }
 
+  const handleAdd = () => {
+    const newIndex = items.length
+    setNewlyAddedIndex(newIndex)
+    onArrayAdd?.({
+      image: {
+        src: "",
+        alt: "",
+        type: "image",
+        stars: 0,
+        testimonial: "",
+        name: "",
+        order: items.length + 1,
+      },
+    })
+    setTimeout(() => setNewlyAddedIndex(null), 500)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -202,19 +235,7 @@ export function BeforeAfterArrayEditor({
           <Button
             size="sm"
             variant="outline"
-            onClick={() =>
-              onArrayAdd?.({
-                image: {
-                  src: "",
-                  alt: "",
-                  type: "image",
-                  stars: 0,
-                  testimonial: "",
-                  name: "",
-                  order: items.length + 1,
-                },
-              })
-            }
+            onClick={handleAdd}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Item
@@ -232,6 +253,7 @@ export function BeforeAfterArrayEditor({
                   index={index}
                   onUpdate={(updates) => handleItemUpdate(index, updates)}
                   onRemove={() => onArrayRemove?.("", index)}
+                  shouldExpand={newlyAddedIndex === index}
                 />
               ))}
             </div>

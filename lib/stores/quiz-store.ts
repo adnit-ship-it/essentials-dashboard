@@ -211,21 +211,32 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
     try {
       const response = await fetchQuizById(repoInfo.owner, repoInfo.repo, repoInfo.branch, quizId)
 
-      // Update current quiz and also update in quizzes array
-      const { data } = get()
-      let updatedData = data
-      if (updatedData) {
-        const quizIndex = updatedData.quizzes.findIndex((q) => q.id === quizId)
+      // Update current quiz and also update in quizzes array for both data and originalData
+      const { data, originalData } = get()
+      
+      // Helper function to update quiz in a data structure
+      const updateQuizInData = (dataStructure: QuizFileStructure | null): QuizFileStructure | null => {
+        if (!dataStructure) return dataStructure
+        const quizIndex = dataStructure.quizzes.findIndex((q) => q.id === quizId)
+        const updatedQuizzes = [...dataStructure.quizzes]
         if (quizIndex !== -1) {
-          updatedData.quizzes[quizIndex] = response.quiz
+          updatedQuizzes[quizIndex] = response.quiz
         } else {
-          updatedData.quizzes.push(response.quiz)
+          updatedQuizzes.push(response.quiz)
+        }
+        return {
+          ...dataStructure,
+          quizzes: updatedQuizzes,
         }
       }
+
+      const updatedData = updateQuizInData(data)
+      const updatedOriginalData = updateQuizInData(originalData)
 
       set({
         currentQuiz: response.quiz,
         data: updatedData,
+        originalData: updatedOriginalData,
         isLoading: false,
       })
     } catch (err) {

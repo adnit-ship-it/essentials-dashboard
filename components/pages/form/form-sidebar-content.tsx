@@ -21,6 +21,7 @@ interface FormSidebarContentProps {
     progressStepId: string,
     newOrder: number
   ) => void
+  onDeleteStep?: (stepId: string) => void
 }
 
 export function FormSidebarContent({
@@ -29,6 +30,7 @@ export function FormSidebarContent({
   selectedStepId,
   onReorderStep,
   onReorderProgressStep,
+  onDeleteStep,
 }: FormSidebarContentProps) {
   const [progressStepModalOpen, setProgressStepModalOpen] = useState(false)
 
@@ -40,6 +42,7 @@ export function FormSidebarContent({
         selectedStepId={selectedStepId}
         onReorderStep={onReorderStep}
         onReorderProgressStep={onReorderProgressStep}
+        onDeleteStep={onDeleteStep}
         onAddFormStep={(progressStepId) => {
           // This will be handled by the NewStepButton inside the accordion
         }}

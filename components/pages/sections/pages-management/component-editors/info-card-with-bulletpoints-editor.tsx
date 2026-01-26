@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -28,12 +28,22 @@ export function InfoCardWithBulletpointsEditor({
   onArrayRemove,
 }: InfoCardWithBulletpointsEditorProps) {
   const bulletpoints = Array.isArray(value?.bulletpoints) ? value.bulletpoints : []
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   const handleBulletpointUpdate = (index: number, field: "text" | "showIcon", newValue: any) => {
     const updated = [...bulletpoints]
     updated[index] = { ...updated[index], [field]: newValue }
     onUpdate(["bulletpoints"], updated)
   }
+
+  // Focus the last input when bulletpoints array grows
+  useEffect(() => {
+    if (bulletpoints.length > 0 && inputRefs.current[bulletpoints.length - 1]) {
+      setTimeout(() => {
+        inputRefs.current[bulletpoints.length - 1]?.focus()
+      }, 100)
+    }
+  }, [bulletpoints.length])
 
   return (
     <Card>
@@ -89,6 +99,9 @@ export function InfoCardWithBulletpointsEditor({
                   </Button>
                 </div>
                 <Input
+                  ref={(el) => {
+                    inputRefs.current[index] = el
+                  }}
                   value={bp?.text || ""}
                   onChange={(e) => handleBulletpointUpdate(index, "text", e.target.value)}
                   placeholder="Bulletpoint text"

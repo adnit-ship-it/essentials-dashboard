@@ -29,6 +29,7 @@ export function FormPageContainer({ quiz }: FormPageContainerProps) {
           selectedStepId={selectedStepId}
           onReorderStep={localState.reorderFormStep}
           onReorderProgressStep={localState.reorderProgressStep}
+          onDeleteStep={localState.deleteFormStep}
         />
       </div>
       <div className="flex-1 overflow-y-auto">

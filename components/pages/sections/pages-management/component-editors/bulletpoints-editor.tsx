@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,6 +30,16 @@ export function BulletPointsEditor({
   const show = value?.show !== false
   const iconSrc = value?.icon?.src || ""
   const iconColor = value?.icon?.color || "accentColor1"
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  // Focus the last input when items array grows
+  useEffect(() => {
+    if (items.length > 0 && inputRefs.current[items.length - 1]) {
+      setTimeout(() => {
+        inputRefs.current[items.length - 1]?.focus()
+      }, 100)
+    }
+  }, [items.length])
 
   return (
     <Card>
@@ -72,6 +83,9 @@ export function BulletPointsEditor({
             {items.map((item: string, index: number) => (
               <div key={index} className="flex gap-2">
                 <Input
+                  ref={(el) => {
+                    inputRefs.current[index] = el
+                  }}
                   value={item}
                   onChange={(e) => {
                     const newItems = [...items]

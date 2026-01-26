@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -45,11 +45,13 @@ function SortableStepItem({
   index,
   onUpdate,
   onRemove,
+  shouldExpand,
 }: {
   item: any
   index: number
   onUpdate: (updates: any) => void
   onRemove: () => void
+  shouldExpand?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `step-${index}`,
@@ -61,7 +63,20 @@ function SortableStepItem({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(shouldExpand || false)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (shouldExpand && !expanded) {
+      setExpanded(true)
+    }
+    if (expanded && shouldExpand && titleInputRef.current) {
+      // Small delay to ensure the input is rendered
+      setTimeout(() => {
+        titleInputRef.current?.focus()
+      }, 100)
+    }
+  }, [shouldExpand, expanded])
 
   return (
     <div ref={setNodeRef} style={style} className="border rounded p-3 space-y-3">
@@ -91,6 +106,7 @@ function SortableStepItem({
           <div className="space-y-2">
             <Label>Title</Label>
             <Input
+              ref={titleInputRef}
               value={item.title || ""}
               onChange={(e) => onUpdate({ ...item, title: e.target.value })}
               placeholder="Step title"
@@ -144,6 +160,7 @@ export function StepsArrayEditor({
   onArrayRemove,
 }: StepsArrayEditorProps) {
   const items = Array.isArray(value) ? value : []
+  const [newlyAddedIndex, setNewlyAddedIndex] = useState<number | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -174,6 +191,19 @@ export function StepsArrayEditor({
     onUpdate([], updated)
   }
 
+  const handleAdd = () => {
+    const newIndex = items.length
+    setNewlyAddedIndex(newIndex)
+    onArrayAdd?.("", {
+      title: "",
+      subtext: "",
+      icon: { src: "", alt: "", type: "svg-image", color: "accentColor1" },
+      order: items.length + 1,
+    })
+    // Clear the newly added index after a short delay
+    setTimeout(() => setNewlyAddedIndex(null), 500)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -182,14 +212,7 @@ export function StepsArrayEditor({
           <Button
             size="sm"
             variant="outline"
-            onClick={() =>
-              onArrayAdd?.("", {
-                title: "",
-                subtext: "",
-                icon: { src: "", alt: "", type: "svg-image", color: "accentColor1" },
-                order: items.length + 1,
-              })
-            }
+            onClick={handleAdd}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Step
@@ -207,6 +230,7 @@ export function StepsArrayEditor({
                   index={index}
                   onUpdate={(updates) => handleItemUpdate(index, updates)}
                   onRemove={() => onArrayRemove?.("", index)}
+                  shouldExpand={newlyAddedIndex === index}
                 />
               ))}
             </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -37,11 +37,13 @@ function SortableFAQItem({
   index,
   onUpdate,
   onRemove,
+  shouldExpand,
 }: {
   item: any
   index: number
   onUpdate: (updates: any) => void
   onRemove: () => void
+  shouldExpand?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `faq-${index}`,
@@ -53,7 +55,19 @@ function SortableFAQItem({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(shouldExpand || false)
+  const questionInputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (shouldExpand && !expanded) {
+      setExpanded(true)
+    }
+    if (expanded && shouldExpand && questionInputRef.current) {
+      setTimeout(() => {
+        questionInputRef.current?.focus()
+      }, 100)
+    }
+  }, [shouldExpand, expanded])
 
   return (
     <div ref={setNodeRef} style={style} className="border rounded p-3 space-y-3">
@@ -85,6 +99,7 @@ function SortableFAQItem({
           <div className="space-y-2">
             <Label>Question</Label>
             <Textarea
+              ref={questionInputRef}
               value={item.question || ""}
               onChange={(e) => onUpdate({ ...item, question: e.target.value })}
               placeholder="Enter question"
@@ -113,6 +128,7 @@ export function FAQArrayEditor({
   onArrayRemove,
 }: FAQArrayEditorProps) {
   const items = Array.isArray(value) ? value : []
+  const [newlyAddedIndex, setNewlyAddedIndex] = useState<number | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -144,6 +160,17 @@ export function FAQArrayEditor({
     onUpdate([], updated)
   }
 
+  const handleAdd = () => {
+    const newIndex = items.length
+    setNewlyAddedIndex(newIndex)
+    onArrayAdd?.("", {
+      question: "",
+      answer: "",
+      order: items.length + 1,
+    })
+    setTimeout(() => setNewlyAddedIndex(null), 500)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -152,13 +179,7 @@ export function FAQArrayEditor({
           <Button
             size="sm"
             variant="outline"
-            onClick={() =>
-              onArrayAdd?.("", {
-                question: "",
-                answer: "",
-                order: items.length + 1,
-              })
-            }
+            onClick={handleAdd}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add FAQ
@@ -176,6 +197,7 @@ export function FAQArrayEditor({
                   index={index}
                   onUpdate={(updates) => handleItemUpdate(index, updates)}
                   onRemove={() => onArrayRemove?.("", index)}
+                  shouldExpand={newlyAddedIndex === index}
                 />
               ))}
             </div>

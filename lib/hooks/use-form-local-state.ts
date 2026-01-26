@@ -44,8 +44,17 @@ export function useFormLocalState(options: UseFormLocalStateOptions) {
   }, [quiz, data])
 
   const originalQuiz = useMemo(() => {
-    if (!quiz || !originalData) return quiz
-    return originalData.quizzes.find((q) => q.id === quiz.id) || quiz
+    if (!quiz) return null
+    // If originalData exists, try to find the quiz in it
+    if (originalData) {
+      const found = originalData.quizzes.find((q) => q.id === quiz.id)
+      if (found) return found
+    }
+    // If originalData doesn't have the quiz, we can't properly track changes
+    // Return null to indicate we don't have a baseline for comparison
+    // This will cause collectChanges to return null, which is better than
+    // comparing the draft against itself
+    return null
   }, [quiz, originalData])
 
   const handleAddNewFormStep = (step: LocalFormStep) => {

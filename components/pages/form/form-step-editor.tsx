@@ -254,8 +254,16 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
           <CardTitle>Step Configuration</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+        <div className="space-y-2">
+            <Label htmlFor="heading1"> Step heading</Label>
+            <Input
+              id="heading1"
+              value={step.heading1 || ""}
+              onChange={(e) => handleUpdate("heading1", e.target.value)}
+            />
+          </div>
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">Question title</Label>
             <Input
               id="title"
               value={step.title ?? ""}
@@ -263,14 +271,7 @@ export function FormStepEditor({ quiz, step, onStepUpdate }: FormStepEditorProps
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="heading1">Heading</Label>
-            <Input
-              id="heading1"
-              value={step.heading1 || ""}
-              onChange={(e) => handleUpdate("heading1", e.target.value)}
-            />
-          </div>
+          
         </CardContent>
       </Card>
 
