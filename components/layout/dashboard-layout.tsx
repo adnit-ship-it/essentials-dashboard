@@ -4,39 +4,18 @@ import { Button } from "@/components/ui/button"
 import { Menu, X, AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-import { FormsSection, ProductsSection, ReviewsSection, PagesManagementSection } from "@/components/pages"
+import { ProductsSection, ReviewsSection, PagesManagementSection } from "@/components/pages"
 import { BrandSettingsView } from "@/components/pages/sections/pages-management/brand-settings/brand-settings-view"
 import { RepositorySetupModal, RepositoryCreateModal } from "@/components/features/repository"
 import { Sidebar } from "./sidebar"
 import { EmptyStateView } from "./empty-state-view"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { useRepositoryStore } from "@/lib/stores/repository-store"
-import { useQuizStore } from "@/lib/stores/quiz-store"
 import { toast } from "sonner"
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeSection, setActiveSection] = useState("brand-settings")
-  const { builderQuizId } = useQuizStore()
-  const [hasAutoSwitched, setHasAutoSwitched] = useState(false)
-
-  // Reset hasAutoSwitched when activeSection changes away from "forms"
-  useEffect(() => {
-    if (activeSection !== "forms" && hasAutoSwitched) {
-      setHasAutoSwitched(false)
-    }
-  }, [activeSection, hasAutoSwitched])
-
-  // Auto-switch to Forms tab when builder is opened
-  useEffect(() => {
-    if (builderQuizId && activeSection !== "forms") {
-      setActiveSection("forms")
-      setHasAutoSwitched(true)
-    } else if (!builderQuizId) {
-      // Reset flag when builder is closed
-      setHasAutoSwitched(false)
-    }
-  }, [builderQuizId, activeSection])
   const [showRepoModal, setShowRepoModal] = useState(false)
   const [showCreateRepoModal, setShowCreateRepoModal] = useState(false)
   const [show404Alert, setShow404Alert] = useState(false)
@@ -77,7 +56,6 @@ export function DashboardLayout() {
   const getCurrentSectionTitle = () => {
     const sections = [
       { id: "pages", title: "Pages & Sections" },
-      { id: "forms", title: "Forms" },
       { id: "products", title: "Products" },
       { id: "brand-settings", title: "Brand Settings" },
     ]
@@ -206,9 +184,6 @@ export function DashboardLayout() {
                 </div>
                 <div className={activeSection === "brand-settings" ? "" : "hidden"}>
                   <BrandSettingsView />
-                </div>
-                <div className={activeSection === "forms" ? "" : "hidden"}>
-                  <FormsSection />
                 </div>
                 <div className={activeSection === "reviews" ? "" : "hidden"}>
                   <ReviewsSection />

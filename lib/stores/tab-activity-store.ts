@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type TabId = 'brand-design' | 'assets' | 'content' | 'products' | 'forms' | 'reviews'
+export type TabId = 'brand-design' | 'assets' | 'content' | 'products' | 'reviews'
 
 type EventCallback = () => void
 

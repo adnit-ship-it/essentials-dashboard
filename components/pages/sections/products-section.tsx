@@ -3,7 +3,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as Dialog from "@radix-ui/react-dialog"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
 import DOMPurify from "dompurify"
 import {
   AlertTriangle,
@@ -19,9 +18,6 @@ import {
   Undo2,
   X,
   XCircle,
-  Search,
-  Check,
-  ChevronDown,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -47,7 +43,6 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
-import { useQuizStore } from "@/lib/stores/quiz-store"
 import { useProductStore } from "@/lib/stores/product-store"
 import { fetchGraphQL } from "@/lib/services/graphql"
 import type { Product } from "@/lib/types/products"
@@ -173,14 +168,6 @@ type Feedback =
 
 // Use relative URLs in browser to avoid CORS issues
 const API_BASE_URL = typeof window !== "undefined" ? "" : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
-const QUIZ_CONFIG_URL = `${API_BASE_URL}/api/quizzes`
-
-type QuizOption = {
-  id: string
-  slug: string
-  name: string
-  isManual?: boolean
-}
 
 type FetchedProductBundle = {
   id: string
@@ -458,258 +445,6 @@ function validateProducts(products: Product[]) {
   return null
 }
 
-interface QuizDropdownProps {
-  value: string // This is now a slug, not an ID
-  onValueChange: (value: string) => void // Returns slug
-  quizOptions: QuizOption[]
-  quizNameById: Record<string, string>
-  quizSlugById: Record<string, string>
-  quizNameBySlug: Record<string, string>
-  disabled?: boolean
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  searchQuery: string
-  onSearchChange: (query: string) => void
-  selectedIndex: number
-  onSelectedIndexChange: (index: number) => void
-}
-
-function QuizDropdown({
-  value,
-  onValueChange,
-  quizOptions,
-  quizNameById,
-  quizSlugById,
-  quizNameBySlug,
-  disabled,
-  open,
-  onOpenChange,
-  searchQuery,
-  onSearchChange,
-  selectedIndex,
-  onSelectedIndexChange,
-}: QuizDropdownProps) {
-  const searchInputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-
-  // Build options list: "none" option + quiz options + missing quiz if applicable
-  const allOptions = useMemo(() => {
-    const options: Array<{ id: string; label: string; value: string }> = [
-      { id: "none", label: "No quiz", value: "none" },
-    ]
-    
-    quizOptions.forEach((option) => {
-      options.push({
-        id: option.id,
-        label: `${option.name}${option.isManual ? " (Manual)" : ""}`,
-        value: option.slug, // Use slug as value instead of ID
-      })
-    })
-    
-    // Add missing quiz if current value is not in options
-    // Check both slug and ID for backward compatibility
-    // Also handle case where value is an ID - convert it to slug
-    if (value !== "none") {
-      const isSlug = quizNameBySlug[value]
-      const isId = quizNameById[value]
-      if (!isSlug && !isId) {
-        options.push({
-          id: value,
-          label: `${value} (not found in config)`,
-          value: value,
-        })
-      } else if (isId && !isSlug) {
-        // Value is an ID, convert to slug for new assignments
-        const slug = quizSlugById[value]
-        if (slug) {
-          // Don't add duplicate, but ensure we can find it
-          if (!options.find(opt => opt.value === slug)) {
-            options.push({
-              id: value,
-              label: `${quizNameById[value]} (migrating)`,
-              value: slug,
-            })
-          }
-        }
-      }
-    }
-    
-    return options
-  }, [quizOptions, quizNameById, quizNameBySlug, quizSlugById, value])
-
-  // Filter options based on search query
-  const filteredOptions = useMemo(() => {
-    if (!searchQuery.trim()) return allOptions
-    const query = searchQuery.toLowerCase()
-    return allOptions.filter((option) =>
-      option.label.toLowerCase().includes(query)
-    )
-  }, [allOptions, searchQuery])
-
-  // Reset selected index when options change or dropdown opens
-  useEffect(() => {
-    if (open) {
-      onSelectedIndexChange(-1)
-      // Focus search input when dropdown opens
-      setTimeout(() => {
-        searchInputRef.current?.focus()
-      }, 0)
-    } else {
-      onSearchChange("")
-      onSelectedIndexChange(-1)
-    }
-  }, [open, onSearchChange, onSelectedIndexChange])
-
-  // Handle keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent, isSearchInput = false) => {
-    if (!open) return
-
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault()
-        const nextIndex = selectedIndex < filteredOptions.length - 1 ? selectedIndex + 1 : 0
-        onSelectedIndexChange(nextIndex)
-        break
-      case "ArrowUp":
-        e.preventDefault()
-        const prevIndex = selectedIndex > 0 ? selectedIndex - 1 : filteredOptions.length - 1
-        onSelectedIndexChange(prevIndex)
-        break
-      case "Enter":
-        e.preventDefault()
-        if (selectedIndex >= 0 && selectedIndex < filteredOptions.length) {
-          handleSelect(filteredOptions[selectedIndex].value)
-        } else if (filteredOptions.length === 1) {
-          // If only one option after search, select it
-          handleSelect(filteredOptions[0].value)
-        }
-        break
-      case "Escape":
-        e.preventDefault()
-        onOpenChange(false)
-        break
-    }
-  }
-
-  // Scroll selected item into view
-  useEffect(() => {
-    if (selectedIndex >= 0 && listRef.current) {
-      const selectedElement = listRef.current.children[selectedIndex] as HTMLElement
-      if (selectedElement) {
-        selectedElement.scrollIntoView({ block: "nearest", behavior: "smooth" })
-      }
-    }
-  }, [selectedIndex])
-
-  const handleSelect = (selectedValue: string) => {
-    onValueChange(selectedValue)
-    onOpenChange(false)
-    onSearchChange("")
-    onSelectedIndexChange(-1)
-  }
-
-  // Find selected quiz - handle both slug (new) and ID (backward compatibility)
-  const selectedQuiz = allOptions.find((opt) => opt.value === value) || 
-    (value !== "none" && quizNameBySlug[value] 
-      ? { value, label: quizNameBySlug[value] }
-      : value !== "none" && quizNameById[value]
-      ? { value, label: quizNameById[value] }
-      : null)
-
-  return (
-    <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <PopoverPrimitive.Trigger asChild>
-        <Button
-          variant="outline"
-          className="w-full justify-between h-10"
-          disabled={disabled}
-          onKeyDown={handleKeyDown}
-        >
-          <span className="truncate">
-            {selectedQuiz?.label || "Select quiz"}
-          </span>
-          <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
-        </Button>
-      </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Portal>
-        <PopoverPrimitive.Content
-          className={cn(
-            "z-50 w-[var(--radix-popover-trigger-width)] rounded-md border border-gray-300 bg-background-color p-1 shadow-md",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-          )}
-          align="start"
-          sideOffset={4}
-          onKeyDown={handleKeyDown}
-          onInteractOutside={(e) => {
-            // Prevent closing when clicking inside the scrollable area
-            const target = e.target as HTMLElement
-            if (listRef.current?.contains(target)) {
-              e.preventDefault()
-            }
-          }}
-        >
-          {/* Search Input */}
-          <div className="flex items-center border-b border-gray-300 px-3 py-2">
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-            <Input
-              ref={searchInputRef}
-              placeholder="Search quizzes..."
-              value={searchQuery}
-              onChange={(e) => {
-                onSearchChange(e.target.value)
-                onSelectedIndexChange(-1)
-              }}
-              className="h-8 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-              onKeyDown={(e) => handleKeyDown(e, true)}
-            />
-          </div>
-
-          {/* Options List */}
-          <div 
-            ref={listRef} 
-            className="max-h-[300px] overflow-y-auto"
-            style={{ WebkitOverflowScrolling: 'touch' }}
-            onWheel={(e) => {
-              // Prevent event from bubbling to parent elements that might interfere
-              e.stopPropagation()
-            }}
-            onTouchMove={(e) => {
-              // Allow touch scrolling
-              e.stopPropagation()
-            }}
-          >
-            {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-muted-foreground">
-                {searchQuery ? "No quizzes found" : "No quizzes available"}
-              </div>
-            ) : (
-              filteredOptions.map((option, index) => (
-                <button
-                  key={option.id}
-                  onClick={() => handleSelect(option.value)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-sm transition-colors",
-                    "hover:bg-accent-color hover:text-background-color",
-                    value === option.value && "bg-accent-color/50",
-                    selectedIndex === index && "bg-accent-color/70"
-                  )}
-                  onMouseEnter={() => onSelectedIndexChange(index)}
-                >
-                  <div className="flex-1 text-left truncate">{option.label}</div>
-                  {value === option.value && (
-                    <Check className="h-4 w-4 shrink-0" />
-                  )}
-                </button>
-              ))
-            )}
-          </div>
-        </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
-    </PopoverPrimitive.Root>
-  )
-}
-
 export function ProductsSection() {
   const [draftProducts, setDraftProducts] = useState<DraftProduct[]>([])
   const [loading, setLoading] = useState(true)
@@ -718,10 +453,6 @@ export function ProductsSection() {
   const [sha, setSha] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [activeEditor, setActiveEditor] = useState<ProductEditorState | null>(null)
-  const [quizOptions, setQuizOptions] = useState<QuizOption[]>([])
-  const [quizDropdownOpen, setQuizDropdownOpen] = useState(false)
-  const [quizSearchQuery, setQuizSearchQuery] = useState("")
-  const [quizSelectedIndex, setQuizSelectedIndex] = useState<number>(-1)
   const [linkNameModalOpen, setLinkNameModalOpen] = useState(false)
   const [linkNameInput, setLinkNameInput] = useState("")
   const [linkNameLoading, setLinkNameLoading] = useState(false)
@@ -745,26 +476,6 @@ export function ProductsSection() {
   const assetLookupRef = useRef<AssetLookup>({})
   const originalEditorStateRef = useRef<ProductEditorState | null>(null)
   const { setProducts: setProductStoreProducts } = useProductStore()
-  const quizNameById = useMemo(() => {
-    return quizOptions.reduce<Record<string, string>>((acc, option) => {
-      acc[option.id] = option.name
-      return acc
-    }, {})
-  }, [quizOptions])
-  
-  const quizSlugById = useMemo(() => {
-    return quizOptions.reduce<Record<string, string>>((acc, option) => {
-      acc[option.id] = option.slug
-      return acc
-    }, {})
-  }, [quizOptions])
-  
-  const quizNameBySlug = useMemo(() => {
-    return quizOptions.reduce<Record<string, string>>((acc, option) => {
-      acc[option.slug] = option.name
-      return acc
-    }, {})
-  }, [quizOptions])
 
   const computeDraftWithMeta = useCallback(
     (draft: DraftProduct): DraftProduct => {
@@ -818,7 +529,6 @@ export function ProductsSection() {
   )
 
   const { repoOwnerFromLink, repoNameFromLink, linkNameFromLink } = useOrganizationStore()
-  const { setBuilderQuizId, fetchQuizById, currentQuiz } = useQuizStore()
 
   const fetchProducts = useCallback(async () => {
     const owner = repoOwnerFromLink || ""
@@ -886,22 +596,7 @@ export function ProductsSection() {
 
   useEffect(() => {
     if (repoOwnerFromLink && repoNameFromLink) {
-      const load = async () => {
-        await fetchProducts()
-        try {
-          const url = `${QUIZ_CONFIG_URL}?owner=${encodeURIComponent(repoOwnerFromLink!)}&repo=${encodeURIComponent(repoNameFromLink!)}`
-          const response = await fetch(url)
-          if (!response.ok) {
-            throw new Error(`Failed to fetch quizzes (${response.status})`)
-          }
-          const data = await response.json()
-          setQuizOptions(Array.isArray(data?.quizzes) ? data.quizzes : [])
-        } catch (err) {
-          console.error("Failed to load quizzes", err)
-          setQuizOptions([])
-        }
-      }
-      load()
+      fetchProducts()
     }
   }, [repoOwnerFromLink, repoNameFromLink, fetchProducts])
 
@@ -936,19 +631,6 @@ export function ProductsSection() {
     },
     [draftProducts]
   )
-
-  const handleOpenQuizInBuilder = async (quizId: string) => {
-    try {
-      // Set builder quiz ID (triggers auto-switch to Forms tab via dashboard layout)
-      setBuilderQuizId(quizId)
-      // Fetch quiz if not already loaded
-      if (!currentQuiz || currentQuiz.id !== quizId) {
-        await fetchQuizById(quizId)
-      }
-    } catch (err) {
-      console.error("Failed to open quiz in builder:", err)
-    }
-  }
 
   const handleNewProduct = () => {
     const blank = createEmptyDraftProduct()
@@ -1080,7 +762,6 @@ export function ProductsSection() {
       current.draft.availability !== original.draft.availability ||
       current.draft.type !== original.draft.type ||
       current.draft.popular !== original.draft.popular ||
-      current.draft.quiz !== original.draft.quiz ||
       JSON.stringify(current.draft.features?.sort()) !== JSON.stringify(original.draft.features?.sort())
 
     // Compare price entries
@@ -1931,11 +1612,6 @@ export function ProductsSection() {
       Boolean(product._meta.assets?.img?.pendingUpload) ||
       Boolean(product._meta.assets?.thumbnail?.pendingUpload)
 
-    const quizLabel =
-      product.quiz && quizOptions.length > 0
-        ? (quizNameBySlug[product.quiz] || quizNameById[product.quiz] || product.quiz)
-        : product.quiz || null
-
     const previewMeta =
       product._meta.assets?.thumbnail ??
       product._meta.assets?.img
@@ -2095,14 +1771,6 @@ export function ProductsSection() {
                   </li>
                 )}
               </ul>
-            )}
-            {quizLabel && (
-              <div className="text-xs text-muted-foreground">
-                Quiz:{" "}
-                <span className="font-medium text-foreground">
-                  {quizLabel}
-                </span>
-              </div>
             )}
           </CardContent>
           <CardFooter className="border-t pt-4">
@@ -2494,117 +2162,6 @@ export function ProductsSection() {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label>Quiz Assignment</Label>
-                          {activeEditor.draft.quiz && (quizNameBySlug[activeEditor.draft.quiz] || quizNameById[activeEditor.draft.quiz]) && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const quizSlugOrId = activeEditor.draft.quiz!
-                                // Find quiz ID from slug (or use as-is if it's already an ID for backward compatibility)
-                                // quizSlugById maps ID -> slug, so we need to reverse lookup
-                                let quizId = quizSlugOrId
-                                if (quizNameBySlug[quizSlugOrId]) {
-                                  // It's a slug, find the ID
-                                  const foundId = Object.keys(quizSlugById).find(id => quizSlugById[id] === quizSlugOrId)
-                                  if (foundId) {
-                                    quizId = foundId
-                                  }
-                                }
-                                // If it's already an ID (quizNameById exists), use it as-is
-                                // Close modal immediately
-                                setProductPreviewModalOpen(false)
-                                // Also close the product editor modal
-                                setActiveEditor(null)
-                                // Use requestAnimationFrame to ensure DOM update happens before navigation
-                                requestAnimationFrame(() => {
-                                  handleOpenQuizInBuilder(quizId)
-                                })
-                              }}
-                              className="text-xs h-7"
-                            >
-                              Open in Form Builder
-                            </Button>
-                          )}
-                        </div>
-                        <QuizDropdown
-                          value={activeEditor.draft.quiz ?? "none"}
-                          onValueChange={(value) => {
-                            resetEditorError()
-                            setActiveEditor((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    draft: {
-                                      ...prev.draft,
-                                      quiz: value === "none" ? null : value, // Store slug
-                                    },
-                                  }
-                                : prev
-                            )
-                          }}
-                          quizOptions={quizOptions}
-                          quizNameById={quizNameById}
-                          quizSlugById={quizSlugById}
-                          quizNameBySlug={quizNameBySlug}
-                          disabled={quizOptions.length === 0 && !activeEditor.draft.quiz}
-                          open={quizDropdownOpen}
-                          onOpenChange={setQuizDropdownOpen}
-                          searchQuery={quizSearchQuery}
-                          onSearchChange={setQuizSearchQuery}
-                          selectedIndex={quizSelectedIndex}
-                          onSelectedIndexChange={setQuizSelectedIndex}
-                        />
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">
-                            Assign an intake quiz to launch after checkout. This quiz will be shown to users when they interact with this product.
-                          </p>
-                          {activeEditor.draft.quiz && (
-                            <div className="mt-2 p-2 bg-muted/50 rounded border border-blue-200">
-                              <p className="text-xs font-medium text-blue-900 mb-1">Product Bundle IDs</p>
-                              <p className="text-xs text-blue-700">
-                                When this product is linked to the quiz, the following bundle IDs will be automatically added to the quiz:
-                              </p>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {activeEditor.draft.productBundleIds?.monthly && (
-                                  <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium">
-                                    {activeEditor.draft.productBundleIds.monthly}
-                                  </span>
-                                )}
-                                {activeEditor.draft.productBundleIds?.threeMonthly && (
-                                  <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium">
-                                    {activeEditor.draft.productBundleIds.threeMonthly}
-                                  </span>
-                                )}
-                                {activeEditor.draft.productBundleIds?.sixMonthly && (
-                                  <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium">
-                                    {activeEditor.draft.productBundleIds.sixMonthly}
-                                  </span>
-                                )}
-                                {(!activeEditor.draft.productBundleIds?.monthly && 
-                                  !activeEditor.draft.productBundleIds?.threeMonthly && 
-                                  !activeEditor.draft.productBundleIds?.sixMonthly) && (
-                                  <span className="text-xs text-muted-foreground">No bundle IDs configured</span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                          {activeEditor.draft.quiz && (
-                            <div className="mt-2">
-                              <p className="text-xs text-muted-foreground">
-                                Other products using this quiz:{" "}
-                                {draftProducts
-                                  .filter((p) => p.quiz === activeEditor.draft.quiz && p._localId !== activeEditor.draft._localId)
-                                  .map((p) => p.name)
-                                  .join(", ") || "None"}
-                              </p>
-                            </div>
-                          )}
-                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label>Popular</Label>

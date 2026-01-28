@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette, GitBranch, Plus, Sparkles, Globe, AlertTriangle, FileText } from "lucide-react"
+import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette, GitBranch, Plus, Sparkles, Globe, AlertTriangle } from "lucide-react"
 
 import { OrganizationDropdown } from "@/components/features/organization"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
@@ -32,12 +32,6 @@ const sidebarItems = [
     icon: Package,
     href: "/products",
     id: "products",
-  },
-  {
-    title: "Forms",
-    icon: FileText,
-    href: "/forms",
-    id: "forms",
   },
 ]
 
