@@ -45,6 +45,7 @@ interface SortablePageCardProps {
   editTitle: string
   templateName: string | null
   hostedUrl: string | null
+  isHosting: boolean
   onStartEdit: (pageKey: PageKey) => void
   onSaveEdit: () => void
   onCancelEdit: () => void
@@ -52,6 +53,7 @@ interface SortablePageCardProps {
   onToggleShow: (pageKey: PageKey) => void
   onSelectPage: (pageKey: PageKey) => void
   onPreviewClick: (pageKey: PageKey, pageTitle: string) => void
+  onHostClick: () => void
 }
 
 function SortablePageCard({
@@ -62,6 +64,7 @@ function SortablePageCard({
   editTitle,
   templateName,
   hostedUrl,
+  isHosting,
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
@@ -69,6 +72,7 @@ function SortablePageCard({
   onToggleShow,
   onSelectPage,
   onPreviewClick,
+  onHostClick,
 }: SortablePageCardProps) {
   const isHomePage = pageKey.toLowerCase() === "home" || page.title?.toLowerCase() === "home"
   const [imageError, setImageError] = useState(false)
@@ -165,7 +169,11 @@ function SortablePageCard({
               e.stopPropagation()
               if (!hostedUrl) {
                 toast.error("Host your site first", {
-                  description: "Click the 'Host' button in the sidebar to deploy your site, then you can preview pages.",
+                  description: "Deploy your site to preview pages.",
+                  action: {
+                    label: "Host Now",
+                    onClick: () => onHostClick(),
+                  },
                 })
                 return
               }
@@ -264,6 +272,40 @@ export function PagesView({ pages }: PagesViewProps) {
   const [templateName, setTemplateName] = useState<string | null>(null)
   const [hostedUrl, setHostedUrl] = useState<string | null>(null)
   const [previewModal, setPreviewModal] = useState<{ pageKey: string; pageTitle: string } | null>(null)
+  const [isHosting, setIsHosting] = useState(false)
+
+  // Handle hosting the repository
+  const handleHost = async () => {
+    if (!repoOwnerFromLink || !repoNameFromLink || isHosting) return
+
+    setIsHosting(true)
+    try {
+      const apiUrl = typeof window !== "undefined" 
+        ? "" 
+        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
+      const url = `${apiUrl}/api/repositories/host?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
+
+      const response = await fetch(url, {
+        method: "POST",
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || "Failed to host repository")
+      }
+
+      const data = await response.json()
+      setHostedUrl(data.deploymentUrl)
+      toast.success("Site hosted successfully!", {
+        description: `Your site is now live at ${data.deploymentUrl}`,
+      })
+    } catch (error) {
+      console.error("Error hosting repository:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to host repository")
+    } finally {
+      setIsHosting(false)
+    }
+  }
 
   // Fetch templateName and hostedUrl from hostTemplate.json
   useEffect(() => {
@@ -424,6 +466,7 @@ export function PagesView({ pages }: PagesViewProps) {
                   editTitle={editTitle}
                   templateName={templateName}
                   hostedUrl={hostedUrl}
+                  isHosting={isHosting}
                   onStartEdit={handleStartEdit}
                   onSaveEdit={handleSaveEdit}
                   onCancelEdit={handleCancelEdit}
@@ -431,6 +474,7 @@ export function PagesView({ pages }: PagesViewProps) {
                   onToggleShow={handleToggleShow}
                   onSelectPage={selectPage}
                   onPreviewClick={handlePreviewClick}
+                  onHostClick={handleHost}
                 />
               ))}
             </div>
