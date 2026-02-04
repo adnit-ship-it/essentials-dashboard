@@ -31,8 +31,8 @@ function convertLogoSizes(pagesData: any): {
       width: { mobile: "auto", tablet: "auto", desktop: "auto" },
     },
     loadingScreen: logoSizes.loadingScreen || {
-      height: { mobile: "", desktop: "" },
-      width: { mobile: "auto", desktop: "auto" },
+      height: { mobile: "", tablet: "", desktop: "" },
+      width: { mobile: "auto", tablet: "auto", desktop: "auto" },
     },
     hero: logoSizes.hero || {
       height: { mobile: "", tablet: "", desktop: "" },
@@ -153,7 +153,7 @@ export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle, hid
           <div>
             <CardTitle>Logo Sizes</CardTitle>
             <CardDescription>
-              Configure heights and widths for logos in different contexts.
+              Configure heights for logos in different contexts.
             </CardDescription>
           </div>
           <ChevronDown 

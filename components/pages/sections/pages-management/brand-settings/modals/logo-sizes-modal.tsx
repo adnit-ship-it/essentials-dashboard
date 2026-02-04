@@ -21,7 +21,7 @@ export function LogoSizesModal({ open, onOpenChange }: LogoSizesModalProps) {
         <DialogHeader>
           <DialogTitle>Logo Sizes</DialogTitle>
           <DialogDescription>
-            Configure heights and widths for logos in different contexts.
+            Configure heights for logos in different contexts.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">

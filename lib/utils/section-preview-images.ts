@@ -85,3 +85,37 @@ export function getLogoPreviewImagePath(
   return `/section-screenshots/${normalizedTemplate}/${sectionName}.png`
 }
 
+/**
+ * Maps page keys to their hero section screenshot names
+ */
+const pageHeroMap: Record<string, string> = {
+  home: "home-hero",
+  about: "about-hero",
+  contact: "contact-hero",
+  products: "products-hero",
+}
+
+/**
+ * Gets the preview image path for a page based on its key and template type
+ * Uses the hero section screenshot as the page preview
+ * 
+ * @param pageKey - The key of the page (e.g., "home", "about", "contact", "products")
+ * @param templateName - The name of the template (e.g., "Serenova Template")
+ * @returns The image path or null if template is not available
+ * 
+ * @example
+ * getPagePreviewImagePath("about", "Serenova Template")
+ * // Returns: "/section-screenshots/serenova-template/about-hero.png"
+ */
+export function getPagePreviewImagePath(
+  pageKey: string,
+  templateName: string | null
+): string | null {
+  if (!templateName) return null
+  
+  const normalizedTemplate = normalizeTemplateName(templateName)
+  const sectionName = pageHeroMap[pageKey.toLowerCase()] || `${pageKey.toLowerCase()}-hero`
+  
+  return `/section-screenshots/${normalizedTemplate}/${sectionName}.png`
+}
+

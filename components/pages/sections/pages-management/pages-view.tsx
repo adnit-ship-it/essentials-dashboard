@@ -1,17 +1,19 @@
 "use client"
 
-import { GripVertical, Eye, EyeOff, Edit2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { GripVertical, Eye, EyeOff, Edit2, ExternalLink, Layout } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { usePagesStore } from "@/lib/stores/pages-store"
+import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { reorderPages, updatePage, getPageKeys } from "@/lib/utils/pages-helpers"
+import { getPagePreviewImagePath } from "@/lib/utils/section-preview-images"
 import type { PageKey } from "@/lib/types/pages"
-import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
+import { PagePreviewModal } from "./page-preview-modal"
 import {
   DndContext,
   closestCenter,
@@ -26,12 +28,29 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
 interface PagesViewProps {
   pages: Array<{ key: PageKey; page: any }>
+}
+
+interface SortablePageCardProps {
+  page: any
+  pageKey: PageKey
+  index: number
+  editingPage: PageKey | null
+  editTitle: string
+  templateName: string | null
+  hostedUrl: string | null
+  onStartEdit: (pageKey: PageKey) => void
+  onSaveEdit: () => void
+  onCancelEdit: () => void
+  onSetEditTitle: (title: string) => void
+  onToggleShow: (pageKey: PageKey) => void
+  onSelectPage: (pageKey: PageKey) => void
+  onPreviewClick: (pageKey: PageKey, pageTitle: string) => void
 }
 
 function SortablePageCard({
@@ -40,24 +59,31 @@ function SortablePageCard({
   index,
   editingPage,
   editTitle,
+  templateName,
+  hostedUrl,
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
   onSetEditTitle,
   onToggleShow,
   onSelectPage,
-}: any) {
+  onPreviewClick,
+}: SortablePageCardProps) {
   const isHomePage = pageKey.toLowerCase() === "home" || page.title?.toLowerCase() === "home"
+  const [imageError, setImageError] = useState(false)
   
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: pageKey,
     disabled: isHomePage,
   })
 
+  const previewImagePath = getPagePreviewImagePath(pageKey, templateName)
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
     ...(getStaggeredAnimationStyle(index) as React.CSSProperties),
   }
 
@@ -76,31 +102,72 @@ function SortablePageCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={cn(
+        "w-full md:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]",
+        !isDragging && "animate-fade-in-staggered"
+      )}
+    >
       <Card 
         className={cn(
-          !isDragging && "animate-fade-in-staggered",
-          "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200"
+          "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200 overflow-hidden h-full flex flex-col"
         )}
         onClick={handleCardClick}
       >
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <div
-              {...attributes}
-              {...listeners}
-              data-drag-handle
-              className={cn(
-                isHomePage ? "cursor-not-allowed opacity-50" : "cursor-grab active:cursor-grabbing"
-              )}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <GripVertical className="h-5 w-5 text-muted-foreground" />
+        {/* Preview Image Area */}
+        <div className="relative aspect-video bg-muted overflow-hidden">
+          {previewImagePath && !imageError ? (
+            <img
+              src={previewImagePath}
+              alt={`${page.title} preview`}
+              className="w-full h-full object-cover"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Layout className="h-12 w-12 text-muted-foreground/40" />
             </div>
+          )}
+          
+          {/* Drag Handle - Overlay on top left */}
+          <div
+            {...attributes}
+            {...listeners}
+            data-drag-handle
+            className={cn(
+              "absolute top-2 left-2 p-1.5 rounded-md bg-background/80 backdrop-blur-sm",
+              isHomePage ? "cursor-not-allowed opacity-50" : "cursor-grab active:cursor-grabbing hover:bg-background"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
 
-            <div className="flex-1">
+          {/* Preview Button - Overlay on top right */}
+          <Button
+            variant="secondary"
+            size="sm"
+            className="absolute top-2 right-2 gap-1.5 h-7 text-xs bg-background/80 backdrop-blur-sm hover:bg-background"
+            onClick={(e) => {
+              e.stopPropagation()
+              onPreviewClick(pageKey, page.title)
+            }}
+            disabled={!hostedUrl}
+            title={!hostedUrl ? "Host your site first to preview" : "Preview page"}
+          >
+            <ExternalLink className="h-3 w-3" />
+            Preview
+          </Button>
+        </div>
+
+        {/* Card Content */}
+        <CardContent className="p-4 flex-1 flex flex-col">
+          <div className="flex items-start justify-between gap-2 flex-1">
+            <div className="flex-1 min-w-0">
               {editingPage === pageKey ? (
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                   <Input
                     value={editTitle}
                     onChange={(e) => onSetEditTitle(e.target.value)}
@@ -111,64 +178,109 @@ function SortablePageCard({
                     className="h-8"
                     autoFocus
                   />
-                  <Button size="sm" onClick={onSaveEdit}>
-                    Save
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={onCancelEdit}>
-                    Cancel
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={onSaveEdit} className="h-7 text-xs">
+                      Save
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={onCancelEdit} className="h-7 text-xs">
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base">{page.title}</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onStartEdit(pageKey)
-                    }}
-                    className="h-6 w-6 p-0"
-                  >
-                    <Edit2 className="h-3 w-3" />
-                  </Button>
-                </div>
+                <>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-sm truncate">{page.title}</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onStartEdit(pageKey)
+                      }}
+                      className="h-6 w-6 p-0 flex-shrink-0"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {page.description || "No description"}
+                  </p>
+                </>
               )}
-              <p className="text-xs text-muted-foreground mt-1">
-                {page.description || "No description"}
-              </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (!isHomePage) onToggleShow(pageKey)
-                }}
-                disabled={isHomePage}
-                className={cn(
-                  "gap-2",
-                  !page.show && "text-muted-foreground",
-                  isHomePage && "cursor-not-allowed opacity-50"
-                )}
-              >
-                {page.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              </Button>
-              
-            </div>
-              </div>
-            </CardHeader>
-          </Card>
-        </div>
-      )
-    }
+            {/* Visibility Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (!isHomePage) onToggleShow(pageKey)
+              }}
+              disabled={isHomePage}
+              className={cn(
+                "h-8 w-8 p-0 flex-shrink-0",
+                !page.show && "text-muted-foreground",
+                isHomePage && "cursor-not-allowed opacity-50"
+              )}
+              title={isHomePage ? "Home page is always visible" : page.show ? "Hide page" : "Show page"}
+            >
+              {page.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
 export function PagesView({ pages }: PagesViewProps) {
   const { pagesData, selectPage, updatePagesData } = usePagesStore()
+  const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [editingPage, setEditingPage] = useState<PageKey | null>(null)
   const [editTitle, setEditTitle] = useState("")
+  const [templateName, setTemplateName] = useState<string | null>(null)
+  const [hostedUrl, setHostedUrl] = useState<string | null>(null)
+  const [previewModal, setPreviewModal] = useState<{ pageKey: string; pageTitle: string } | null>(null)
+
+  // Fetch templateName and hostedUrl from hostTemplate.json
+  useEffect(() => {
+    if (repoOwnerFromLink && repoNameFromLink) {
+      const apiUrl = typeof window !== "undefined" 
+        ? "" // Relative URL in browser
+        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
+      const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
+      
+      fetch(url)
+        .then((res) => {
+          if (res.ok) {
+            return res.json()
+          }
+          if (res.status === 404) {
+            return null
+          }
+          throw new Error(`Failed to fetch host template: ${res.status}`)
+        })
+        .then((data) => {
+          if (data?.templateName) {
+            setTemplateName(data.templateName)
+          } else {
+            setTemplateName(null)
+          }
+          if (data?.hostedAt) {
+            setHostedUrl(data.hostedAt)
+          } else {
+            setHostedUrl(null)
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching host template:", error)
+          setTemplateName(null)
+          setHostedUrl(null)
+        })
+    }
+  }, [repoOwnerFromLink, repoNameFromLink])
 
   // Generate animation key that changes when pages data changes
   const animationKey = useAnimationKey(pages, (p) => p.key)
@@ -257,6 +369,10 @@ export function PagesView({ pages }: PagesViewProps) {
     setEditTitle("")
   }
 
+  const handlePreviewClick = (pageKey: string, pageTitle: string) => {
+    setPreviewModal({ pageKey, pageTitle })
+  }
+
   return (
     <>
       <div className="space-y-4">
@@ -274,9 +390,9 @@ export function PagesView({ pages }: PagesViewProps) {
         >
           <SortableContext
             items={pages.map((p) => p.key)}
-            strategy={verticalListSortingStrategy}
+            strategy={rectSortingStrategy}
           >
-            <div key={animationKey} className="space-y-2">
+            <div key={animationKey} className="flex flex-wrap gap-4">
               {pages.map(({ key, page }, index) => (
                 <SortablePageCard
                   key={key}
@@ -285,19 +401,32 @@ export function PagesView({ pages }: PagesViewProps) {
                   index={index}
                   editingPage={editingPage}
                   editTitle={editTitle}
+                  templateName={templateName}
+                  hostedUrl={hostedUrl}
                   onStartEdit={handleStartEdit}
                   onSaveEdit={handleSaveEdit}
                   onCancelEdit={handleCancelEdit}
                   onSetEditTitle={setEditTitle}
                   onToggleShow={handleToggleShow}
                   onSelectPage={selectPage}
+                  onPreviewClick={handlePreviewClick}
                 />
               ))}
             </div>
           </SortableContext>
         </DndContext>
       </div>
+
+      {/* Page Preview Modal */}
+      <PagePreviewModal
+        open={!!previewModal}
+        onOpenChange={(open) => {
+          if (!open) setPreviewModal(null)
+        }}
+        pageKey={previewModal?.pageKey || ""}
+        pageTitle={previewModal?.pageTitle || ""}
+        hostedUrl={hostedUrl}
+      />
     </>
   )
 }
-
