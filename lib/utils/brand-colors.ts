@@ -5,7 +5,7 @@
 import { useState, useEffect } from "react"
 import type { BrandingColors } from "@/lib/types/branding"
 
-const DEFAULT_COLORS: BrandingColors = {
+export const DEFAULT_BRAND_COLORS: BrandingColors = {
   backgroundColor: "#FFFFFF",
   bodyColor: "#000000",
   accentColor1: "#FF6B35",
@@ -78,15 +78,15 @@ export function useBrandColors(
           if (data.colors) {
             setColors(data.colors)
           } else {
-            setColors(DEFAULT_COLORS)
+            setColors(DEFAULT_BRAND_COLORS)
           }
         } else {
           // Use default colors on error
-          setColors(DEFAULT_COLORS)
+          setColors(DEFAULT_BRAND_COLORS)
         }
       } catch (error) {
         console.error("Failed to fetch brand colors:", error)
-        setColors(DEFAULT_COLORS)
+        setColors(DEFAULT_BRAND_COLORS)
       } finally {
         setLoading(false)
       }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -11,7 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { isValidHex } from "@/lib/utils/colors"
-import { usePagesStore } from "@/lib/stores/pages-store"
+import { resolveBrandColor, useBrandColors, DEFAULT_BRAND_COLORS } from "@/lib/utils/brand-colors"
+import { useOrganizationStore } from "@/lib/stores/organization-store"
 
 interface ColorInputProps {
   label: string
@@ -33,9 +34,17 @@ export function ColorInput({
   onChange,
   allowBrandColors = true,
 }: ColorInputProps) {
-  const { pagesData } = usePagesStore()
+  const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
+  const { colors: brandColors } = useBrandColors(repoOwnerFromLink, repoNameFromLink)
   const [colorInput, setColorInput] = useState(value || "")
   const isBrandColor = BRAND_COLORS.some((bc) => bc.value === value)
+
+  // Resolved hex for display: when a brand color is selected, show its actual hex in swatch and hex field
+  const displayHex = useMemo(() => {
+    const colors = brandColors ?? DEFAULT_BRAND_COLORS
+    const resolved = resolveBrandColor(value || "", colors)
+    return resolved && isValidHex(resolved) ? resolved : "#000000"
+  }, [value, brandColors])
 
   const handleColorPickerChange = (newValue: string) => {
     setColorInput(newValue.toUpperCase())
@@ -80,7 +89,7 @@ export function ColorInput({
       <div className="flex gap-2">
         <Input
           type="color"
-          value={isBrandColor ? "#000000" : value || "#000000"}
+          value={displayHex}
           onChange={(e) => handleColorPickerChange(e.target.value)}
           className="h-10 w-12 cursor-pointer p-1"
           disabled={isBrandColor}
@@ -101,7 +110,7 @@ export function ColorInput({
           </Select>
         )}
         <Input
-          value={isBrandColor ? "" : colorInput || value || ""}
+          value={isBrandColor ? displayHex : colorInput || value || ""}
           onChange={(e) => handleTextChange(e.target.value)}
           onBlur={handleTextBlur}
           placeholder="#FFFFFF"
