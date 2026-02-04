@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Layout } from "lucide-react"
 import type { LogoSize } from "@/lib/types/branding"
 import { getLogoPreviewImagePath } from "@/lib/utils/section-preview-images"
 
@@ -48,34 +49,39 @@ export function LogoSizeEditor({ label, description, size, onSizeChange, logoTyp
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm">{label}</CardTitle>
-        <CardDescription className="text-xs">{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Preview Image */}
-        {previewImagePath && !imageError && (
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Preview</Label>
-            <div className="relative overflow-hidden rounded-md border bg-muted aspect-video max-w-full">
-              <img
-                src={previewImagePath}
-                alt={`${label} preview`}
-                className="w-full h-full object-cover"
-                onError={() => {
-                  setImageError(true)
-                }}
-              />
-            </div>
+    <Card className="overflow-hidden h-full flex flex-col">
+      {/* Preview Image Area */}
+      <div className="relative aspect-video bg-muted overflow-hidden">
+        {previewImagePath && !imageError ? (
+          <img
+            src={previewImagePath}
+            alt={`${label} preview`}
+            className="w-full h-full object-cover"
+            onError={() => {
+              setImageError(true)
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Layout className="h-12 w-12 text-muted-foreground/40" />
           </div>
         )}
+      </div>
+
+      {/* Card Content */}
+      <CardContent className="p-4 flex-1 flex flex-col">
+        {/* Title and Description */}
+        <div className="mb-3">
+          <h3 className="font-medium text-sm">{label}</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        </div>
+
         {/* Heights */}
         <div className="space-y-2">
           <Label className="text-xs font-medium">Heights</Label>
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="space-y-1">
-              <Label htmlFor={`${label}-height-mobile`} className="text-xs">Mobile</Label>
+          <div className="flex gap-3">
+            <div className="flex-1 space-y-1">
+              <Label htmlFor={`${label}-height-mobile`} className="text-xs text-muted-foreground">Mobile</Label>
               <div className="flex items-center gap-1">
                 <Input
                   id={`${label}-height-mobile`}
@@ -88,13 +94,12 @@ export function LogoSizeEditor({ label, description, size, onSizeChange, logoTyp
                     }
                   }}
                   placeholder="24"
-                  className="h-8 w-20 text-sm"
+                  className="h-8 text-sm"
                 />
-                <span className="text-xs text-muted-foreground">px</span>
               </div>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor={`${label}-height-tablet`} className="text-xs">Tablet</Label>
+            <div className="flex-1 space-y-1">
+              <Label htmlFor={`${label}-height-tablet`} className="text-xs text-muted-foreground">Tablet</Label>
               <div className="flex items-center gap-1">
                 <Input
                   id={`${label}-height-tablet`}
@@ -107,13 +112,12 @@ export function LogoSizeEditor({ label, description, size, onSizeChange, logoTyp
                     }
                   }}
                   placeholder="28"
-                  className="h-8 w-20 text-sm"
+                  className="h-8 text-sm"
                 />
-                <span className="text-xs text-muted-foreground">px</span>
               </div>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor={`${label}-height-desktop`} className="text-xs">Desktop</Label>
+            <div className="flex-1 space-y-1">
+              <Label htmlFor={`${label}-height-desktop`} className="text-xs text-muted-foreground">Desktop</Label>
               <div className="flex items-center gap-1">
                 <Input
                   id={`${label}-height-desktop`}
@@ -126,12 +130,12 @@ export function LogoSizeEditor({ label, description, size, onSizeChange, logoTyp
                     }
                   }}
                   placeholder="28"
-                  className="h-8 w-20 text-sm"
+                  className="h-8 text-sm"
                 />
-                <span className="text-xs text-muted-foreground">px</span>
               </div>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground text-right">px</p>
         </div>
       </CardContent>
     </Card>
