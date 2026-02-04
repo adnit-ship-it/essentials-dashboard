@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import { PagePreviewModal } from "./page-preview-modal"
+import { toast } from "sonner"
 import {
   DndContext,
   closestCenter,
@@ -133,14 +134,21 @@ function SortablePageCard({
           
           {/* Drag Handle - Overlay on top left */}
           <div
-            {...attributes}
-            {...listeners}
+            {...(isHomePage ? {} : attributes)}
+            {...(isHomePage ? {} : listeners)}
             data-drag-handle
             className={cn(
               "absolute top-2 left-2 p-1.5 rounded-md bg-background/80 backdrop-blur-sm",
               isHomePage ? "cursor-not-allowed opacity-50" : "cursor-grab active:cursor-grabbing hover:bg-background"
             )}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (isHomePage) {
+                toast.error("Home page cannot be reordered", {
+                  description: "The Home page must always appear first in the navigation.",
+                })
+              }
+            }}
           >
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
@@ -149,12 +157,20 @@ function SortablePageCard({
           <Button
             variant="outline"
             size="sm"
-            className="absolute top-2 right-2 gap-1.5 h-7 text-xs bg-background/80 backdrop-blur-sm hover:bg-background"
+            className={cn(
+              "absolute top-2 right-2 gap-1.5 h-7 text-xs bg-background/80 backdrop-blur-sm hover:bg-background",
+              !hostedUrl && "opacity-70"
+            )}
             onClick={(e) => {
               e.stopPropagation()
+              if (!hostedUrl) {
+                toast.error("Host your site first", {
+                  description: "Click the 'Host' button in the sidebar to deploy your site, then you can preview pages.",
+                })
+                return
+              }
               onPreviewClick(pageKey, page.title)
             }}
-            disabled={!hostedUrl}
             title={!hostedUrl ? "Host your site first to preview" : "Preview page"}
           >
             <ExternalLink className="h-3 w-3" />
@@ -216,13 +232,18 @@ function SortablePageCard({
               size="sm"
               onClick={(e) => {
                 e.stopPropagation()
-                if (!isHomePage) onToggleShow(pageKey)
+                if (isHomePage) {
+                  toast.error("Home page cannot be hidden", {
+                    description: "The Home page must always be visible as it's the main entry point of your site.",
+                  })
+                  return
+                }
+                onToggleShow(pageKey)
               }}
-              disabled={isHomePage}
               className={cn(
                 "h-8 w-8 p-0 flex-shrink-0",
                 !page.show && "text-muted-foreground",
-                isHomePage && "cursor-not-allowed opacity-50"
+                isHomePage && "opacity-50"
               )}
               title={isHomePage ? "Home page is always visible" : page.show ? "Hide page" : "Show page"}
             >
