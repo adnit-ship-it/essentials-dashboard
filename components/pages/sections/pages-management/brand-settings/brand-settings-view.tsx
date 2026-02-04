@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Loader2, RefreshCw, Save, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
@@ -17,6 +17,14 @@ import { BrandColorsModal } from "./modals/brand-colors-modal"
 import { LogoRegistryModal } from "./modals/logo-registry-modal"
 import { LogoSizesModal } from "./modals/logo-sizes-modal"
 import { FaviconModal } from "./modals/favicon-modal"
+
+const brandSettingDescriptions: Record<string, string> = {
+  "page-metadata": "Title and description for your site",
+  "brand-colors": "Background, body, and accent colors",
+  "logo-registry": "Primary, secondary, and loading logos",
+  "logo-sizes": "Logo heights for different contexts",
+  "favicon": "Browser tab icon",
+}
 
 export function BrandSettingsView() {
   const {
@@ -127,26 +135,32 @@ export function BrandSettingsView() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-4 justify-center">
+      <div className="flex flex-wrap gap-4">
         {brandSettingComponents.map(({ key, title, PreviewComponent, ModalComponent }) => (
-          <div key={key} className="w-full md:w-[350px] lg:w-[300px] aspect-square max-w-full">
+          <div key={key} className="w-full md:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]">
             <Card
               className={cn(
-                "cursor-pointer transition-all hover:shadow-md aspect-square",
-                "flex flex-col h-full"
+                "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200 overflow-hidden h-full flex flex-col"
               )}
+              onClick={() => handleEdit(key)}
             >
-              <CardHeader className="pb-2 flex-shrink-0">
-                <CardTitle className="text-sm capitalize line-clamp-1">
-                  {title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-center overflow-hidden p-4">
+              {/* Preview Area */}
+              <div className="relative aspect-video bg-muted overflow-hidden flex items-center justify-center p-4">
                 <PreviewComponent
                   onEdit={() => handleEdit(key)}
                   repoOwner={repoOwnerFromLink}
                   repoName={repoNameFromLink}
                 />
+              </div>
+
+              {/* Card Content */}
+              <CardContent className="p-4 flex-1 flex flex-col">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-sm truncate">{title}</h3>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {brandSettingDescriptions[key] || "Configure this setting"}
+                  </p>
+                </div>
               </CardContent>
             </Card>
             {openModalKey === key && (
@@ -161,4 +175,3 @@ export function BrandSettingsView() {
     </div>
   )
 }
-

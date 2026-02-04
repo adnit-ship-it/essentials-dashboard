@@ -1,14 +1,17 @@
 "use client"
 
-import { ChevronLeft, Eye, EyeOff, GripVertical } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ChevronLeft, Eye, EyeOff, GripVertical, Layout } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { usePagesStore } from "@/lib/stores/pages-store"
+import { useOrganizationStore } from "@/lib/stores/organization-store"
 import {
   getSectionsForPage,
   reorderSections,
   updatePageSection,
 } from "@/lib/utils/pages-helpers"
+import { getSectionPreviewImagePath } from "@/lib/utils/section-preview-images"
 import { cn } from "@/lib/utils"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
@@ -26,29 +29,38 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+
+interface SortableSectionCardProps {
+  section: any
+  index: number
+  templateName: string | null
+  onToggleShow: (name: string) => void
+  onSelectSection: (name: string) => void
+}
 
 function SortableSectionCard({
   section,
   index,
+  templateName,
   onToggleShow,
   onSelectSection,
-}: {
-  section: any
-  index: number
-  onToggleShow: (name: string) => void
-  onSelectSection: (name: string) => void
-}) {
+}: SortableSectionCardProps) {
+  const [imageError, setImageError] = useState(false)
+  
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.name,
   })
+
+  const previewImagePath = getSectionPreviewImagePath(section.name, templateName)
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
     ...(getStaggeredAnimationStyle(index) as React.CSSProperties),
   }
 
@@ -66,52 +78,75 @@ function SortableSectionCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={cn(
+        "w-full md:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)]",
+        !isDragging && "animate-fade-in-staggered"
+      )}
+    >
       <Card 
         className={cn(
-          "relative", 
-          !isDragging && "animate-fade-in-staggered",
-          "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200"
+          "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200 overflow-hidden h-full flex flex-col"
         )}
         onClick={handleCardClick}
       >
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3 flex-1">
-              <div
-                {...attributes}
-                {...listeners}
-                data-drag-handle
-                className="cursor-grab active:cursor-grabbing"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <GripVertical className="h-5 w-5 text-muted-foreground" />
-              </div>
-
-              <div className="flex-1">
-                <CardTitle className="text-base">{section.name}</CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Component: {section.component || "None"}
-                </p>
-              </div>
+        {/* Preview Image Area */}
+        <div className="relative aspect-video bg-muted overflow-hidden">
+          {previewImagePath && !imageError ? (
+            <img
+              src={previewImagePath}
+              alt={`${section.name} preview`}
+              className="w-full h-full object-cover"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Layout className="h-12 w-12 text-muted-foreground/40" />
             </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onToggleShow(section.name)
-                }}
-                className={cn("gap-2", !section.show && "text-muted-foreground")}
-              >
-                {section.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              </Button>
-         
-            </div>
+          )}
+          
+          {/* Drag Handle - Overlay on top left */}
+          <div
+            {...attributes}
+            {...listeners}
+            data-drag-handle
+            className="absolute top-2 left-2 p-1.5 rounded-md bg-background/80 backdrop-blur-sm cursor-grab active:cursor-grabbing hover:bg-background"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
-        </CardHeader>
+        </div>
+
+        {/* Card Content */}
+        <CardContent className="p-4 flex-1 flex flex-col">
+          <div className="flex items-start justify-between gap-2 flex-1">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-sm truncate">{section.name}</h3>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                Component: {section.component || "None"}
+              </p>
+            </div>
+
+            {/* Visibility Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleShow(section.name)
+              }}
+              className={cn(
+                "h-8 w-8 p-0 flex-shrink-0",
+                !section.show && "text-muted-foreground"
+              )}
+              title={section.show ? "Hide section" : "Show section"}
+            >
+              {section.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            </Button>
+          </div>
+        </CardContent>
       </Card>
     </div>
   )
@@ -126,6 +161,40 @@ export function SectionsView() {
     selectSection,
     updatePagesData,
   } = usePagesStore()
+  const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
+  const [templateName, setTemplateName] = useState<string | null>(null)
+
+  // Fetch templateName from hostTemplate.json
+  useEffect(() => {
+    if (repoOwnerFromLink && repoNameFromLink) {
+      const apiUrl = typeof window !== "undefined" 
+        ? "" // Relative URL in browser
+        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
+      const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
+      
+      fetch(url)
+        .then((res) => {
+          if (res.ok) {
+            return res.json()
+          }
+          if (res.status === 404) {
+            return null
+          }
+          throw new Error(`Failed to fetch host template: ${res.status}`)
+        })
+        .then((data) => {
+          if (data?.templateName) {
+            setTemplateName(data.templateName)
+          } else {
+            setTemplateName(null)
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching host template:", error)
+          setTemplateName(null)
+        })
+    }
+  }, [repoOwnerFromLink, repoNameFromLink])
 
   if (!pagesData || !selectedPageKey) {
     goBack()
@@ -199,14 +268,15 @@ export function SectionsView() {
       >
         <SortableContext
           items={sections.map((s) => s.name)}
-          strategy={verticalListSortingStrategy}
+          strategy={rectSortingStrategy}
         >
-          <div key={animationKey} className="space-y-2">
+          <div key={animationKey} className="flex flex-wrap gap-4">
             {sections.map((section, index) => (
               <SortableSectionCard
                 key={section.name}
                 section={section}
                 index={index}
+                templateName={templateName}
                 onToggleShow={handleToggleShow}
                 onSelectSection={selectSection}
               />
@@ -217,4 +287,3 @@ export function SectionsView() {
     </div>
   )
 }
-

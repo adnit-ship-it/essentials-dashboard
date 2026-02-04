@@ -246,12 +246,12 @@ export function ComponentsView() {
       {/* Grid Layout: Preview card + Component preview cards */}
       <div
         key={animationKey}
-        className="flex flex-wrap gap-4 justify-center"
+        className="flex flex-wrap gap-4"
       >
         {/* Section Preview - first item */}
         <div
           className={cn(
-            "w-full md:w-[350px] lg:w-[300px] aspect-square animate-fade-in-staggered max-w-full"
+            "w-full md:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)] animate-fade-in-staggered"
           )}
           style={getStaggeredAnimationStyle(0)}
         >
@@ -275,7 +275,7 @@ export function ComponentsView() {
             <div
               key={editor.key}
               className={cn(
-                "w-full md:w-[350px] lg:w-[300px] aspect-square animate-fade-in-staggered max-w-full"
+                "w-full md:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)] animate-fade-in-staggered"
               )}
               style={getStaggeredAnimationStyle(index + 1)}
             >

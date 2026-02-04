@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Layout } from "lucide-react"
 import { getSectionPreviewImagePath } from "@/lib/utils/section-preview-images"
 import { cn } from "@/lib/utils"
 
@@ -23,46 +24,55 @@ export function SectionPreviewEditor({ sectionName, templateName, onExpandClick 
     }
   }
 
-  if (!previewImagePath || imageError) {
-    return null
-  }
-
   return (
     <Card 
       className={cn(
-        "aspect-square flex flex-col h-full group",
-        onExpandClick && "cursor-pointer transition-all hover:shadow-md"
+        "overflow-hidden h-full flex flex-col group",
+        onExpandClick && "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200"
       )}
       onClick={onExpandClick}
     >
-      <CardHeader className="pb-2 flex-shrink-0">
-        <CardTitle className="text-sm">Section Preview</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 flex items-center justify-center p-4 relative">
-        <div className="relative w-full h-full overflow-hidden rounded-md border bg-muted">
+      {/* Preview Image Area */}
+      <div className="relative aspect-video bg-muted overflow-hidden">
+        {previewImagePath && !imageError ? (
           <img
             src={previewImagePath}
             alt={`${sectionName} preview`}
-            className="w-full h-full object-contain transition-all group-hover:blur-sm"
+            className="w-full h-full object-cover transition-all group-hover:blur-sm"
             onError={() => {
               setImageError(true)
             }}
           />
-        </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Layout className="h-12 w-12 text-muted-foreground/40" />
+          </div>
+        )}
+        
+        {/* Hover overlay with button */}
         {onExpandClick && (
-          <div className="absolute inset-0 hidden group-hover:flex items-center justify-center backdrop-blur-sm rounded-md">
+          <div className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-background/50 backdrop-blur-sm">
             <Button
               variant="default"
               size="sm"
               onClick={handleButtonClick}
               className="pointer-events-auto"
             >
-              Edit Section Preview
+              View Full Preview
             </Button>
           </div>
         )}
+      </div>
+
+      {/* Card Content */}
+      <CardContent className="p-4 flex-1 flex flex-col">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-sm truncate">Section Preview</h3>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+            Click to view full section screenshot
+          </p>
+        </div>
       </CardContent>
     </Card>
   )
 }
-
