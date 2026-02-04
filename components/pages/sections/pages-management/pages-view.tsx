@@ -147,7 +147,7 @@ function SortablePageCard({
 
           {/* Preview Button - Overlay on top right */}
           <Button
-            variant="secondary"
+            variant="outline"
             size="sm"
             className="absolute top-2 right-2 gap-1.5 h-7 text-xs bg-background/80 backdrop-blur-sm hover:bg-background"
             onClick={(e) => {
