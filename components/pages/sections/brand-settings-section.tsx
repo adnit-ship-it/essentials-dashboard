@@ -7,7 +7,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import type { BrandSettingsData, LogoState, LogoSize, GlobalLayoutHeights, BrandingColors } from "@/lib/types/branding"
+import type { AnnouncementConfig } from "@/lib/types/pages"
+import { DEFAULT_ANNOUNCEMENT_CONFIG } from "@/lib/types/pages"
 import { fetchBrandSettings, saveBrandSettings, uploadLogo, saveBrandingColors } from "@/lib/services/branding"
+import { fetchPagesData, savePagesData } from "@/lib/services/pages"
 import { fileToPendingUpload } from "@/lib/utils/file-uploads"
 import { generateUniqueLogoFileName } from "@/lib/services/branding"
 import { normalizeRepoPathInput } from "@/lib/utils/repo-paths"
@@ -16,6 +19,7 @@ import { PageMetadataEditor } from "./brand-settings/page-metadata-editor"
 import { LayoutHeightsEditor } from "./brand-settings/layout-heights-editor"
 import { LogoSizesEditor } from "./brand-settings/logo-sizes-editor"
 import { ColorPaletteEditor } from "./brand-settings/color-palette-editor"
+import { AnnouncementEditor } from "./brand-settings/announcement-editor"
 
 type Feedback = { type: "success" | "error"; message: string } | null
 
@@ -63,6 +67,12 @@ export function BrandSettingsSection() {
   const [pagesSha, setPagesSha] = useState<string | null>(null)
   const [tailwindSha, setTailwindSha] = useState<string | null>(null)
 
+  // Announcement state
+  const [announcement, setAnnouncement] = useState<AnnouncementConfig>(DEFAULT_ANNOUNCEMENT_CONFIG)
+  const [originalAnnouncement, setOriginalAnnouncement] = useState<AnnouncementConfig | null>(null)
+  const [announcementPagesSha, setAnnouncementPagesSha] = useState<string | null>(null)
+  const [pagesData, setPagesData] = useState<any>(null)
+
   const fetchBrandSettingsData = useCallback(async () => {
     const owner = repoOwnerFromLink || ""
     const repo = repoNameFromLink || ""
@@ -76,9 +86,22 @@ export function BrandSettingsSection() {
     setError(null)
     setFeedback(null)
     try {
-      const data = await fetchBrandSettings(owner, repo)
-      setSettings(data)
-      setOriginalSettings(JSON.parse(JSON.stringify(data)))
+      // Fetch brand settings and pages data (for announcement) in parallel
+      const [brandData, pagesResponse] = await Promise.all([
+        fetchBrandSettings(owner, repo),
+        fetchPagesData(owner, repo).catch(() => ({ pages: {} as any, sha: "" }))
+      ])
+      
+      setSettings(brandData)
+      setOriginalSettings(JSON.parse(JSON.stringify(brandData)))
+      
+      // Extract announcement from pages data
+      const pagesDataTyped = pagesResponse.pages as any
+      const announcementData = pagesDataTyped?.announcement || DEFAULT_ANNOUNCEMENT_CONFIG
+      setAnnouncement(announcementData)
+      setOriginalAnnouncement(JSON.parse(JSON.stringify(announcementData)))
+      setAnnouncementPagesSha(pagesResponse.sha)
+      setPagesData(pagesResponse.pages)
     } catch (err) {
       setError((err as Error).message || "Failed to load brand settings.")
     } finally {
@@ -238,6 +261,19 @@ export function BrandSettingsSection() {
         }))
       }
 
+      // Save announcement if it has changed
+      const announcementChanged = JSON.stringify(announcement) !== JSON.stringify(originalAnnouncement)
+      if (announcementChanged && announcementPagesSha && pagesData) {
+        const updatedPagesData = {
+          ...pagesData,
+          announcement: announcement,
+        }
+        const pagesResult = await savePagesData(owner, repo, updatedPagesData, announcementPagesSha)
+        setAnnouncementPagesSha(pagesResult.newSha)
+        setPagesData(pagesResult.pages)
+        setOriginalAnnouncement(JSON.parse(JSON.stringify(announcement)))
+      }
+
       // Save other settings (metadata, heights, etc.)
       // This would need to be implemented based on the actual API structure
       
@@ -259,8 +295,24 @@ export function BrandSettingsSection() {
   }
 
   const hasChanges = originalSettings
-    ? JSON.stringify(settings) !== JSON.stringify(originalSettings) || Object.keys(pendingUploads).length > 0
+    ? JSON.stringify(settings) !== JSON.stringify(originalSettings) || 
+      Object.keys(pendingUploads).length > 0 ||
+      JSON.stringify(announcement) !== JSON.stringify(originalAnnouncement)
     : false
+
+  const handleAnnouncementChange = (newAnnouncement: AnnouncementConfig) => {
+    setAnnouncement(newAnnouncement)
+  }
+
+  const handleDiscard = () => {
+    if (originalSettings) {
+      setSettings(JSON.parse(JSON.stringify(originalSettings)))
+      setPendingUploads({})
+    }
+    if (originalAnnouncement) {
+      setAnnouncement(JSON.parse(JSON.stringify(originalAnnouncement)))
+    }
+  }
 
   if (loading) {
     return (
@@ -303,12 +355,7 @@ export function BrandSettingsSection() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  if (originalSettings) {
-                    setSettings(JSON.parse(JSON.stringify(originalSettings)))
-                    setPendingUploads({})
-                  }
-                }}
+                onClick={handleDiscard}
                 disabled={saving}
               >
                 <Undo2 className="mr-2 h-4 w-4" />
@@ -365,6 +412,11 @@ export function BrandSettingsSection() {
       <ColorPaletteEditor
         colors={settings.colors}
         onColorsChange={(colors) => setSettings((prev) => ({ ...prev, colors }))}
+      />
+
+      <AnnouncementEditor
+        announcement={announcement}
+        onChange={handleAnnouncementChange}
       />
 
       <PageMetadataEditor

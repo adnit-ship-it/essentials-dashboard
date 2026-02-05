@@ -3,7 +3,7 @@
  */
 
 import { create } from "zustand"
-import type { PagesData, PageKey } from "@/lib/types/pages"
+import type { PagesData, PageKey, AnnouncementConfig } from "@/lib/types/pages"
 import type { SectionsData } from "@/lib/types/sections"
 import { fetchPagesData, savePagesData } from "@/lib/services/pages"
 import { fetchSectionsData, saveSectionsData } from "@/lib/services/sections"
@@ -46,6 +46,9 @@ interface PagesStore {
   
   // Pages actions (draft updates - no save)
   updatePagesData: (updates: (data: PagesData) => PagesData) => void
+  
+  // Announcement action (draft update - no save)
+  updateAnnouncement: (announcement: AnnouncementConfig) => void
   
   // Sections actions (draft updates - no save)
   updateSectionsData: (updates: (data: SectionsData) => SectionsData) => void
@@ -179,6 +182,25 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
     }
 
     const updated = updates(pagesData)
+    const pagesChanged = JSON.stringify(updated) !== JSON.stringify(originalPagesData)
+    const sectionsChanged = originalSectionsData 
+      ? JSON.stringify(sectionsData) !== JSON.stringify(originalSectionsData)
+      : false
+    
+    set({ 
+      pagesData: updated,
+      hasPendingChanges: pagesChanged || sectionsChanged,
+    })
+  },
+
+  // Update announcement config (draft only - no save)
+  updateAnnouncement: (announcement: AnnouncementConfig) => {
+    const { pagesData, originalPagesData, sectionsData, originalSectionsData } = get()
+    if (!pagesData) {
+      throw new Error("Pages data not loaded. Please refresh.")
+    }
+
+    const updated = { ...pagesData, announcement }
     const pagesChanged = JSON.stringify(updated) !== JSON.stringify(originalPagesData)
     const sectionsChanged = originalSectionsData 
       ? JSON.stringify(sectionsData) !== JSON.stringify(originalSectionsData)

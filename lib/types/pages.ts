@@ -79,6 +79,38 @@ export interface FooterConfig {
 }
 
 /**
+ * Announcement bar configuration
+ */
+export interface AnnouncementConfig {
+  enabled: boolean;
+  text: string;
+  link?: string;
+  backgroundColor: string;
+  textColor: string;
+  heights: {
+    mobile: string;
+    tablet: string;
+    desktop: string;
+  };
+}
+
+/**
+ * Default announcement config
+ */
+export const DEFAULT_ANNOUNCEMENT_CONFIG: AnnouncementConfig = {
+  enabled: false,
+  text: "",
+  link: "",
+  backgroundColor: "#750021",
+  textColor: "#ffffff",
+  heights: {
+    mobile: "60px",
+    tablet: "70px",
+    desktop: "80px",
+  },
+};
+
+/**
  * Page definition
  */
 export interface Page {
@@ -102,8 +134,10 @@ export type PageKey = string;
 export type PagesData = {
   iconRegistry?: IconRegistry;
   logoRegistry?: LogoRegistry;
+  announcement?: AnnouncementConfig;
+  navbar?: NavbarConfig;
 } & {
-  [key: string]: Page | IconRegistry | LogoRegistry | undefined;
+  [key: string]: Page | IconRegistry | LogoRegistry | AnnouncementConfig | NavbarConfig | undefined;
 }
 
 /**
@@ -113,8 +147,11 @@ export function isPageKey(key: string, data: PagesData): key is PageKey {
   return (
     key !== "iconRegistry" &&
     key !== "logoRegistry" &&
+    key !== "announcement" &&
+    key !== "navbar" &&
     typeof data[key] === "object" &&
-    "sections" in data[key]
+    data[key] !== null &&
+    "sections" in (data[key] as object)
   );
 }
 

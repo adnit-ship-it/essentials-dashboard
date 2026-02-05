@@ -17,8 +17,11 @@ import { BrandColorsModal } from "./modals/brand-colors-modal"
 import { LogoRegistryModal } from "./modals/logo-registry-modal"
 import { LogoSizesModal } from "./modals/logo-sizes-modal"
 import { FaviconModal } from "./modals/favicon-modal"
+import { AnnouncementModal } from "./modals/announcement-modal"
+import { AnnouncementPreview } from "./previews/announcement-preview"
 
 const brandSettingDescriptions: Record<string, string> = {
+  "announcement": "Site-wide announcement banner",
   "page-metadata": "Title and description for your site",
   "brand-colors": "Background, body, and accent colors",
   "logo-registry": "Primary, secondary, and loading logos",
@@ -41,6 +44,12 @@ export function BrandSettingsView() {
   const [openModalKey, setOpenModalKey] = useState<string | null>(null)
 
   const brandSettingComponents = [
+    {
+      key: "announcement",
+      title: "Announcement Bar",
+      PreviewComponent: AnnouncementPreview,
+      ModalComponent: AnnouncementModal,
+    },
     {
       key: "page-metadata",
       title: "Page Metadata",

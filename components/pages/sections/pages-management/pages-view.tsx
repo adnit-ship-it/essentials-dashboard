@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import { PagePreviewModal } from "./page-preview-modal"
+import { LegalPagesSection } from "./legal-pages"
 import { toast } from "sonner"
 import {
   DndContext,
@@ -481,6 +482,12 @@ export function PagesView({ pages }: PagesViewProps) {
           </SortableContext>
         </DndContext>
       </div>
+
+      {/* Divider */}
+      <div className="border-t my-8" />
+
+      {/* Legal Pages Section */}
+      <LegalPagesSection />
 
       {/* Page Preview Modal */}
       <PagePreviewModal

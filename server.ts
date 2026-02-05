@@ -2284,6 +2284,127 @@ app.post("/api/sections", async (req: SectionsUpdateRequest, res: Response) => {
   }
 })
 
+// ============================================================================
+// LEGAL PAGES ENDPOINTS
+// ============================================================================
+
+// GET /api/legal - Fetch data/legal.json
+app.get("/api/legal", async (req: Request, res: Response) => {
+  try {
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    
+    const legalFilePath = "data/legal.json"
+    
+    try {
+      const response = await octokit.repos.getContent({
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        path: legalFilePath,
+        ref: repoConfig.branch,
+      })
+
+      const fileData = response.data as GitHubFileResponse
+
+      if (!fileData.content || fileData.type !== "file") {
+        throw new Error(
+          `File not found or is a directory at path: ${legalFilePath}`
+        )
+      }
+
+      const contentString = Buffer.from(fileData.content, "base64").toString("utf8")
+      const legalJson = JSON.parse(contentString)
+
+      res.status(200).json({
+        legal: legalJson,
+        sha: fileData.sha,
+      })
+    } catch (error: any) {
+      // If file doesn't exist, return empty data structure
+      if (error.status === 404) {
+        return res.status(200).json({
+          legal: { pages: [] },
+          sha: null,
+        })
+      }
+      throw error
+    }
+  } catch (error) {
+    console.error("Error fetching legal pages:", error)
+    const q: any = req.query || {}
+    res.status(500).json({
+      error: `Failed to fetch legal pages.`,
+      details: (error as Error).message,
+      repo: (q.owner ?? q["repo-owner"] ?? q.repoOwner) && (q.repo ?? q["repo-name"] ?? q.repoName) ? { owner: q.owner ?? q["repo-owner"] ?? q.repoOwner, repo: q.repo ?? q["repo-name"] ?? q.repoName } : null,
+    })
+  }
+})
+
+// POST /api/legal - Update data/legal.json
+interface LegalUpdateRequest extends Request {
+  body: {
+    legal: any;
+    sha: string | null;
+  };
+}
+
+app.post("/api/legal", async (req: LegalUpdateRequest, res: Response) => {
+  try {
+    const { legal, sha } = req.body
+
+    if (!legal) {
+      return res
+        .status(400)
+        .json({ error: "Missing legal data in request body." })
+    }
+
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const legalFilePath = "data/legal.json"
+    const contentString = JSON.stringify(legal, null, 2)
+    const contentBase64 = Buffer.from(contentString, "utf8").toString("base64")
+
+    // Build params - only include sha if it exists (for updating existing file)
+    const commitParams: any = {
+      owner: repoConfig.owner,
+      repo: repoConfig.repo,
+      path: legalFilePath,
+      message: sha 
+        ? `CMS: Update legal pages` 
+        : `CMS: Create legal pages file`,
+      content: contentBase64,
+      branch: repoConfig.branch,
+    }
+
+    if (sha) {
+      commitParams.sha = sha
+    }
+
+    const commitResponse = await octokit.repos.createOrUpdateFileContents(commitParams)
+
+    res.status(200).json({
+      message: "Legal pages saved successfully.",
+      commitUrl: commitResponse.data.commit.html_url,
+      sha: commitResponse.data.content?.sha,
+      legal: legal,
+    })
+  } catch (error: any) {
+    console.error("Error updating legal pages:", error.message)
+
+    let errorMessage = "Failed to save legal pages to GitHub."
+    if (error.status === 409) {
+      return res.status(409).json({
+        error: "Conflict error (409): The file was modified by someone else. Please refresh and try again.",
+      })
+    }
+
+    res.status(500).json({
+      error: errorMessage,
+      details: error.message,
+    })
+  }
+})
+
 app.get("/api/assets", async (req: Request, res: Response) => {
   try {
     const repoConfig = getActiveRepoConfigFromRequest(req)

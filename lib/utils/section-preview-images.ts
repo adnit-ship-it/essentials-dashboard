@@ -118,4 +118,3 @@ export function getPagePreviewImagePath(
   
   return `/section-screenshots/${normalizedTemplate}/${sectionName}.png`
 }
-
