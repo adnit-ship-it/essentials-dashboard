@@ -10,6 +10,7 @@ import {
   ExternalLink,
   GripVertical,
   Loader2,
+  Package,
   Pencil,
   Plus,
   RefreshCw,
@@ -443,6 +444,222 @@ function validateProducts(products: Product[]) {
   }
   console.log("[ProductValidation] ✅ All products validated successfully")
   return null
+}
+
+// Props interface for SortableProductCard
+interface SortableProductCardProps {
+  product: DraftProduct
+  index: number
+  isSelected: boolean
+  onToggleSelect: (localId: string, selected: boolean) => void
+  onOpenEditor: (localId: string) => void
+}
+
+// Sortable Product Card Component - defined outside to prevent re-creation on parent re-renders
+function SortableProductCard({ 
+  product, 
+  index, 
+  isSelected,
+  onToggleSelect,
+  onOpenEditor,
+}: SortableProductCardProps) {
+  const lowestPrice = Object.values(product.prices || {}).reduce<number | null>(
+    (acc, value) => {
+      if (typeof value !== "number") {
+        return acc
+      }
+      if (acc === null || value < acc) {
+        return value
+      }
+      return acc
+    },
+    null
+  )
+
+  const statusLabel = product._meta.isDeleted
+    ? "Marked for deletion"
+    : product._meta.isNew
+    ? "New product"
+    : product._meta.isDirty
+    ? "Edited"
+    : null
+
+  const imagePending =
+    Boolean(product._meta.assets?.img?.pendingUpload) ||
+    Boolean(product._meta.assets?.thumbnail?.pendingUpload)
+
+  const previewMeta =
+    product._meta.assets?.thumbnail ??
+    product._meta.assets?.img
+
+  const previewUrl =
+    previewMeta?.pendingUpload?.dataUrl ||
+    previewMeta?.url ||
+    product.thumbnail ||
+    product.img
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: product._localId,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    ...(getStaggeredAnimationStyle(index) as React.CSSProperties),
+  }
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card
+        onClick={(e) => {
+          // Don't open editor if clicking on checkbox or drag handle
+          if (
+            (e.target as HTMLElement).closest('input[type="checkbox"]') ||
+            (e.target as HTMLElement).closest('[data-drag-handle]')
+          ) {
+            return
+          }
+          onOpenEditor(product._localId)
+        }}
+        className={cn(
+          "cursor-pointer transition hover:border-accent-color/60 hover:shadow-md overflow-hidden h-full flex flex-col",
+          !isDragging && "animate-fade-in-staggered",
+          product._meta.isDeleted && "opacity-60",
+          product._meta.isDirty && !product._meta.isDeleted && "border-accent-color/50",
+          isSelected && "ring-2 ring-accent-color"
+        )}
+      >
+        {/* Preview Image Area */}
+        <div className="relative aspect-[4/3] bg-muted overflow-hidden">
+          {previewUrl ? (
+            <img
+              key={`${product._localId}-${previewMeta?.sha || 'no-sha'}-${previewMeta?.pendingUpload ? 'pending' : 'uploaded'}`}
+              src={previewUrl}
+              alt={product.name || "Product preview"}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                console.error(`❌ Failed to load product image:`, previewUrl)
+                console.error('Product:', product.name, 'Preview meta:', previewMeta)
+              }}
+              onLoad={() => {
+                console.log(`✅ Successfully loaded product image:`, previewUrl)
+              }}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <Package className="h-12 w-12 text-muted-foreground/40" />
+            </div>
+          )}
+
+          {/* Drag Handle - Overlay on top left */}
+          <div
+            {...attributes}
+            {...listeners}
+            data-drag-handle
+            className="absolute top-2 left-2 p-1.5 rounded-md bg-background/80 backdrop-blur-sm cursor-grab active:cursor-grabbing hover:bg-background"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+
+          {/* Checkbox - Overlay on top right */}
+          <div className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 backdrop-blur-sm">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation()
+                onToggleSelect(product._localId, e.target.checked)
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="h-4 w-4 rounded border-gray-300 text-accent-color focus:ring-accent-color cursor-pointer"
+            />
+          </div>
+
+          {/* Status Badges - Overlay on bottom */}
+          {(statusLabel || (product._meta.isNew && product.category === "") || imagePending) && (
+            <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-1.5">
+              {statusLabel && (
+                <span className="inline-flex items-center rounded-full bg-accent-color/90 px-2 py-1 text-xs font-medium text-white shadow-sm">
+                  {statusLabel}
+                </span>
+              )}
+              {product._meta.isNew && product.category === "" && (
+                <span className="inline-flex items-center rounded-full bg-amber-500 px-2 py-1 text-xs font-medium text-white shadow-sm">
+                  Needs Completion
+                </span>
+              )}
+              {imagePending && (
+                <span className="inline-flex items-center rounded-full bg-amber-500 px-2 py-1 text-xs font-medium text-white shadow-sm">
+                  Image pending
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Card Content */}
+        <CardContent className="flex-1 flex flex-col p-4 space-y-3">
+          {/* Title and Category */}
+          <div>
+            <h3 className="font-medium text-base line-clamp-1">{product.name || "Untitled product"}</h3>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">
+              {product.category || "Uncategorized"}
+            </p>
+          </div>
+
+          {/* Description */}
+          <p className="text-sm text-muted-foreground line-clamp-2 flex-1">
+            {product.description || "No description provided."}
+          </p>
+
+          {/* Tags */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            {product.type && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                {product.type}
+              </span>
+            )}
+            {product.availability && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground capitalize">
+                {product.availability.replace(/_/g, " ")}
+              </span>
+            )}
+            {product.popular && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">
+                Popular
+              </span>
+            )}
+          </div>
+
+          {/* Price */}
+          {lowestPrice !== null && (
+            <div className="text-sm font-semibold text-foreground">
+              Starting at ${lowestPrice}
+            </div>
+          )}
+
+          {/* Features */}
+          {product.features && product.features.length > 0 && (
+            <ul className="space-y-1 text-xs">
+              {product.features.slice(0, 2).map((feature) => (
+                <li key={feature} className="flex items-start gap-2">
+                  <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-accent-color flex-shrink-0" />
+                  <span className="line-clamp-1">{feature}</span>
+                </li>
+              ))}
+              {product.features.length > 2 && (
+                <li className="text-xs text-muted-foreground">
+                  +{product.features.length - 2} more features
+                </li>
+              )}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
 }
 
 export function ProductsSection() {
@@ -1585,204 +1802,18 @@ export function ProductsSection() {
     )
   }
 
-  // Sortable Product Card Component
-  function SortableProductCard({ product, index }: { product: DraftProduct; index: number }) {
-    const lowestPrice = Object.values(product.prices || {}).reduce<number | null>(
-      (acc, value) => {
-        if (typeof value !== "number") {
-          return acc
-        }
-        if (acc === null || value < acc) {
-          return value
-        }
-        return acc
-      },
-      null
-    )
-
-    const statusLabel = product._meta.isDeleted
-      ? "Marked for deletion"
-      : product._meta.isNew
-      ? "New product"
-      : product._meta.isDirty
-      ? "Edited"
-      : null
-
-    const imagePending =
-      Boolean(product._meta.assets?.img?.pendingUpload) ||
-      Boolean(product._meta.assets?.thumbnail?.pendingUpload)
-
-    const previewMeta =
-      product._meta.assets?.thumbnail ??
-      product._meta.assets?.img
-
-    const previewUrl =
-      previewMeta?.pendingUpload?.dataUrl ||
-      previewMeta?.url ||
-      product.thumbnail ||
-      product.img
-
-    const isSelected = selectedProductIds.has(product._localId)
-
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-      id: product._localId,
+  // Callback handlers for SortableProductCard
+  const handleToggleSelect = useCallback((localId: string, selected: boolean) => {
+    setSelectedProductIds((prev) => {
+      const newSet = new Set(prev)
+      if (selected) {
+        newSet.add(localId)
+      } else {
+        newSet.delete(localId)
+      }
+      return newSet
     })
-
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
-      ...(getStaggeredAnimationStyle(index) as React.CSSProperties),
-    }
-
-    return (
-      <div ref={setNodeRef} style={style}>
-        <Card
-          onClick={(e) => {
-            // Don't open editor if clicking on checkbox or drag handle
-            if (
-              (e.target as HTMLElement).closest('input[type="checkbox"]') ||
-              (e.target as HTMLElement).closest('[data-drag-handle]')
-            ) {
-              return
-            }
-            openEditor(product._localId)
-          }}
-          className={cn(
-            "cursor-pointer transition hover:border-accent-color/60 hover:shadow-md",
-            !isDragging && "animate-fade-in-staggered",
-            product._meta.isDeleted && "opacity-60",
-            product._meta.isDirty && !product._meta.isDeleted && "border-accent-color/50",
-            isSelected && "ring-2 ring-accent-color"
-          )}
-        >
-          <CardHeader className="space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-2 flex-1">
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={(e) => {
-                    e.stopPropagation()
-                    setSelectedProductIds((prev) => {
-                      const newSet = new Set(prev)
-                      if (e.target.checked) {
-                        newSet.add(product._localId)
-                      } else {
-                        newSet.delete(product._localId)
-                      }
-                      return newSet
-                    })
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-1 h-4 w-4 rounded border-gray-300 text-accent-color focus:ring-accent-color"
-                />
-                <div
-                  {...attributes}
-                  {...listeners}
-                  data-drag-handle
-                  className="cursor-grab active:cursor-grabbing mt-1"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <CardTitle className="text-base">{product.name || "Untitled product"}</CardTitle>
-                  <CardDescription className="text-xs uppercase tracking-wide">
-                    {product.category || "Uncategorized"}
-                  </CardDescription>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {statusLabel && (
-                  <span className="inline-flex items-center rounded-full bg-accent-color/10 px-2 py-1 text-xs font-medium text-accent-color">
-                    {statusLabel}
-                  </span>
-                )}
-                {product._meta.isNew && product.category === "" && (
-                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
-                    Needs Completion
-                  </span>
-                )}
-                {imagePending && (
-                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
-                    Image pending
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="relative h-36 overflow-hidden rounded-lg bg-muted">
-              {previewUrl ? (
-                <img
-                  key={`${product._localId}-${previewMeta?.sha || 'no-sha'}-${previewMeta?.pendingUpload ? 'pending' : 'uploaded'}`}
-                  src={previewUrl}
-                  alt={product.name || "Product preview"}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    console.error(`❌ Failed to load product image:`, previewUrl)
-                    console.error('Product:', product.name, 'Preview meta:', previewMeta)
-                  }}
-                  onLoad={() => {
-                    console.log(`✅ Successfully loaded product image:`, previewUrl)
-                  }}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                  No image
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p className="line-clamp-3">{product.description || "No description provided."}</p>
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              {product.type && (
-                <span className="rounded-full bg-muted px-2 py-1 text-muted-foreground">
-                  Type: {product.type}
-                </span>
-              )}
-              {product.availability && (
-                <span className="rounded-full bg-muted px-2 py-1 text-muted-foreground capitalize">
-                  Availability: {product.availability.replace(/_/g, " ")}
-                </span>
-              )}
-              {product.popular && (
-                <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700">
-                  Popular
-                </span>
-              )}
-            </div>
-            {lowestPrice !== null && (
-              <div className="text-sm font-semibold text-foreground">
-                Starting at ${lowestPrice}
-              </div>
-            )}
-            {product.features && product.features.length > 0 && (
-              <ul className="space-y-1 text-xs">
-                {product.features.slice(0, 3).map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-accent-color" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-                {product.features.length > 3 && (
-                  <li className="text-xs text-muted-foreground">
-                    +{product.features.length - 3} more features
-                  </li>
-                )}
-              </ul>
-            )}
-          </CardContent>
-          <CardFooter className="border-t pt-4">
-            <Button className="bg-transparent text-muted-foreground hover:bg-muted" onClick={() => openEditor(product._localId)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit product
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    )
-  }
+  }, [])
 
   return (
     <>
@@ -1938,7 +1969,14 @@ export function ProductsSection() {
               >
                 <div key={draftAnimationKey} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {sortedDraftProducts.map((product, index) => (
-                    <SortableProductCard key={product._localId} product={product} index={index} />
+                    <SortableProductCard 
+                      key={product._localId} 
+                      product={product} 
+                      index={index}
+                      isSelected={selectedProductIds.has(product._localId)}
+                      onToggleSelect={handleToggleSelect}
+                      onOpenEditor={openEditor}
+                    />
                   ))}
                 </div>
               </SortableContext>
