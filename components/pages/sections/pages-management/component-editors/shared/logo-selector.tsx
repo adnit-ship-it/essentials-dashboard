@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { usePagesStore } from "@/lib/stores/pages-store"
-import type { LogoRegistry } from "@/lib/types/pages"
 
 interface LogoSelectorProps {
   label: string
@@ -20,11 +19,11 @@ interface LogoSelectorProps {
 }
 
 export function LogoSelector({ label, value, onChange }: LogoSelectorProps) {
-  const { pagesData } = usePagesStore()
+  const { mediaData } = usePagesStore()
   const [logoPreviews, setLogoPreviews] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
 
-  const logoRegistry = pagesData?.logoRegistry || {}
+  const logoRegistry = mediaData?.logoRegistry || {}
 
   // Fetch logo images on first render
   useEffect(() => {

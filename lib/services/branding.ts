@@ -688,61 +688,69 @@ export async function fetchBrandSettings(
     throw new Error("Repository owner/name missing. Configure via organization settings.")
   }
 
-  // Fetch content.json for page metadata and logo sizes
-  const contentUrl = `${API_BASE_URL}/api/content?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
-  const contentResponse = await fetch(contentUrl)
-  if (!contentResponse.ok) {
-    throw new Error(`Failed to fetch content: ${contentResponse.status}`)
-  }
-  
-  const contentData = await contentResponse.json()
-  const websiteContent = contentData.content || {}
-  
-  // Fetch pages.json for logo registry and logo sizes
-  let pages: any = {}
+  // Fetch common.json for page metadata, logo sizes, layout, announcement
+  let common: any = {}
+  let commonSha = ""
   try {
-    const pagesUrl = `${API_BASE_URL}/api/pages?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
-    const pagesResponse = await fetch(pagesUrl)
-    if (pagesResponse.ok) {
-      const pagesData = await pagesResponse.json()
-      pages = pagesData.pages || {}
+    const commonUrl = `${API_BASE_URL}/api/common?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
+    const commonResponse = await fetch(commonUrl)
+    if (commonResponse.ok) {
+      const commonData = await commonResponse.json()
+      common = commonData.common || {}
+      commonSha = commonData.sha || ""
     }
   } catch (error) {
-    console.error("Failed to fetch pages data:", error)
+    console.error("Failed to fetch common data:", error)
   }
-  
+
+  // Fetch media.json for logo registry
+  let media: any = {}
+  let mediaSha = ""
+  try {
+    const mediaUrl = `${API_BASE_URL}/api/media?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
+    const mediaResponse = await fetch(mediaUrl)
+    if (mediaResponse.ok) {
+      const mediaData = await mediaResponse.json()
+      media = mediaData.media || {}
+      mediaSha = mediaData.sha || ""
+    }
+  } catch (error) {
+    console.error("Failed to fetch media data:", error)
+  }
+
   // Extract logo registry (paths are website paths, need to convert to repo paths)
-  const logoRegistry = pages.logoRegistry || {}
+  const logoRegistry = media.logoRegistry || {}
   const primaryLogoPath = logoRegistry.primary?.path || ""
   const secondaryLogoPath = logoRegistry.secondary?.path || ""
-  
-  // Convert website paths to repo paths
   const primaryRepoPath = assetSrcToRepoPath(primaryLogoPath) || "public/assets/images/brand/logo.svg"
   const secondaryRepoPath = assetSrcToRepoPath(secondaryLogoPath) || "public/assets/images/brand/logo-alt.svg"
-  
-  // Extract loading screen logo
-  const loadingScreen = pages.loadingScreen || {}
+
+  // Extract loading screen logo from common
+  const loadingScreen = common.loadingScreen || {}
   const loadingScreenLogoSrc = loadingScreen.logo?.src || ""
   const loadingScreenRepoPath = assetSrcToRepoPath(loadingScreenLogoSrc) || "public/assets/images/brand/logo-secondary-1.svg"
+
+  // Extract page metadata from common.strings
+  const pageTitle = common.strings?.pageTitle || ""
+  const pageDescription = common.strings?.pageDescription || ""
+
+  // Extract global layout heights from common.navbar/footer
+  const navbarHeights = {
+    mobile: extractNumericValue(common.navbar?.heights?.mobile || ""),
+    desktop: extractNumericValue(common.navbar?.heights?.desktop || common.navbar?.heights?.tablet || ""),
+  }
+  const footerHeights = {
+    mobile: extractNumericValue(common.footer?.heights?.mobile || ""),
+    desktop: extractNumericValue(common.footer?.heights?.desktop || common.footer?.heights?.tablet || ""),
+  }
+
+  // Extract logo sizes from common.logoSizes
+  const logoSizes = common.logoSizes || {}
   
-  // Extract page metadata
-  const common = websiteContent.common || {}
-  const pageTitle = common.pageTitle || ""
-  const pageDescription = common.pageDescription || ""
-  
-  // Extract global layout heights
-  const navbarHeights = common.navbarHeights || { mobile: "", desktop: "" }
-  const footerHeights = common.footerHeights || { mobile: "", desktop: "" }
-  
-  // Extract logo sizes from pages.logoSizes
-  const logoSizes = pages.logoSizes || {}
-  
-  // Fetch branding colors
+  // Fetch branding colors from design tokens
   const brandingUrl = new URL(`${API_BASE_URL}/api/branding`)
   brandingUrl.searchParams.set("owner", owner)
   brandingUrl.searchParams.set("repo", repo)
-  brandingUrl.searchParams.set("brandLogoPath", primaryRepoPath)
-  brandingUrl.searchParams.set("brandAltLogoPath", secondaryRepoPath)
 
   const brandingResponse = await fetch(brandingUrl.toString())
   if (!brandingResponse.ok) {
@@ -780,6 +788,10 @@ export async function fetchBrandSettings(
         sha: null,
       },
     },
+    commonSha,
+    mediaSha,
+    announcement: common.announcement,
+    designTokensSha: brandingData.sha || "",
     logoSizes: {
       navbar: {
         height: logoSizes.navbar?.height || { mobile: "", desktop: "" },
@@ -790,20 +802,8 @@ export async function fetchBrandSettings(
         width: logoSizes.footer?.width || { mobile: "auto", desktop: "auto" },
       },
       loadingScreen: {
-        height: logoSizes.loadingScreen?.height || { mobile: "", desktop: "" },
+        height: logoSizes.loadingScreen?.height || { mobile: "", tablet: "", desktop: "" },
         width: logoSizes.loadingScreen?.width || { mobile: "auto", desktop: "auto" },
-      },
-      hero: {
-        height: logoSizes.hero?.height || { mobile: "", tablet: "", desktop: "" },
-        width: logoSizes.hero?.width || { mobile: "auto", desktop: "auto" },
-      },
-      contact: {
-        height: logoSizes.contact?.height || { mobile: "", desktop: "" },
-        width: logoSizes.contact?.width || { mobile: "auto", desktop: "auto" },
-      },
-      products: {
-        height: logoSizes.products?.height || { mobile: "", desktop: "" },
-        width: logoSizes.products?.width || { mobile: "auto", desktop: "auto" },
       },
     },
     layoutHeights: {
@@ -823,22 +823,50 @@ export async function saveBrandSettings(
   owner: string,
   repo: string,
   settings: Partial<BrandSettingsData>,
-  contentSha: string,
-  pagesSha: string
-): Promise<{ contentSha: string; pagesSha: string }> {
-  // Save to content.json if page metadata or layout heights changed
-  if (settings.pageTitle !== undefined || settings.pageDescription !== undefined || settings.layoutHeights) {
-    await saveContent(owner, repo, contentSha, {
-      pageTitle: settings.pageTitle,
-      pageDescription: settings.pageDescription,
-      layoutHeights: settings.layoutHeights,
-    })
+  commonSha: string,
+  mediaSha: string
+): Promise<{ commonSha: string; mediaSha: string }> {
+  if (settings.pageTitle !== undefined || settings.pageDescription !== undefined || settings.layoutHeights || settings.logoSizes) {
+    const { saveCommonData, fetchCommonData } = await import("@/lib/services/common")
+    let common: any = {}
+    let sha = commonSha
+    try {
+      const res = await fetchCommonData(owner, repo)
+      common = res.common ?? {}
+      sha = res.sha || commonSha
+    } catch {
+      common = {}
+    }
+
+    if (settings.pageTitle !== undefined) {
+      if (!common.strings) common.strings = {}
+      common.strings.pageTitle = settings.pageTitle
+    }
+    if (settings.pageDescription !== undefined) {
+      if (!common.strings) common.strings = {}
+      common.strings.pageDescription = settings.pageDescription
+    }
+    if (settings.layoutHeights) {
+      if (!common.navbar) common.navbar = { heights: { mobile: "", tablet: "", desktop: "" }, logo: { src: "", alt: "" }, backgroundColor: "", textColor: "" }
+      if (!common.footer) common.footer = { heights: { mobile: "", tablet: "", desktop: "" }, logo: { src: "", alt: "" }, backgroundColor: "", textColor: "" }
+      common.navbar.heights = {
+        mobile: formatWithPx(settings.layoutHeights.navbar?.mobile || "") || common.navbar.heights?.mobile || "",
+        tablet: formatWithPx(settings.layoutHeights.navbar?.desktop || "") || common.navbar.heights?.tablet || "",
+        desktop: formatWithPx(settings.layoutHeights.navbar?.desktop || "") || common.navbar.heights?.desktop || "",
+      }
+      common.footer.heights = {
+        mobile: formatWithPx(settings.layoutHeights.footer?.mobile || "") || common.footer.heights?.mobile || "",
+        tablet: formatWithPx(settings.layoutHeights.footer?.desktop || "") || common.footer.heights?.tablet || "",
+        desktop: formatWithPx(settings.layoutHeights.footer?.desktop || "") || common.footer.heights?.desktop || "",
+      }
+    }
+    if (settings.logoSizes) {
+      common.logoSizes = settings.logoSizes
+    }
+
+    const result = await saveCommonData(owner, repo, common, sha)
+    commonSha = result.newSha
   }
-  
-  // Save to pages.json if logos or logo sizes changed
-  // This would require a new API endpoint or updating the existing pages endpoint
-  // For now, we'll handle logo uploads separately through the existing uploadLogo function
-  
-  return { contentSha, pagesSha }
+  return { commonSha, mediaSha }
 }
 

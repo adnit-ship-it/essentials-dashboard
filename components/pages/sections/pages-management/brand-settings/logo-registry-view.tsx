@@ -23,7 +23,7 @@ import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { fileToPendingUpload } from "@/lib/utils/file-uploads"
 import { uploadLogoFile, getFileSha } from "@/lib/services/logo-registry"
 import { generateNextLogoKey, generateLogoFileName, isLogoInUse } from "@/lib/utils/logo-registry"
-import type { LogoRegistryEntry } from "@/lib/types/pages"
+import type { LogoRegistryEntry } from "@/lib/types/media"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 
@@ -54,7 +54,7 @@ interface LogoRegistryViewProps {
 }
 
 export function LogoRegistryView({ isOpen: controlledIsOpen, onToggle, hideCard = false }: LogoRegistryViewProps = {}) {
-  const { pagesData, sectionsData, updatePagesData } = usePagesStore()
+  const { pagesData, sectionsData, mediaData, updateMediaData } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingKey, setEditingKey] = useState<string | null>(null)
@@ -67,7 +67,7 @@ export function LogoRegistryView({ isOpen: controlledIsOpen, onToggle, hideCard 
   const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : localIsOpen
   const handleToggle = onToggle || (() => setLocalIsOpen(!localIsOpen))
 
-  const logoRegistry = pagesData?.logoRegistry || {}
+  const logoRegistry = mediaData?.logoRegistry || {}
 
   // Generate animation key that changes when logoRegistry changes
   const logoEntries = Object.entries(logoRegistry)
@@ -137,7 +137,7 @@ export function LogoRegistryView({ isOpen: controlledIsOpen, onToggle, hideCard 
         description: `Custom logo ${newKey}`,
       }
 
-      updatePagesData((data) => {
+      updateMediaData((data) => {
         const updated = { ...data }
         if (!updated.logoRegistry) {
           updated.logoRegistry = {}
@@ -213,7 +213,7 @@ export function LogoRegistryView({ isOpen: controlledIsOpen, onToggle, hideCard 
       }
 
       // Update registry entry
-      updatePagesData((data) => {
+      updateMediaData((data) => {
         const updated = { ...data }
         if (updated.logoRegistry) {
           updated.logoRegistry = {
@@ -251,7 +251,7 @@ export function LogoRegistryView({ isOpen: controlledIsOpen, onToggle, hideCard 
       return
     }
 
-    updatePagesData((data) => {
+    updateMediaData((data) => {
       const updated = { ...data }
       if (updated.logoRegistry) {
         const { [key]: _, ...rest } = updated.logoRegistry

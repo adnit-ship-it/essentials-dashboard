@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, Eye, EyeOff, GripVertical, Layout } from "lucide-react"
+import { ChevronLeft, Eye, EyeOff, GripVertical, Layout, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { usePagesStore } from "@/lib/stores/pages-store"
@@ -10,7 +10,9 @@ import {
   getSectionsForPage,
   reorderSections,
   updatePageSection,
+  addSection,
 } from "@/lib/utils/pages-helpers"
+import { getDefaultSectionContent, FALLBACK_SECTION_TYPES } from "@/lib/utils/section-defaults"
 import { getSectionPreviewImagePath } from "@/lib/utils/section-preview-images"
 import { cn } from "@/lib/utils"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
@@ -32,6 +34,24 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { toast } from "sonner"
 
 interface SortableSectionCardProps {
   section: any
@@ -156,13 +176,18 @@ export function SectionsView() {
   const {
     pagesData,
     sectionsData,
+    sectionsRegistryData,
     selectedPageKey,
     goBack,
     selectSection,
     updatePagesData,
+    updatePagesAndSections,
   } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [templateName, setTemplateName] = useState<string | null>(null)
+  const [addSectionModalOpen, setAddSectionModalOpen] = useState(false)
+  const [addSectionRegistryId, setAddSectionRegistryId] = useState<string>("")
+  const [addSectionError, setAddSectionError] = useState<string | null>(null)
 
   // Fetch templateName from hostTemplate.json
   useEffect(() => {
@@ -243,6 +268,49 @@ export function SectionsView() {
     )
   }
 
+  const sectionTypes = sectionsRegistryData?.sections?.length
+    ? sectionsRegistryData.sections
+    : FALLBACK_SECTION_TYPES
+
+  const generateSectionName = (registryEntry: { id: string; name: string }) => {
+    const pageTitle = page?.title ?? selectedPageKey
+    const baseName = registryEntry.name
+    const candidate = `${pageTitle} ${baseName}`.trim()
+    const existingNames = new Set(sections.map((s) => s.name))
+    if (!existingNames.has(candidate)) return candidate
+    let i = 1
+    while (existingNames.has(`${candidate} ${i}`)) i++
+    return `${candidate} ${i}`
+  }
+
+  const handleAddSection = () => {
+    setAddSectionError(null)
+    if (!addSectionRegistryId) {
+      setAddSectionError("Please select a section type")
+      return
+    }
+    const registryEntry = sectionTypes.find((s) => s.id === addSectionRegistryId)
+    if (!registryEntry) {
+      setAddSectionError("Invalid section type")
+      return
+    }
+    if (!pagesData || !sectionsData || !selectedPageKey) return
+
+    const sectionName = generateSectionName(registryEntry)
+    const defaultSection = getDefaultSectionContent(registryEntry.id, sectionName)
+
+    try {
+      updatePagesAndSections((p, s) =>
+        addSection(p, s, selectedPageKey, sectionName, registryEntry.component, defaultSection)
+      )
+      setAddSectionModalOpen(false)
+      setAddSectionRegistryId("")
+      toast.success("Section added", { description: `"${sectionName}" has been added.` })
+    } catch (err) {
+      setAddSectionError((err as Error).message)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -259,6 +327,18 @@ export function SectionsView() {
             {sections.length} section{sections.length !== 1 ? "s" : ""}
           </p>
         </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            setAddSectionModalOpen(true)
+            setAddSectionError(null)
+            setAddSectionRegistryId(sectionTypes[0]?.id ?? "")
+          }}
+          disabled={sectionTypes.length === 0}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Section
+        </Button>
       </div>
 
       <DndContext
@@ -284,6 +364,61 @@ export function SectionsView() {
           </div>
         </SortableContext>
       </DndContext>
+
+      {/* Add Section Modal */}
+      <Dialog open={addSectionModalOpen} onOpenChange={setAddSectionModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Section</DialogTitle>
+            <DialogDescription>
+              Choose a section type to add to this page. The section will be created with default content that you can edit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {addSectionError && (
+              <Alert variant="destructive">
+                <AlertDescription>{addSectionError}</AlertDescription>
+              </Alert>
+            )}
+            <div className="space-y-2">
+              <Label>Section type</Label>
+              <Select
+                value={addSectionRegistryId}
+                onValueChange={(v) => {
+                  setAddSectionRegistryId(v)
+                  setAddSectionError(null)
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select section type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sectionTypes.map((entry) => (
+                    <SelectItem key={entry.id} value={entry.id}>
+                      <div>
+                        <span className="font-medium">{entry.name}</span>
+                        {entry.description && (
+                          <span className="text-muted-foreground text-xs ml-2">
+                            — {entry.description}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddSectionModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddSection} disabled={!addSectionRegistryId}>
+              Add Section
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

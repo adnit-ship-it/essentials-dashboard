@@ -23,7 +23,6 @@ components/
 │   ├── index.ts
 │   └── sections/
 │       ├── brand-design-section.tsx
-│       ├── content-management-section.tsx
 │       ├── forms-section.tsx
 │       ├── images-assets-section.tsx
 │       └── reviews-section.tsx

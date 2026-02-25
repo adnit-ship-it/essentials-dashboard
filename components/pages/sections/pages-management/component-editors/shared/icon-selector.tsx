@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { usePagesStore } from "@/lib/stores/pages-store"
-import type { IconRegistry } from "@/lib/types/pages"
 
 interface IconSelectorProps {
   label: string
@@ -20,12 +19,12 @@ interface IconSelectorProps {
 }
 
 export function IconSelector({ label, value, onChange }: IconSelectorProps) {
-  const { pagesData } = usePagesStore()
+  const { mediaData } = usePagesStore()
   const [iconPreviews, setIconPreviews] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [hasFetched, setHasFetched] = useState(false)
 
-  const iconRegistry = pagesData?.iconRegistry || {}
+  const iconRegistry = mediaData?.iconRegistry || {}
 
   // Fetch SVGs on first dropdown open
   const fetchIcons = async () => {

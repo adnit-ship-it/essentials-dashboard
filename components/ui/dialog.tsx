@@ -41,6 +41,18 @@ const DialogContent = React.forwardRef<
   const [showUnsavedAlert, setShowUnsavedAlert] = React.useState(false)
 
   const handleInteractOutside = (event: Event) => {
+    // Prevent closing when interacting with portaled content (e.g. Radix Select dropdown)
+    // These render outside the Dialog DOM but are part of the form
+    const target = event.target as Element
+    if (
+      target.closest('[data-slot="select-content"]') ||
+      target.closest('[data-radix-select-viewport]') ||
+      target.closest('[data-radix-popper-content-wrapper]')
+    ) {
+      event.preventDefault()
+      return
+    }
+
     // If preventOutsideClick is true, prevent closing and show alert
     if (preventOutsideClick) {
       event.preventDefault()

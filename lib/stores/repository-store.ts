@@ -330,7 +330,6 @@ export const useRepositoryStore = create<RepositoryStore>((set, get) => ({
         repo,
         defaultBranch: branch,
         displayName: repo,
-        contentFilePath: "data/websiteText.json",
         productsFilePath: "data/intake-form/productsList.json",
         tailwindConfigPath: "tailwind.config.js",
         brandLogoPath: "public/assets/images/brand/logo.svg",

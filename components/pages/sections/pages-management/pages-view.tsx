@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { GripVertical, Eye, EyeOff, Edit2, ExternalLink, Layout } from "lucide-react"
+import { GripVertical, Eye, EyeOff, Edit2, ExternalLink, Layout, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
-import { reorderPages, updatePage, getPageKeys } from "@/lib/utils/pages-helpers"
+import { reorderPages, updatePage, getPageKeys, addPage } from "@/lib/utils/pages-helpers"
 import { getPagePreviewImagePath } from "@/lib/utils/section-preview-images"
 import type { PageKey } from "@/lib/types/pages"
 import { cn } from "@/lib/utils"
@@ -15,6 +16,15 @@ import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import { PagePreviewModal } from "./page-preview-modal"
 import { LegalPagesSection } from "./legal-pages"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
 import {
   DndContext,
@@ -274,6 +284,10 @@ export function PagesView({ pages }: PagesViewProps) {
   const [hostedUrl, setHostedUrl] = useState<string | null>(null)
   const [previewModal, setPreviewModal] = useState<{ pageKey: string; pageTitle: string } | null>(null)
   const [isHosting, setIsHosting] = useState(false)
+  const [addPageModalOpen, setAddPageModalOpen] = useState(false)
+  const [addPageKey, setAddPageKey] = useState("")
+  const [addPageTitle, setAddPageTitle] = useState("")
+  const [addPageError, setAddPageError] = useState<string | null>(null)
 
   // Handle hosting the repository
   const handleHost = async () => {
@@ -437,14 +451,48 @@ export function PagesView({ pages }: PagesViewProps) {
     setPreviewModal({ pageKey, pageTitle })
   }
 
+  const handleAddPage = () => {
+    setAddPageError(null)
+    const key = addPageKey.trim().toLowerCase().replace(/\s+/g, "-")
+    if (!key) {
+      setAddPageError("Page key is required")
+      return
+    }
+    if (!/^[a-z0-9-]+$/.test(key)) {
+      setAddPageError("Page key must be lowercase letters, numbers, and hyphens only")
+      return
+    }
+    const title = addPageTitle.trim() || key
+    if (!pagesData) return
+    if (key in pagesData) {
+      setAddPageError(`Page "${key}" already exists`)
+      return
+    }
+    try {
+      updatePagesData((data) => addPage(data, key, { title, description: "" }))
+      setAddPageModalOpen(false)
+      setAddPageKey("")
+      setAddPageTitle("")
+      toast.success("Page added", { description: `"${title}" has been added.` })
+    } catch (err) {
+      setAddPageError((err as Error).message)
+    }
+  }
+
   return (
     <>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-md font-medium">Pages</h4>
-          <p className="text-sm text-muted-foreground">
-            {pages.length} page{pages.length !== 1 ? "s" : ""}
-          </p>
+          <div>
+            <h4 className="text-md font-medium">Pages</h4>
+            <p className="text-sm text-muted-foreground">
+              {pages.length} page{pages.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <Button onClick={() => setAddPageModalOpen(true)} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Page
+          </Button>
         </div>
 
         <DndContext
@@ -499,6 +547,53 @@ export function PagesView({ pages }: PagesViewProps) {
         pageTitle={previewModal?.pageTitle || ""}
         hostedUrl={hostedUrl}
       />
+
+      {/* Add Page Modal */}
+      <Dialog open={addPageModalOpen} onOpenChange={setAddPageModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Page</DialogTitle>
+            <DialogDescription>
+              Create a new page. The page key will be used in the URL (e.g. /blog).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {addPageError && (
+              <Alert variant="destructive">
+                <AlertDescription>{addPageError}</AlertDescription>
+              </Alert>
+            )}
+            <div className="space-y-2">
+              <Label>Page key</Label>
+              <Input
+                placeholder="e.g. blog, about-us"
+                value={addPageKey}
+                onChange={(e) => {
+                  setAddPageKey(e.target.value)
+                  setAddPageError(null)
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Lowercase letters, numbers, and hyphens only
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Page title</Label>
+              <Input
+                placeholder="e.g. Blog"
+                value={addPageTitle}
+                onChange={(e) => setAddPageTitle(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddPageModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddPage}>Add Page</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

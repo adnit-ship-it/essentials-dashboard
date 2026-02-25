@@ -13,7 +13,6 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import {
   getAuthenticatedClient,
-  DashboardContentData,
   GitHubFileResponse,
 } from "./githubAuth";
 import type { Product } from "./lib/types/products";
@@ -52,7 +51,6 @@ const DEFAULT_REPO_ORG = "adnit-ship-it";
 // Legacy env vars (for backward compatibility during migration)
 const CONTENT_REPO_OWNER = process.env.CONTENT_REPO_OWNER;
 const CONTENT_REPO_NAME = process.env.CONTENT_REPO_NAME;
-const CONTENT_FILE_PATH = 'data/websiteText.json';
 const PRODUCTS_FILE_PATH = "data/intake-form/productsList.json";
 const TAILWIND_CONFIG_PATH = "tailwind.config.js";
 const BRAND_PRIMARY_LOGO_PATH = "public/assets/images/brand/logo.svg";
@@ -64,7 +62,6 @@ function getActiveRepoConfigFromRequest(req: Request): {
   owner: string;
   repo: string;
   branch: string;
-  contentFilePath: string;
   productsFilePath: string;
   tailwindConfigPath: string;
   brandLogoPath: string;
@@ -86,7 +83,6 @@ function getActiveRepoConfigFromRequest(req: Request): {
     process.env.CONTENT_REPO_NAME ||
     "";
   const branch = (q.branch as string) || process.env.CONTENT_REPO_BRANCH || "main";
-  const contentFilePath = process.env.CONTENT_FILE_PATH as string;
   const productsFilePath =
     process.env.CONTENT_PRODUCTS_FILE_PATH || "data/intake-form/productsList.json";
   const tailwindConfigPath = process.env.CONTENT_TAILWIND_PATH || "tailwind.config.js";
@@ -110,9 +106,9 @@ function getActiveRepoConfigFromRequest(req: Request): {
       process.env.CONTENT_BRAND_ALT_LOGO_PATH,
     BRAND_SECONDARY_LOGO_PATH
   );
-  if (!owner || !repo || !contentFilePath) {
+  if (!owner || !repo) {
     throw new Error(
-      "Active repository not specified. Provide ?owner=&repo= (and optional ?branch=), and set CONTENT_FILE_PATH (and other path envs) on the server."
+      "Active repository not specified. Provide ?owner=&repo= (and optional ?branch=)."
     );
   }
   const pagesFilePath =
@@ -128,7 +124,6 @@ function getActiveRepoConfigFromRequest(req: Request): {
     owner,
     repo,
     branch,
-    contentFilePath,
     productsFilePath,
     tailwindConfigPath,
     brandLogoPath,
@@ -228,89 +223,31 @@ function repoPathToWebsitePath(path: string) {
   return ensureLeadingSlash(path);
 }
 
-async function fetchContentJsonFromRepo(
-  octokit: Awaited<ReturnType<typeof getAuthenticatedClient>>,
-  repoConfig: {
-    owner: string;
-    repo: string;
-    branch: string;
-    contentFilePath: string;
-  }
-) {
-  const response = await octokit.repos.getContent({
-    owner: repoConfig.owner,
-    repo: repoConfig.repo,
-    path: repoConfig.contentFilePath,
-    ref: repoConfig.branch,
-  });
-
-  const fileData = response.data as GitHubFileResponse;
-
-  if (!fileData.content || fileData.type !== "file") {
-    throw new Error(
-      `File not found or is not a file at path: ${repoConfig.contentFilePath}`
-    );
-  }
-
-  const contentString = Buffer.from(fileData.content, "base64").toString("utf8");
-  const parsed = JSON.parse(contentString);
-
-  return {
-    content: parsed,
-    sha: fileData.sha,
-  };
+function getTrustedByLogosFromSections(sections: any[]): Array<{ src: string; alt?: string }> {
+  const trustedBySection = sections?.find(
+    (s: any) => s?.name === "Trusted By" || s?.name === "Home Trusted By" || s?.name === "About Trusted By"
+  );
+  const logos = trustedBySection?.components?.[0]?.logos;
+  return Array.isArray(logos) ? logos : [];
 }
 
-async function updateContentJsonInRepo({
-  octokit,
-  repoConfig,
-  content,
-  sha,
-  commitMessage,
-}: {
-  octokit: Awaited<ReturnType<typeof getAuthenticatedClient>>;
-  repoConfig: {
-    owner: string;
-    repo: string;
-    branch: string;
-    contentFilePath: string;
-  };
-  content: any;
-  sha: string;
-  commitMessage?: string;
-}) {
-  const contentString = JSON.stringify(content, null, 2);
-  const base64 = Buffer.from(contentString, "utf8").toString("base64");
-
-  const response = await octokit.repos.createOrUpdateFileContents({
-    owner: repoConfig.owner,
-    repo: repoConfig.repo,
-    path: repoConfig.contentFilePath,
-    message:
-      commitMessage ||
-      `CMS: Automated content update for ${repoConfig.contentFilePath}`,
-    content: base64,
-    sha,
-    branch: repoConfig.branch,
-  });
-
-  return {
-    commitUrl: response.data.commit.html_url,
-    newSha: response.data.content?.sha,
-  };
-}
-
-function ensureTrustedByLogos(content: any) {
-  if (!content.home) {
-    content.home = {};
+function updateTrustedByLogosInSections(sections: any[], logos: Array<{ src: string; alt?: string }>): any[] {
+  const updated = [...sections];
+  const idx = updated.findIndex(
+    (s: any) => s?.name === "Trusted By" || s?.name === "Home Trusted By" || s?.name === "About Trusted By"
+  );
+  if (idx >= 0) {
+    const section = { ...updated[idx] };
+    const components = [...(section.components || [])];
+    if (components[0]) {
+      components[0] = { ...components[0], logos };
+    } else {
+      components.push({ logos });
+    }
+    section.components = components;
+    updated[idx] = section;
   }
-  if (!content.home.trustedBy) {
-    content.home.trustedBy = {};
-  }
-  if (!Array.isArray(content.home.trustedBy.logos)) {
-    content.home.trustedBy.logos = [];
-  }
-  return content.home.trustedBy.logos as Array<{ src: string; alt?: string }>;
+  return updated;
 }
 
 async function deleteFileFromRepo({
@@ -1081,42 +1018,86 @@ app.put(
   }
 );
 
+function designTokensToBrandingColors(dt: any): BrandingColors {
+  const primary = dt?.colors?.primary || {};
+  return {
+    backgroundColor: primary.background || "#FFFFFF",
+    bodyColor: primary.body || "#000000",
+    accentColor1: primary.accent1 || "#FF6B35",
+    accentColor2: primary.accent2 || "#004E89",
+  };
+}
+
+function brandingColorsToDesignTokens(dt: any, colors: BrandingColors): any {
+  const updated = JSON.parse(JSON.stringify(dt || {}));
+  if (!updated.colors) updated.colors = {};
+  if (!updated.colors.primary) updated.colors.primary = {};
+  updated.colors.primary.background = colors.backgroundColor;
+  updated.colors.primary.body = colors.bodyColor;
+  updated.colors.primary.accent1 = colors.accentColor1;
+  updated.colors.primary.accent2 = colors.accentColor2;
+  return updated;
+}
+
 app.get("/api/branding", async (req: Request, res: Response) => {
   try {
     const repoConfig = getActiveRepoConfigFromRequest(req);
-    
     const octokit = await getAuthenticatedClient();
-    const { colors, sha, logos } = await fetchBrandingFromRepo(octokit, {
-      owner: repoConfig.owner,
-      repo: repoConfig.repo,
-      branch: repoConfig.branch,
-      tailwindConfigPath: repoConfig.tailwindConfigPath,
-      brandLogoPath: repoConfig.brandLogoPath,
-      brandAltLogoPath: repoConfig.brandAltLogoPath,
-    });
+
+    const designTokensResult = await fetchJsonFile(
+      octokit,
+      repoConfig.owner,
+      repoConfig.repo,
+      DESIGN_TOKENS_FILE_PATH,
+      repoConfig.branch
+    );
+
+    const colors = designTokensResult
+      ? designTokensToBrandingColors(designTokensResult.data)
+      : {
+          backgroundColor: "#FFFFFF",
+          bodyColor: "#000000",
+          accentColor1: "#FF6B35",
+          accentColor2: "#004E89",
+        };
+    const sha = designTokensResult?.sha ?? "";
+
+    const [primaryLogo, secondaryLogo] = await Promise.all([
+      fetchAssetMetadata(octokit, repoConfig.brandLogoPath, {
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        branch: repoConfig.branch,
+      }),
+      fetchAssetMetadata(octokit, repoConfig.brandAltLogoPath, {
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        branch: repoConfig.branch,
+      }),
+    ]);
 
     res.json({
       colors,
       sha,
-      logos,
+      logos: {
+        primary: {
+          path: repoConfig.brandLogoPath,
+          ...(primaryLogo ?? {}),
+        },
+        secondary: {
+          path: repoConfig.brandAltLogoPath,
+          ...(secondaryLogo ?? {}),
+        },
+      },
     });
   } catch (error) {
     console.error("Error fetching branding data:", error);
-    console.error("Error stack:", (error as Error).stack);
     const errorMessage = (error as Error).message;
-    
-    // Provide more helpful error messages
     let userFriendlyError = errorMessage;
     if (errorMessage.includes("Repository configuration not found")) {
       userFriendlyError = `Repository not configured. Provide ?owner=&repo= or set env defaults.`;
     } else if (errorMessage.includes("Not Found") || errorMessage.includes("404")) {
-      userFriendlyError = `File not found in repository. Please check:
-        - Tailwind Config: ${TAILWIND_CONFIG_PATH}
-        - Brand Logo: ${BRAND_PRIMARY_LOGO_PATH}
-        - Brand Alt Logo: ${BRAND_SECONDARY_LOGO_PATH}
-        - Ensure these files exist in the repository`;
+      userFriendlyError = `File not found. Ensure data/designTokens.json exists in the repository.`;
     }
-    
     res.status(500).json({
       error: `Failed to fetch branding data: ${userFriendlyError}`,
       details: errorMessage,
@@ -1127,7 +1108,7 @@ app.get("/api/branding", async (req: Request, res: Response) => {
 
 app.put("/api/branding", async (req: BrandingUpdateRequest, res: Response) => {
   try {
-    const { colors, sha, commitMessage, repoId } = req.body;
+    const { colors, sha, commitMessage } = req.body;
     const repoConfig = getActiveRepoConfigFromRequest(req);
 
     if (!colors || typeof colors !== "object") {
@@ -1156,48 +1137,45 @@ app.put("/api/branding", async (req: BrandingUpdateRequest, res: Response) => {
     if (!sha) {
       return res
         .status(400)
-        .json({ error: "Request must include the current tailwind config sha." });
+        .json({ error: "Request must include the current design tokens sha." });
     }
 
     const octokit = await getAuthenticatedClient();
-
-    const { commitUrl, newSha } = await updateBrandingInRepo({
+    const designTokensResult = await fetchJsonFile(
       octokit,
-      colors,
-      sha,
-      commitMessage,
-      repoConfig: {
-        owner: repoConfig.owner,
-        repo: repoConfig.repo,
-        branch: repoConfig.branch,
-        tailwindConfigPath: repoConfig.tailwindConfigPath,
-      },
-    });
+      repoConfig.owner,
+      repoConfig.repo,
+      DESIGN_TOKENS_FILE_PATH,
+      repoConfig.branch
+    );
 
-    // Fetch the updated colors from the file to return them
-    const updatedResponse = await octokit.repos.getContent({
+    const currentTokens = designTokensResult?.data ?? {};
+    const updatedTokens = brandingColorsToDesignTokens(currentTokens, colors);
+    const contentString = JSON.stringify(updatedTokens, null, 2);
+    const contentBase64 = Buffer.from(contentString, "utf8").toString("base64");
+
+    const commitResponse = await octokit.repos.createOrUpdateFileContents({
       owner: repoConfig.owner,
       repo: repoConfig.repo,
-      path: repoConfig.tailwindConfigPath,
-      ref: repoConfig.branch,
+      path: DESIGN_TOKENS_FILE_PATH,
+      message: commitMessage || `CMS: Update branding colors in ${DESIGN_TOKENS_FILE_PATH}`,
+      content: contentBase64,
+      sha,
+      branch: repoConfig.branch,
     });
-    
-    const updatedFileData = updatedResponse.data as GitHubFileResponse;
-    const updatedDecodedContent = updatedFileData.content ? Buffer.from(updatedFileData.content, "base64").toString("utf8") : "";
-    const updatedColors = extractBrandingColors(updatedDecodedContent);
 
     res.json({
       message: "Branding colors updated successfully.",
-      commitUrl,
-      newSha,
-      colors: updatedColors, // Return the updated colors
+      commitUrl: commitResponse.data.commit.html_url,
+      newSha: commitResponse.data.content?.sha,
+      colors,
     });
   } catch (error: any) {
     console.error("Error updating branding data:", error);
     if (error.status === 409) {
       return res.status(409).json({
         error:
-          "Conflict detected. The tailwind config has changed. Please refresh and retry.",
+          "Conflict detected. The design tokens file has changed. Please refresh and retry.",
       });
     }
 
@@ -1462,18 +1440,20 @@ async function buildClientLogoAssets({
     owner: string;
     repo: string;
     branch: string;
-    contentFilePath: string;
+    sectionsFilePath: string;
   };
 }) {
   try {
-    const { content } = await fetchContentJsonFromRepo(octokit, {
-      owner: repoConfig.owner,
-      repo: repoConfig.repo,
-      branch: repoConfig.branch,
-      contentFilePath: repoConfig.contentFilePath,
-    });
-    const logos = content?.home?.trustedBy?.logos;
-    if (!Array.isArray(logos)) {
+    const result = await fetchJsonFile(
+      octokit,
+      repoConfig.owner,
+      repoConfig.repo,
+      repoConfig.sectionsFilePath,
+      repoConfig.branch
+    );
+    const sections = Array.isArray(result?.data) ? result.data : [];
+    const logos = getTrustedByLogosFromSections(sections);
+    if (logos.length === 0) {
       return CLIENT_LOGO_ASSETS;
     }
     return logos
@@ -1616,8 +1596,6 @@ app.post(
         repo: config.repo,
         defaultBranch: config.defaultBranch,
         displayName: config.displayName || config.repo,
-        contentFilePath:
-          config.contentFilePath || "data/content.json",
         productsFilePath:
           config.productsFilePath || "data/intake-form/productsList.json",
         tailwindConfigPath:
@@ -1984,113 +1962,6 @@ app.delete(
 });
 
 // ============================================================================
-// CONTENT ENDPOINTS (Updated to support repoId)
-// ============================================================================
-
-// --- READ Endpoint ---
-app.get("/api/content", async (req: Request, res: Response) => {
-  try {
-    const repoConfig = getActiveRepoConfigFromRequest(req)
-    const octokit = await getAuthenticatedClient()
-    const response = await octokit.repos.getContent({
-      owner: repoConfig.owner,
-      repo: repoConfig.repo,
-      path: repoConfig.contentFilePath,
-      ref: repoConfig.branch,
-    })
-
-    const fileData = response.data as GitHubFileResponse
-
-    if (!fileData.content || fileData.type !== "file") {
-      throw new Error(
-        `File not found or is a directory at path: ${repoConfig.contentFilePath}`
-      )
-    }
-
-    const contentBase64 = fileData.content
-    const contentSha = fileData.sha
-
-    const contentString = Buffer.from(contentBase64, "base64").toString("utf8")
-    const contentJson = JSON.parse(contentString)
-
-    const responseData: DashboardContentData = {
-      content: contentJson,
-      sha: contentSha,
-    }
-
-    res.status(200).json(responseData)
-  } catch (error) {
-    console.error("Error fetching content:", error)
-    const q: any = req.query || {}
-    res.status(500).json({
-      error: `Failed to fetch content.`,
-      details: (error as Error).message,
-      repo: (q.owner ?? q["repo-owner"] ?? q.repoOwner) && (q.repo ?? q["repo-name"] ?? q.repoName) ? { owner: q.owner ?? q["repo-owner"] ?? q.repoOwner, repo: q.repo ?? q["repo-name"] ?? q.repoName } : null,
-    })
-  }
-})
-
-// --- DEFINE THE BODY FOR THE UPDATE REQUEST ---
-interface ContentUpdateRequest extends Request {
-  body: {
-    newContent: any;
-    sha: string;
-  };
-}
-
-// --- WRITE Endpoint (Full Implementation) ---
-app.post(
-  "/api/content/update",
-  async (req: ContentUpdateRequest, res: Response) => {
-    try {
-      const { newContent, sha } = req.body
-
-      if (!newContent || !sha) {
-        return res
-          .status(400)
-          .json({ error: "Missing new content or SHA in request body." })
-      }
-
-      const repoConfig = getActiveRepoConfigFromRequest(req)
-      const octokit = await getAuthenticatedClient()
-      const contentString = JSON.stringify(newContent, null, 2)
-      const contentBase64 = Buffer.from(contentString, "utf8").toString(
-        "base64"
-      )
-
-      const commitResponse = await octokit.repos.createOrUpdateFileContents({
-        owner: repoConfig.owner,
-        repo: repoConfig.repo,
-        path: repoConfig.contentFilePath,
-        message: `CMS: Automated content update for ${repoConfig.contentFilePath}`,
-        content: contentBase64,
-        sha: sha,
-        branch: repoConfig.branch,
-      })
-
-      res.status(200).json({
-        message: "Content committed successfully. Deployment initiated.",
-        commitUrl: commitResponse.data.commit.html_url,
-        newSha: commitResponse.data.content?.sha,
-      })
-    } catch (error: any) {
-      console.error("Error updating content:", error.message)
-
-      let errorMessage = "Failed to commit changes to GitHub."
-      if (error.status === 409) {
-        errorMessage =
-          "Conflict error (409): The file was modified by someone else. Please refresh and try again."
-      }
-
-      res.status(500).json({
-        error: errorMessage,
-        details: error.message,
-      })
-    }
-  }
-)
-
-// ============================================================================
 // PAGES ENDPOINTS
 // ============================================================================
 
@@ -2144,10 +2015,10 @@ app.post("/api/pages", async (req: PagesUpdateRequest, res: Response) => {
   try {
     const { pages, sha } = req.body
 
-    if (!pages || !sha) {
+    if (!pages) {
       return res
         .status(400)
-        .json({ error: "Missing pages data or SHA in request body." })
+        .json({ error: "Missing pages data in request body." })
     }
 
     const repoConfig = getActiveRepoConfigFromRequest(req)
@@ -2155,20 +2026,22 @@ app.post("/api/pages", async (req: PagesUpdateRequest, res: Response) => {
     const contentString = JSON.stringify(pages, null, 2)
     const contentBase64 = Buffer.from(contentString, "utf8").toString("base64")
 
-    const commitResponse = await octokit.repos.createOrUpdateFileContents({
+    const params: any = {
       owner: repoConfig.owner,
       repo: repoConfig.repo,
       path: repoConfig.pagesFilePath,
       message: `CMS: Automated pages update for ${repoConfig.pagesFilePath}`,
       content: contentBase64,
-      sha: sha,
       branch: repoConfig.branch,
-    })
+    }
+    if (sha) params.sha = sha
+
+    const commitResponse = await octokit.repos.createOrUpdateFileContents(params)
 
     res.status(200).json({
       message: "Pages committed successfully.",
-      commitUrl: commitResponse.data.commit.html_url,
-      sha: commitResponse.data.content?.sha,
+      commitUrl: commitResponse.data.commit?.html_url,
+      sha: commitResponse.data.content?.sha ?? "",
       pages: pages,
     })
   } catch (error: any) {
@@ -2241,10 +2114,10 @@ app.post("/api/sections", async (req: SectionsUpdateRequest, res: Response) => {
   try {
     const { sections, sha } = req.body
 
-    if (!sections || !sha) {
+    if (!sections) {
       return res
         .status(400)
-        .json({ error: "Missing sections data or SHA in request body." })
+        .json({ error: "Missing sections data in request body." })
     }
 
     const repoConfig = getActiveRepoConfigFromRequest(req)
@@ -2252,20 +2125,22 @@ app.post("/api/sections", async (req: SectionsUpdateRequest, res: Response) => {
     const contentString = JSON.stringify(sections, null, 2)
     const contentBase64 = Buffer.from(contentString, "utf8").toString("base64")
 
-    const commitResponse = await octokit.repos.createOrUpdateFileContents({
+    const params: any = {
       owner: repoConfig.owner,
       repo: repoConfig.repo,
       path: repoConfig.sectionsFilePath,
       message: `CMS: Automated sections update for ${repoConfig.sectionsFilePath}`,
       content: contentBase64,
-      sha: sha,
       branch: repoConfig.branch,
-    })
+    }
+    if (sha) params.sha = sha
+
+    const commitResponse = await octokit.repos.createOrUpdateFileContents(params)
 
     res.status(200).json({
       message: "Sections committed successfully.",
-      commitUrl: commitResponse.data.commit.html_url,
-      sha: commitResponse.data.content?.sha,
+      commitUrl: commitResponse.data.commit?.html_url,
+      sha: commitResponse.data.content?.sha ?? "",
       sections: sections,
     })
   } catch (error: any) {
@@ -2280,6 +2155,288 @@ app.post("/api/sections", async (req: SectionsUpdateRequest, res: Response) => {
     res.status(500).json({
       error: errorMessage,
       details: error.message,
+    })
+  }
+})
+
+// ============================================================================
+// COMMON, DESIGN-TOKENS, MEDIA, SECTIONS-REGISTRY ENDPOINTS
+// ============================================================================
+
+const COMMON_FILE_PATH = "data/common.json"
+const DESIGN_TOKENS_FILE_PATH = "data/designTokens.json"
+const MEDIA_FILE_PATH = "data/media.json"
+const SECTIONS_REGISTRY_FILE_PATH = "data/sections-registry.json"
+
+async function fetchJsonFile(
+  octokit: Awaited<ReturnType<typeof getAuthenticatedClient>>,
+  owner: string,
+  repo: string,
+  path: string,
+  branch: string
+): Promise<{ data: any; sha: string } | null> {
+  try {
+    const response = await octokit.repos.getContent({
+      owner,
+      repo,
+      path,
+      ref: branch,
+    })
+    const fileData = response.data as GitHubFileResponse
+    if (!fileData.content || fileData.type !== "file") return null
+    const contentString = Buffer.from(fileData.content, "base64").toString("utf8")
+    return { data: JSON.parse(contentString), sha: fileData.sha }
+  } catch (error: any) {
+    if (error.status === 404) return null
+    throw error
+  }
+}
+
+// GET /api/common - Fetch data/common.json
+app.get("/api/common", async (req: Request, res: Response) => {
+  try {
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const result = await fetchJsonFile(
+      octokit,
+      repoConfig.owner,
+      repoConfig.repo,
+      COMMON_FILE_PATH,
+      repoConfig.branch
+    )
+    if (!result) {
+      return res.status(404).json({ error: "common.json not found" })
+    }
+    res.status(200).json({ common: result.data, sha: result.sha })
+  } catch (error) {
+    console.error("Error fetching common:", error)
+    const q: any = req.query || {}
+    res.status(500).json({
+      error: "Failed to fetch common.",
+      details: (error as Error).message,
+      repo: (q.owner ?? q["repo-owner"] ?? q.repoOwner) && (q.repo ?? q["repo-name"] ?? q.repoName) ? { owner: q.owner ?? q["repo-owner"] ?? q.repoOwner, repo: q.repo ?? q["repo-name"] ?? q.repoName } : null,
+    })
+  }
+})
+
+// POST /api/common - Update or create data/common.json
+app.post("/api/common", async (req: Request, res: Response) => {
+  try {
+    const { common, sha } = req.body
+    if (!common) {
+      return res.status(400).json({ error: "Missing common data in request body." })
+    }
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const contentString = JSON.stringify(common, null, 2)
+    const contentBase64 = Buffer.from(contentString, "utf8").toString("base64")
+    const params: any = {
+      owner: repoConfig.owner,
+      repo: repoConfig.repo,
+      path: COMMON_FILE_PATH,
+      message: `CMS: Automated common update for ${COMMON_FILE_PATH}`,
+      content: contentBase64,
+      branch: repoConfig.branch,
+    }
+    if (sha) params.sha = sha
+    const commitResponse = await octokit.repos.createOrUpdateFileContents(params)
+    res.status(200).json({
+      message: "Common committed successfully.",
+      sha: commitResponse.data.content?.sha,
+      common,
+    })
+  } catch (error: any) {
+    console.error("Error updating common:", error.message)
+    const errorMessage = error.status === 409
+      ? "Conflict error (409): The file was modified by someone else. Please refresh and try again."
+      : "Failed to commit common to GitHub."
+    res.status(500).json({ error: errorMessage, details: error.message })
+  }
+})
+
+// GET /api/design-tokens - Fetch data/designTokens.json
+app.get("/api/design-tokens", async (req: Request, res: Response) => {
+  try {
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const result = await fetchJsonFile(
+      octokit,
+      repoConfig.owner,
+      repoConfig.repo,
+      DESIGN_TOKENS_FILE_PATH,
+      repoConfig.branch
+    )
+    if (!result) {
+      return res.status(404).json({ error: "designTokens.json not found" })
+    }
+    res.status(200).json({ designTokens: result.data, sha: result.sha })
+  } catch (error) {
+    console.error("Error fetching design tokens:", error)
+    const q: any = req.query || {}
+    res.status(500).json({
+      error: "Failed to fetch design tokens.",
+      details: (error as Error).message,
+      repo: (q.owner ?? q["repo-owner"] ?? q.repoOwner) && (q.repo ?? q["repo-name"] ?? q.repoName) ? { owner: q.owner ?? q["repo-owner"] ?? q.repoOwner, repo: q.repo ?? q["repo-name"] ?? q.repoName } : null,
+    })
+  }
+})
+
+// POST /api/design-tokens - Update data/designTokens.json
+app.post("/api/design-tokens", async (req: Request, res: Response) => {
+  try {
+    const { designTokens, sha } = req.body
+    if (!designTokens || !sha) {
+      return res.status(400).json({ error: "Missing designTokens data or SHA in request body." })
+    }
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const contentString = JSON.stringify(designTokens, null, 2)
+    const contentBase64 = Buffer.from(contentString, "utf8").toString("base64")
+    const commitResponse = await octokit.repos.createOrUpdateFileContents({
+      owner: repoConfig.owner,
+      repo: repoConfig.repo,
+      path: DESIGN_TOKENS_FILE_PATH,
+      message: `CMS: Automated design tokens update for ${DESIGN_TOKENS_FILE_PATH}`,
+      content: contentBase64,
+      sha,
+      branch: repoConfig.branch,
+    })
+    res.status(200).json({
+      message: "Design tokens committed successfully.",
+      sha: commitResponse.data.content?.sha,
+      designTokens,
+    })
+  } catch (error: any) {
+    console.error("Error updating design tokens:", error.message)
+    const errorMessage = error.status === 409
+      ? "Conflict error (409): The file was modified by someone else. Please refresh and try again."
+      : "Failed to commit design tokens to GitHub."
+    res.status(500).json({ error: errorMessage, details: error.message })
+  }
+})
+
+// GET /api/media - Fetch data/media.json
+app.get("/api/media", async (req: Request, res: Response) => {
+  try {
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const result = await fetchJsonFile(
+      octokit,
+      repoConfig.owner,
+      repoConfig.repo,
+      MEDIA_FILE_PATH,
+      repoConfig.branch
+    )
+    if (!result) {
+      return res.status(404).json({ error: "media.json not found" })
+    }
+    res.status(200).json({ media: result.data, sha: result.sha })
+  } catch (error) {
+    console.error("Error fetching media:", error)
+    const q: any = req.query || {}
+    res.status(500).json({
+      error: "Failed to fetch media.",
+      details: (error as Error).message,
+      repo: (q.owner ?? q["repo-owner"] ?? q.repoOwner) && (q.repo ?? q["repo-name"] ?? q.repoName) ? { owner: q.owner ?? q["repo-owner"] ?? q.repoOwner, repo: q.repo ?? q["repo-name"] ?? q.repoName } : null,
+    })
+  }
+})
+
+// POST /api/media - Update or create data/media.json
+app.post("/api/media", async (req: Request, res: Response) => {
+  try {
+    const { media, sha } = req.body
+    if (!media) {
+      return res.status(400).json({ error: "Missing media data in request body." })
+    }
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const contentString = JSON.stringify(media, null, 2)
+    const contentBase64 = Buffer.from(contentString, "utf8").toString("base64")
+    const params: any = {
+      owner: repoConfig.owner,
+      repo: repoConfig.repo,
+      path: MEDIA_FILE_PATH,
+      message: `CMS: Automated media update for ${MEDIA_FILE_PATH}`,
+      content: contentBase64,
+      branch: repoConfig.branch,
+    }
+    if (sha) params.sha = sha
+    const commitResponse = await octokit.repos.createOrUpdateFileContents(params)
+    res.status(200).json({
+      message: "Media committed successfully.",
+      sha: commitResponse.data.content?.sha ?? "",
+      media,
+    })
+  } catch (error: any) {
+    console.error("Error updating media:", error.message)
+    const errorMessage = error.status === 409
+      ? "Conflict error (409): The file was modified by someone else. Please refresh and try again."
+      : "Failed to commit media to GitHub."
+    res.status(500).json({ error: errorMessage, details: error.message })
+  }
+})
+
+// GET /api/sections-registry - Fetch data/sections-registry.json
+app.get("/api/sections-registry", async (req: Request, res: Response) => {
+  try {
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+    const result = await fetchJsonFile(
+      octokit,
+      repoConfig.owner,
+      repoConfig.repo,
+      SECTIONS_REGISTRY_FILE_PATH,
+      repoConfig.branch
+    )
+    if (!result) {
+      return res.status(404).json({ error: "sections-registry.json not found" })
+    }
+    res.status(200).json({ sectionsRegistry: result.data, sha: result.sha })
+  } catch (error) {
+    console.error("Error fetching sections registry:", error)
+    const q: any = req.query || {}
+    res.status(500).json({
+      error: "Failed to fetch sections registry.",
+      details: (error as Error).message,
+      repo: (q.owner ?? q["repo-owner"] ?? q.repoOwner) && (q.repo ?? q["repo-name"] ?? q.repoName) ? { owner: q.owner ?? q["repo-owner"] ?? q.repoOwner, repo: q.repo ?? q["repo-name"] ?? q.repoName } : null,
+    })
+  }
+})
+
+// GET /api/template-data - Batch fetch common, media, pages, sections, sections-registry
+app.get("/api/template-data", async (req: Request, res: Response) => {
+  try {
+    const repoConfig = getActiveRepoConfigFromRequest(req)
+    const octokit = await getAuthenticatedClient()
+
+    const [commonResult, mediaResult, pagesResult, sectionsResult, registryResult] = await Promise.all([
+      fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, COMMON_FILE_PATH, repoConfig.branch),
+      fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, MEDIA_FILE_PATH, repoConfig.branch),
+      fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, repoConfig.pagesFilePath, repoConfig.branch),
+      fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, repoConfig.sectionsFilePath, repoConfig.branch),
+      fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, SECTIONS_REGISTRY_FILE_PATH, repoConfig.branch),
+    ])
+
+    res.status(200).json({
+      common: commonResult?.data ?? {},
+      commonSha: commonResult?.sha ?? null,
+      media: mediaResult?.data ?? {},
+      mediaSha: mediaResult?.sha ?? null,
+      pages: pagesResult?.data ?? {},
+      pagesSha: pagesResult?.sha ?? null,
+      sections: Array.isArray(sectionsResult?.data) ? sectionsResult.data : [],
+      sectionsSha: sectionsResult?.sha ?? null,
+      sectionsRegistry: registryResult?.data ?? { sections: [] },
+      sectionsRegistrySha: registryResult?.sha ?? null,
+    })
+  } catch (error) {
+    console.error("Error fetching template data:", error)
+    const q: any = req.query || {}
+    res.status(500).json({
+      error: "Failed to fetch template data.",
+      details: (error as Error).message,
+      repo: (q.owner ?? q["repo-owner"] ?? q.repoOwner) && (q.repo ?? q["repo-name"] ?? q.repoName) ? { owner: q.owner ?? q["repo-owner"] ?? q.repoOwner, repo: q.repo ?? q["repo-name"] ?? q.repoName } : null,
     })
   }
 })
@@ -2415,7 +2572,7 @@ app.get("/api/assets", async (req: Request, res: Response) => {
         owner: repoConfig.owner,
         repo: repoConfig.repo,
         branch: repoConfig.branch,
-        contentFilePath: repoConfig.contentFilePath,
+        sectionsFilePath: repoConfig.sectionsFilePath,
       },
     })
     const managedAssets = [...MANAGED_ASSETS, ...clientLogoAssets]
@@ -2663,14 +2820,18 @@ app.post(
         branch: repoConfig.branch,
       })
 
-      const { content, sha } = await fetchContentJsonFromRepo(octokit, {
-        owner: repoConfig.owner,
-        repo: repoConfig.repo,
-        branch: repoConfig.branch,
-        contentFilePath: repoConfig.contentFilePath,
-      })
-
-      const logos = ensureTrustedByLogos(content)
+      const sectionsResult = await fetchJsonFile(
+        octokit,
+        repoConfig.owner,
+        repoConfig.repo,
+        repoConfig.sectionsFilePath,
+        repoConfig.branch
+      )
+      if (!sectionsResult) {
+        return res.status(404).json({ error: "sections.json not found" })
+      }
+      const sections = Array.isArray(sectionsResult.data) ? sectionsResult.data : []
+      const logos = getTrustedByLogosFromSections(sections)
 
       if (logos.some((logo) => logo?.src === websiteSrc)) {
         return res.status(409).json({
@@ -2688,26 +2849,27 @@ app.post(
         alt: derivedAlt,
       }
 
-      logos.push(newLogo)
+      const updatedLogos = [...logos, newLogo]
+      const updatedSections = updateTrustedByLogosInSections(sections, updatedLogos)
+      const contentString = JSON.stringify(updatedSections, null, 2)
+      const sectionsContentBase64 = Buffer.from(contentString, "utf8").toString("base64")
 
-      const { commitUrl: contentCommitUrl, newSha: newContentSha } =
-        await updateContentJsonInRepo({
-          octokit,
-          repoConfig: {
-            owner: repoConfig.owner,
-            repo: repoConfig.repo,
-            branch: repoConfig.branch,
-            contentFilePath: repoConfig.contentFilePath,
-          },
-          content,
-          sha,
-          commitMessage: "CMS: Register client logo in website content",
-        })
+      const commitResponse = await octokit.repos.createOrUpdateFileContents({
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        path: repoConfig.sectionsFilePath,
+        message: "CMS: Register client logo in Trusted By section",
+        content: sectionsContentBase64,
+        sha: sectionsResult.sha,
+        branch: repoConfig.branch,
+      })
+      const contentCommitUrl = commitResponse.data.commit.html_url
+      const newContentSha = commitResponse.data.content?.sha
 
       res.json({
         message: "Client logo created successfully.",
         logo: newLogo,
-        logos,
+        logos: updatedLogos,
         fileUrl,
         assetSha: fileSha,
         assetCommitUrl: uploadResponse.data.commit.html_url,
@@ -2751,37 +2913,41 @@ app.delete(
       const repoConfig = getActiveRepoConfigFromRequest(req)
       const octokit = await getAuthenticatedClient()
 
-      const { content, sha } = await fetchContentJsonFromRepo(octokit, {
-        owner: repoConfig.owner,
-        repo: repoConfig.repo,
-        branch: repoConfig.branch,
-        contentFilePath: repoConfig.contentFilePath,
-      })
-
-      const logos = ensureTrustedByLogos(content)
+      const sectionsResult = await fetchJsonFile(
+        octokit,
+        repoConfig.owner,
+        repoConfig.repo,
+        repoConfig.sectionsFilePath,
+        repoConfig.branch
+      )
+      if (!sectionsResult) {
+        return res.status(404).json({ error: "sections.json not found" })
+      }
+      const sections = Array.isArray(sectionsResult.data) ? sectionsResult.data : []
+      const logos = getTrustedByLogosFromSections(sections)
       const filteredLogos = logos.filter((logo) => logo?.src !== normalizedSrc)
 
       if (filteredLogos.length === logos.length) {
         return res.status(404).json({
-          error: "Client logo not found in website content.",
+          error: "Client logo not found in sections.",
         })
       }
 
-      content.home.trustedBy.logos = filteredLogos
+      const updatedSections = updateTrustedByLogosInSections(sections, filteredLogos)
+      const contentString = JSON.stringify(updatedSections, null, 2)
+      const contentBase64 = Buffer.from(contentString, "utf8").toString("base64")
 
-      const { commitUrl: contentCommitUrl, newSha: newContentSha } =
-        await updateContentJsonInRepo({
-          octokit,
-          repoConfig: {
-            owner: repoConfig.owner,
-            repo: repoConfig.repo,
-            branch: repoConfig.branch,
-            contentFilePath: repoConfig.contentFilePath,
-          },
-          content,
-          sha,
-          commitMessage: "CMS: Remove client logo from website content",
-        })
+      const commitResponse = await octokit.repos.createOrUpdateFileContents({
+        owner: repoConfig.owner,
+        repo: repoConfig.repo,
+        path: repoConfig.sectionsFilePath,
+        message: "CMS: Remove client logo from Trusted By section",
+        content: contentBase64,
+        sha: sectionsResult.sha,
+        branch: repoConfig.branch,
+      })
+      const contentCommitUrl = commitResponse.data.commit.html_url
+      const newContentSha = commitResponse.data.content?.sha
 
       try {
         const metadata = await fetchAssetMetadata(

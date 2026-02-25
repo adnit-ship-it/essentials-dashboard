@@ -103,14 +103,18 @@ export type BrandSettingsData = {
     navbar: LogoSize
     footer: LogoSize
     loadingScreen: LogoSize
-    hero: LogoSize
-    contact: LogoSize
-    products: LogoSize
+    hero?: LogoSize
+    contact?: LogoSize
+    products?: LogoSize
   }
   layoutHeights: GlobalLayoutHeights
   pageTitle: string
   pageDescription: string
   colors: BrandingColors
+  commonSha?: string
+  mediaSha?: string
+  announcement?: import("@/lib/types/pages").AnnouncementConfig
+  designTokensSha?: string
 }
 
 export type BrandingData = {

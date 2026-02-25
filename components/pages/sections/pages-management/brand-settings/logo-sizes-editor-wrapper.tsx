@@ -8,18 +8,13 @@ import { LogoSizesEditor } from "@/components/pages/sections/brand-settings/logo
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import type { LogoSize } from "@/lib/types/branding"
-import type { PagesData } from "@/lib/types/pages"
-
-// Helper to convert from pages.json format to editor format
-function convertLogoSizes(pagesData: any): {
+// Helper to convert from common.json logoSizes to editor format
+function convertLogoSizes(commonData: any): {
   navbar: LogoSize
   footer: LogoSize
   loadingScreen: LogoSize
-  hero: LogoSize
-  contact: LogoSize
-  products: LogoSize
 } {
-  const logoSizes = pagesData?.logoSizes || {}
+  const logoSizes = commonData?.logoSizes || {}
   
   return {
     navbar: logoSizes.navbar || {
@@ -34,18 +29,6 @@ function convertLogoSizes(pagesData: any): {
       height: { mobile: "", tablet: "", desktop: "" },
       width: { mobile: "auto", tablet: "auto", desktop: "auto" },
     },
-    hero: logoSizes.hero || {
-      height: { mobile: "", tablet: "", desktop: "" },
-      width: { mobile: "auto", desktop: "auto" },
-    },
-    contact: logoSizes.contact || {
-      height: { mobile: "", tablet: "", desktop: "" },
-      width: { mobile: "auto", tablet: "auto", desktop: "auto" },
-    },
-    products: logoSizes.products || {
-      height: { mobile: "", tablet: "", desktop: "" },
-      width: { mobile: "auto", tablet: "auto", desktop: "auto" },
-    },
   }
 }
 
@@ -56,7 +39,7 @@ interface LogoSizesEditorWrapperProps {
 }
 
 export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle, hideCard = false }: LogoSizesEditorWrapperProps = {}) {
-  const { pagesData, updatePagesData } = usePagesStore()
+  const { commonData, updateCommonData } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [localIsOpen, setLocalIsOpen] = useState(false)
   const [templateName, setTemplateName] = useState<string | null>(null)
@@ -98,7 +81,7 @@ export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle, hid
     }
   }, [repoOwnerFromLink, repoNameFromLink])
 
-  if (!pagesData) {
+  if (!commonData) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -108,14 +91,13 @@ export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle, hid
     )
   }
 
-  const logoSizes = convertLogoSizes(pagesData)
+  const logoSizes = convertLogoSizes(commonData)
 
   const handleLogoSizesChange = (newLogoSizes: typeof logoSizes) => {
-    updatePagesData(((data: PagesData) => {
-      const updated = { ...data } as any
-      updated.logoSizes = newLogoSizes
-      return updated as PagesData
-    }) as any)
+    updateCommonData((data) => ({
+      ...data,
+      logoSizes: newLogoSizes,
+    }))
   }
 
   const handleCardClick = (e: React.MouseEvent) => {

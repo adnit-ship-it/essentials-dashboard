@@ -137,7 +137,6 @@ Repository configurations include:
 - `POST /api/repositories/:repoId/test` - Test repository connection
 - `GET /api/repositories/:repoId` - Get repository configuration
 - `DELETE /api/repositories/:repoId` - Delete repository configuration
-- `GET /api/content?repoId=owner/repo` - Get content for a repository
 - `GET /api/products?repoId=owner/repo` - Get products for a repository
 - `GET /api/branding?repoId=owner/repo` - Get branding for a repository
 - `GET /api/assets?repoId=owner/repo` - Get assets for a repository

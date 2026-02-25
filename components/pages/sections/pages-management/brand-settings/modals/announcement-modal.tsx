@@ -26,19 +26,19 @@ interface AnnouncementModalProps {
 }
 
 export function AnnouncementModal({ open, onOpenChange }: AnnouncementModalProps) {
-  const { pagesData, updateAnnouncement } = usePagesStore()
+  const { commonData, updateAnnouncement } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const { colors: brandColors } = useBrandColors(repoOwnerFromLink, repoNameFromLink)
   const [announcement, setAnnouncement] = useState<AnnouncementConfig>(
-    pagesData?.announcement || DEFAULT_ANNOUNCEMENT_CONFIG
+    commonData?.announcement || DEFAULT_ANNOUNCEMENT_CONFIG
   )
 
   // Sync with store when modal opens
   useEffect(() => {
     if (open) {
-      setAnnouncement(pagesData?.announcement || DEFAULT_ANNOUNCEMENT_CONFIG)
+      setAnnouncement(commonData?.announcement || DEFAULT_ANNOUNCEMENT_CONFIG)
     }
-  }, [open, pagesData?.announcement])
+  }, [open, commonData?.announcement])
 
   // Resolve brand colors to actual hex for preview
   const resolvedBackgroundColor = useMemo(() => {

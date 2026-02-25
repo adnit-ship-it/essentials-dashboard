@@ -9,8 +9,8 @@ import { useOrganizationStore } from "@/lib/stores/organization-store"
 import type { BrandSettingsData, LogoState, LogoSize, GlobalLayoutHeights, BrandingColors } from "@/lib/types/branding"
 import type { AnnouncementConfig } from "@/lib/types/pages"
 import { DEFAULT_ANNOUNCEMENT_CONFIG } from "@/lib/types/pages"
-import { fetchBrandSettings, saveBrandSettings, uploadLogo, saveBrandingColors } from "@/lib/services/branding"
-import { fetchPagesData, savePagesData } from "@/lib/services/pages"
+import { fetchBrandSettings, uploadLogo, saveBrandingColors } from "@/lib/services/branding"
+import { fetchCommonData, saveCommonData } from "@/lib/services/common"
 import { fileToPendingUpload } from "@/lib/utils/file-uploads"
 import { generateUniqueLogoFileName } from "@/lib/services/branding"
 import { normalizeRepoPathInput } from "@/lib/utils/repo-paths"
@@ -63,15 +63,12 @@ export function BrandSettingsSection() {
   const [settings, setSettings] = useState<BrandSettingsData>(DEFAULT_BRAND_SETTINGS)
   const [originalSettings, setOriginalSettings] = useState<BrandSettingsData | null>(null)
   const [pendingUploads, setPendingUploads] = useState<Record<string, any>>({})
-  const [contentSha, setContentSha] = useState<string | null>(null)
-  const [pagesSha, setPagesSha] = useState<string | null>(null)
-  const [tailwindSha, setTailwindSha] = useState<string | null>(null)
+  const [commonSha, setCommonSha] = useState<string | null>(null)
+  const [designTokensSha, setDesignTokensSha] = useState<string | null>(null)
 
   // Announcement state
   const [announcement, setAnnouncement] = useState<AnnouncementConfig>(DEFAULT_ANNOUNCEMENT_CONFIG)
   const [originalAnnouncement, setOriginalAnnouncement] = useState<AnnouncementConfig | null>(null)
-  const [announcementPagesSha, setAnnouncementPagesSha] = useState<string | null>(null)
-  const [pagesData, setPagesData] = useState<any>(null)
 
   const fetchBrandSettingsData = useCallback(async () => {
     const owner = repoOwnerFromLink || ""
@@ -86,22 +83,16 @@ export function BrandSettingsSection() {
     setError(null)
     setFeedback(null)
     try {
-      // Fetch brand settings and pages data (for announcement) in parallel
-      const [brandData, pagesResponse] = await Promise.all([
-        fetchBrandSettings(owner, repo),
-        fetchPagesData(owner, repo).catch(() => ({ pages: {} as any, sha: "" }))
-      ])
+      const brandData = await fetchBrandSettings(owner, repo)
       
       setSettings(brandData)
       setOriginalSettings(JSON.parse(JSON.stringify(brandData)))
+      setCommonSha(brandData.commonSha || null)
+      setDesignTokensSha(brandData.designTokensSha || null)
       
-      // Extract announcement from pages data
-      const pagesDataTyped = pagesResponse.pages as any
-      const announcementData = pagesDataTyped?.announcement || DEFAULT_ANNOUNCEMENT_CONFIG
+      const announcementData = brandData.announcement || DEFAULT_ANNOUNCEMENT_CONFIG
       setAnnouncement(announcementData)
       setOriginalAnnouncement(JSON.parse(JSON.stringify(announcementData)))
-      setAnnouncementPagesSha(pagesResponse.sha)
-      setPagesData(pagesResponse.pages)
     } catch (err) {
       setError((err as Error).message || "Failed to load brand settings.")
     } finally {
@@ -251,26 +242,31 @@ export function BrandSettingsSection() {
         }
       }
 
-      // Save colors
-      if (tailwindSha) {
-        const brandingResult = await saveBrandingColors(owner, repo, settings.colors, tailwindSha)
-        setTailwindSha(brandingResult.newSha)
+      // Save colors (design tokens)
+      if (designTokensSha) {
+        const brandingResult = await saveBrandingColors(owner, repo, settings.colors, designTokensSha)
+        setDesignTokensSha(brandingResult.newSha)
         setSettings((prev) => ({
           ...prev,
           colors: brandingResult.colors,
         }))
       }
 
-      // Save announcement if it has changed
+      // Save announcement if it has changed (to common.json)
       const announcementChanged = JSON.stringify(announcement) !== JSON.stringify(originalAnnouncement)
-      if (announcementChanged && announcementPagesSha && pagesData) {
-        const updatedPagesData = {
-          ...pagesData,
-          announcement: announcement,
+      if (announcementChanged) {
+        let common: any = {}
+        let sha = commonSha || ""
+        try {
+          const res = await fetchCommonData(owner, repo)
+          common = res.common || {}
+          sha = res.sha || commonSha || ""
+        } catch {
+          common = {}
         }
-        const pagesResult = await savePagesData(owner, repo, updatedPagesData, announcementPagesSha)
-        setAnnouncementPagesSha(pagesResult.newSha)
-        setPagesData(pagesResult.pages)
+        const updatedCommon = { ...common, announcement }
+        const result = await saveCommonData(owner, repo, updatedCommon, sha || undefined)
+        setCommonSha(result.newSha)
         setOriginalAnnouncement(JSON.parse(JSON.stringify(announcement)))
       }
 

@@ -102,6 +102,36 @@ export function reorderSections(
 }
 
 /**
+ * Add a new page to PagesData
+ */
+export function addPage(
+  pagesData: PagesData,
+  pageKey: PageKey,
+  options: { title: string; order?: number; description?: string }
+): PagesData {
+  const existingKeys = getPageKeys(pagesData)
+  if (existingKeys.includes(pageKey)) {
+    throw new Error(`Page "${pageKey}" already exists`)
+  }
+
+  const maxOrder = Math.max(0, ...existingKeys.map((k) => (pagesData[k] as Page)?.order ?? 0))
+  const order = options.order ?? maxOrder + 1
+
+  const newPage: Page = {
+    title: options.title,
+    show: true,
+    order,
+    description: options.description ?? "",
+    sections: [],
+  }
+
+  return {
+    ...pagesData,
+    [pageKey]: newPage,
+  }
+}
+
+/**
  * Update a page's properties
  */
 export function updatePage(
@@ -119,6 +149,48 @@ export function updatePage(
   } as Page
 
   return updated
+}
+
+/**
+ * Add a new section to a page and to sections data.
+ * Returns { pagesData, sectionsData } with the new section added.
+ */
+export function addSection(
+  pagesData: PagesData,
+  sectionsData: SectionsData,
+  pageKey: PageKey,
+  sectionName: string,
+  component: string,
+  defaultSection: Section
+): { pagesData: PagesData; sectionsData: SectionsData } {
+  const page = pagesData[pageKey] as Page | undefined
+  if (!page) {
+    throw new Error(`Page "${pageKey}" not found`)
+  }
+
+  if (findSectionByName(sectionsData, sectionName)) {
+    throw new Error(`Section "${sectionName}" already exists`)
+  }
+
+  const maxOrder = page.sections.length > 0
+    ? Math.max(...page.sections.map((s) => s.order))
+    : 0
+
+  const newPageSection: PageSection = {
+    name: sectionName,
+    component,
+    props: {},
+    show: true,
+    order: maxOrder + 1,
+  }
+
+  const updatedPages = updatePage(pagesData, pageKey, {
+    sections: [...page.sections, newPageSection],
+  })
+
+  const updatedSections: SectionsData = [...sectionsData, defaultSection]
+
+  return { pagesData: updatedPages, sectionsData: updatedSections }
 }
 
 /**

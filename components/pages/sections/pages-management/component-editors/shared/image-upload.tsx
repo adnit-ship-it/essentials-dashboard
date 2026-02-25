@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Upload, Loader2, Image as ImageIcon } from "lucide-react"
+import { Upload, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { usePagesStore } from "@/lib/stores/pages-store"
 import { fileToPendingUpload } from "@/lib/utils/file-uploads"
 import { uploadLogoFile, getFileSha } from "@/lib/services/logo-registry"
-import { cn } from "@/lib/utils"
 
 interface ImageUploadProps {
   label: string
@@ -16,6 +16,12 @@ interface ImageUploadProps {
   onChange: (newPath: string) => void
   directory?: string // Directory to upload to (default: public/assets/images/)
   disabled?: boolean
+}
+
+function slugFromPath(path: string): string {
+  const base = path.split("/").pop() || "image"
+  const withoutExt = base.replace(/\.[^.]+$/, "")
+  return `${withoutExt.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${Date.now()}`
 }
 
 export function ImageUpload({
@@ -26,6 +32,7 @@ export function ImageUpload({
   disabled = false,
 }: ImageUploadProps) {
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
+  const { updateMediaData } = usePagesStore()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -130,7 +137,27 @@ export function ImageUpload({
       const websitePath = filePath.startsWith("public/")
         ? `/${filePath.slice(7)}` // Remove "public" prefix
         : `/${filePath}`
-      
+
+      // Add to image registry in media.json
+      const alt = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ").trim() || "Image"
+      const id = slugFromPath(websitePath)
+      updateMediaData((data) => {
+        const registry = data.imageRegistry || {}
+        const existingIds = new Set(Object.keys(registry))
+        let finalId = id
+        let i = 1
+        while (existingIds.has(finalId)) {
+          finalId = `${id}-${i++}`
+        }
+        return {
+          ...data,
+          imageRegistry: {
+            ...registry,
+            [finalId]: { id: finalId, path: websitePath, alt },
+          },
+        }
+      })
+
       onChange(websitePath)
     } catch (err: any) {
       const errorMessage = err?.response?.data?.error || err?.message || "Failed to upload image"

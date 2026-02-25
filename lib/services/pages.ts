@@ -71,14 +71,10 @@ export async function savePagesData(
   owner: string,
   repo: string,
   pages: PagesData,
-  sha: string
+  sha?: string
 ): Promise<{ newSha: string; pages: PagesData }> {
   if (!owner || !repo) {
     throw new Error("Repository owner/name missing. Configure via organization settings.")
-  }
-
-  if (!sha) {
-    throw new Error("Missing pages file SHA. Refresh and try again.")
   }
 
   const url = `${API_BASE_URL}/api/pages?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
@@ -89,7 +85,7 @@ export async function savePagesData(
     },
     body: JSON.stringify({
       pages,
-      sha,
+      sha: sha || undefined,
     }),
   })
 

@@ -14,9 +14,9 @@ interface AnnouncementPreviewProps {
 }
 
 export function AnnouncementPreview({ onEdit, repoOwner, repoName }: AnnouncementPreviewProps) {
-  const { pagesData } = usePagesStore()
+  const { commonData } = usePagesStore()
   const { colors: brandColors } = useBrandColors(repoOwner, repoName)
-  const announcement = pagesData?.announcement || DEFAULT_ANNOUNCEMENT_CONFIG
+  const announcement = commonData?.announcement || DEFAULT_ANNOUNCEMENT_CONFIG
 
   // Resolve brand colors to actual hex for display
   const resolvedBackgroundColor = useMemo(() => {

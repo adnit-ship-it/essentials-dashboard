@@ -2,7 +2,8 @@
  * Utilities for logo registry management
  */
 
-import type { LogoRegistry, PagesData, PageKey } from "@/lib/types/pages"
+import type { LogoRegistry } from "@/lib/types/media"
+import type { PagesData, PageKey } from "@/lib/types/pages"
 import type { SectionsData } from "@/lib/types/sections"
 import { isPageKey } from "@/lib/types/pages"
 

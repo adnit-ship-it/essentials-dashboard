@@ -26,7 +26,6 @@ export interface RepoConfig {
   displayName?: string; // User-friendly name (defaults to repo name)
   
   // User-configured file paths
-  contentFilePath: string;
   productsFilePath: string;
   tailwindConfigPath: string;
   brandLogoPath: string;
@@ -45,7 +44,6 @@ export interface RepoConfig {
  * Default file paths for repositories
  */
 export const DEFAULT_FILE_PATHS = {
-  contentFilePath: "data/websiteText.json",
   productsFilePath: "data/intake-form/productsList.json",
   tailwindConfigPath: "tailwind.config.js",
   brandLogoPath: "public/assets/images/brand/logo.svg",

@@ -58,8 +58,8 @@ function SortableFeatureItem({
   onUpdate: (updates: any) => void
   onRemove: () => void
 }) {
-  const { pagesData } = usePagesStore()
-  const iconRegistry = pagesData?.iconRegistry || {}
+  const { mediaData } = usePagesStore()
+  const iconRegistry = mediaData?.iconRegistry || {}
   
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `feature-${index}`,

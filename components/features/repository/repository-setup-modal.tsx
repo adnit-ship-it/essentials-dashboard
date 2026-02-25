@@ -34,7 +34,6 @@ export function RepositorySetupModal({
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null)
   const [displayName, setDisplayName] = useState("")
   const [paths, setPaths] = useState({
-    contentFilePath: DEFAULT_FILE_PATHS.contentFilePath,
     productsFilePath: DEFAULT_FILE_PATHS.productsFilePath,
     tailwindConfigPath: DEFAULT_FILE_PATHS.tailwindConfigPath,
     brandLogoPath: DEFAULT_FILE_PATHS.brandLogoPath,
@@ -113,7 +112,6 @@ export function RepositorySetupModal({
       setSelectedRepo(null)
       setDisplayName("")
       setPaths({
-        contentFilePath: DEFAULT_FILE_PATHS.contentFilePath,
         productsFilePath: DEFAULT_FILE_PATHS.productsFilePath,
         tailwindConfigPath: DEFAULT_FILE_PATHS.tailwindConfigPath,
         brandLogoPath: DEFAULT_FILE_PATHS.brandLogoPath,
@@ -196,16 +194,6 @@ export function RepositorySetupModal({
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold">File Paths</h3>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="content-file-path">Content File Path</Label>
-                    <Input
-                      id="content-file-path"
-                      value={paths.contentFilePath}
-                      onChange={(e) => setPaths({ ...paths, contentFilePath: e.target.value })}
-                      placeholder="data/content.json"
-                    />
-                  </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="products-file-path">Products File Path</Label>
                     <Input

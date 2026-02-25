@@ -147,9 +147,6 @@ interface LogoSizesEditorProps {
     navbar: LogoSize
     footer: LogoSize
     loadingScreen: LogoSize
-    hero: LogoSize
-    contact: LogoSize
-    products: LogoSize
   }
   onLogoSizesChange: (logoSizes: LogoSizesEditorProps["logoSizes"]) => void
   hideHeader?: boolean
@@ -170,7 +167,7 @@ export function LogoSizesEditor({ logoSizes, onLogoSizesChange, hideHeader = fal
         <div>
           <h3 className="text-sm font-medium mb-2">Logo Sizes</h3>
           <p className="text-xs text-muted-foreground mb-4">
-            Configure heights for logos in different contexts.
+            Configure heights for logos in navbar, footer, and loading screen. Hero and page-specific logos are edited in the Components view.
           </p>
         </div>
       )}
@@ -197,30 +194,6 @@ export function LogoSizesEditor({ logoSizes, onLogoSizesChange, hideHeader = fal
           size={logoSizes.loadingScreen}
           onSizeChange={(size) => updateSize("loadingScreen", size)}
           logoType="loadingScreen"
-          templateName={templateName}
-        />
-        <LogoSizeEditor
-          label="Hero Logo"
-          description="Logo in hero section"
-          size={logoSizes.hero}
-          onSizeChange={(size) => updateSize("hero", size)}
-          logoType="hero"
-          templateName={templateName}
-        />
-        <LogoSizeEditor
-          label="Contact Logo"
-          description="Logo on contact page"
-          size={logoSizes.contact}
-          onSizeChange={(size) => updateSize("contact", size)}
-          logoType="contact"
-          templateName={templateName}
-        />
-        <LogoSizeEditor
-          label="Products Logo"
-          description="Logo on products page"
-          size={logoSizes.products}
-          onSizeChange={(size) => updateSize("products", size)}
-          logoType="products"
           templateName={templateName}
         />
       </div>

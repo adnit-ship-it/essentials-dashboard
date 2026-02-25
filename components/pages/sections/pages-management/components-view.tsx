@@ -15,6 +15,7 @@ import { PreviewImageModal } from "./preview-image-modal"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import {
   updateComponentNestedProperty,
   addArrayItem,
@@ -338,6 +339,9 @@ export function ComponentsView() {
               handleComponentUpdate(editingComponent.componentIndex, [editingComponent.componentKey, ...path], value)
             }
             setEditingComponent(null)
+            toast.success("Changes applied", {
+              description: "Click Save Changes above to persist to your repository.",
+            })
           }}
           onArrayAdd={(arrayKey, item) => {
             handleArrayAdd(editingComponent.componentIndex, `${editingComponent.componentKey}.${arrayKey}`, item)

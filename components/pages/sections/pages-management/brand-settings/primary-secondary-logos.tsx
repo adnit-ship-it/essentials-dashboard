@@ -18,10 +18,10 @@ const LOGO_DESCRIPTIONS = {
 
 export function PrimarySecondaryLogos() {
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
-  const { pagesData, updatePagesData } = usePagesStore()
+  const { mediaData, updateMediaData } = usePagesStore()
   const [updating, setUpdating] = useState<"primary" | "secondary" | null>(null)
 
-  if (!pagesData?.logoRegistry) {
+  if (!mediaData?.logoRegistry) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -31,7 +31,7 @@ export function PrimarySecondaryLogos() {
     )
   }
 
-  const logoRegistry = pagesData.logoRegistry
+  const logoRegistry = mediaData.logoRegistry
   const primaryLogo = Object.entries(logoRegistry).find(([_, entry]) => entry.type === "primary")?.[1]
   const secondaryLogo = Object.entries(logoRegistry).find(([_, entry]) => entry.type === "secondary")?.[1]
 
@@ -48,7 +48,7 @@ export function PrimarySecondaryLogos() {
 
       if (existingKey) {
         // Update existing entry
-        updatePagesData((data) => {
+        updateMediaData((data) => {
           const updated = { ...data }
           if (updated.logoRegistry) {
             updated.logoRegistry = {
@@ -64,7 +64,7 @@ export function PrimarySecondaryLogos() {
       } else {
         // Create new entry
         const newKey = slot === "primary" ? "logo1" : "logo2"
-        updatePagesData((data) => {
+        updateMediaData((data) => {
           const updated = { ...data }
           if (!updated.logoRegistry) {
             updated.logoRegistry = {}

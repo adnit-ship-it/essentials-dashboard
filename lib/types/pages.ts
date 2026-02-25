@@ -111,16 +111,15 @@ export const DEFAULT_ANNOUNCEMENT_CONFIG: AnnouncementConfig = {
 };
 
 /**
- * Page definition
+ * Page definition (pages.json - page keys only)
  */
 export interface Page {
   title: string;
   show: boolean;
   order: number;
   description: string;
-  navbar?: NavbarConfig;
-  footer?: FooterConfig;
   sections: PageSection[];
+  [key: string]: any; // Allow page-specific fields (pageTitle, form, logo, etc.)
 }
 
 /**
@@ -130,28 +129,20 @@ export type PageKey = string;
 
 /**
  * Pages data structure (Pages.json)
+ * Contains only page definitions - iconRegistry, logoRegistry, announcement, navbar moved to media.json and common.json
  */
-export type PagesData = {
-  iconRegistry?: IconRegistry;
-  logoRegistry?: LogoRegistry;
-  announcement?: AnnouncementConfig;
-  navbar?: NavbarConfig;
-} & {
-  [key: string]: Page | IconRegistry | LogoRegistry | AnnouncementConfig | NavbarConfig | undefined;
-}
+export type PagesData = Record<string, Page>;
 
 /**
  * Helper type guard to check if a key is a page
  */
 export function isPageKey(key: string, data: PagesData): key is PageKey {
+  const value = data[key];
   return (
-    key !== "iconRegistry" &&
-    key !== "logoRegistry" &&
-    key !== "announcement" &&
-    key !== "navbar" &&
-    typeof data[key] === "object" &&
-    data[key] !== null &&
-    "sections" in (data[key] as object)
+    typeof value === "object" &&
+    value !== null &&
+    "sections" in value &&
+    Array.isArray((value as Page).sections)
   );
 }
 

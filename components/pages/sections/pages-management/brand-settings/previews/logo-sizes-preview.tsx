@@ -13,10 +13,10 @@ interface LogoSizesPreviewProps {
 }
 
 export function LogoSizesPreview({ onEdit, repoOwner, repoName, repoBranch = "main" }: LogoSizesPreviewProps) {
-  const { pagesData } = usePagesStore()
+  const { mediaData } = usePagesStore()
   const [imageError, setImageError] = useState(false)
 
-  if (!pagesData) {
+  if (!mediaData) {
     return (
       <div className="w-full h-full flex items-center justify-center">
         <div className="text-sm text-muted-foreground text-center">
@@ -26,7 +26,7 @@ export function LogoSizesPreview({ onEdit, repoOwner, repoName, repoBranch = "ma
     )
   }
 
-  const logoRegistry = pagesData?.logoRegistry || {}
+  const logoRegistry = mediaData?.logoRegistry || {}
   
   // Find primary logo
   const primaryLogo = Object.entries(logoRegistry).find(

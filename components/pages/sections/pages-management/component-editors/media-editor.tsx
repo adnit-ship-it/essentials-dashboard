@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ImageUpload } from "./shared/image-upload"
+import { ImageSelector } from "./shared/image-selector"
 import { ColorInput } from "./shared/color-input"
 
 interface MediaEditorProps {
@@ -22,7 +22,7 @@ export function MediaEditor({ value, onUpdate }: MediaEditorProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {value?.background && (
-          <ImageUpload
+          <ImageSelector
             label="Background Image"
             value={typeof value.background === "string" ? value.background : value.background?.src || ""}
             onChange={(path) => {
@@ -36,7 +36,7 @@ export function MediaEditor({ value, onUpdate }: MediaEditorProps) {
           />
         )}
         {value?.foreground && (
-          <ImageUpload
+          <ImageSelector
             label="Foreground Image"
             value={typeof value.foreground === "string" ? value.foreground : value.foreground?.src || ""}
             onChange={(path) => {
@@ -50,7 +50,7 @@ export function MediaEditor({ value, onUpdate }: MediaEditorProps) {
           />
         )}
         {value?.image && (
-          <ImageUpload
+          <ImageSelector
             label="Image"
             value={typeof value.image === "string" ? value.image : value.image?.src || ""}
             onChange={(path) => {
@@ -64,7 +64,7 @@ export function MediaEditor({ value, onUpdate }: MediaEditorProps) {
           />
         )}
         {value?.src && (
-          <ImageUpload
+          <ImageSelector
             label="Source"
             value={value.src}
             onChange={(path) => onUpdate(["src"], path)}
@@ -73,7 +73,7 @@ export function MediaEditor({ value, onUpdate }: MediaEditorProps) {
         )}
         {value?.product && (
           <>
-            <ImageUpload
+            <ImageSelector
               label="Product Image"
               value={typeof value.product === "string" ? value.product : value.product?.src || ""}
               onChange={(path) => {
@@ -116,7 +116,7 @@ export function MediaEditor({ value, onUpdate }: MediaEditorProps) {
         )}
         {value?.avatar && (
           <>
-            <ImageUpload
+            <ImageSelector
               label="Avatar Image"
               value={typeof value.avatar === "string" ? value.avatar : value.avatar?.src || ""}
               onChange={(path) => {
@@ -139,7 +139,7 @@ export function MediaEditor({ value, onUpdate }: MediaEditorProps) {
         )}
         {value?.star && (
           <>
-            <ImageUpload
+            <ImageSelector
               label="Star Image"
               value={typeof value.star === "string" ? value.star : value.star?.src || ""}
               onChange={(path) => {
