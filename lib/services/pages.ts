@@ -71,7 +71,8 @@ export async function savePagesData(
   owner: string,
   repo: string,
   pages: PagesData,
-  sha?: string
+  sha?: string,
+  commitMessage?: string
 ): Promise<{ newSha: string; pages: PagesData }> {
   if (!owner || !repo) {
     throw new Error("Repository owner/name missing. Configure via organization settings.")
@@ -86,6 +87,7 @@ export async function savePagesData(
     body: JSON.stringify({
       pages,
       sha: sha || undefined,
+      commitMessage: commitMessage || undefined,
     }),
   })
 

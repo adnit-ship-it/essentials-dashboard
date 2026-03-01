@@ -12,11 +12,117 @@ import { fetchPagesData, savePagesData } from "@/lib/services/pages"
 import { fetchSectionsData, saveSectionsData } from "@/lib/services/sections"
 import { fetchCommonData, saveCommonData } from "@/lib/services/common"
 import { fetchMediaData, saveMediaData } from "@/lib/services/media"
+import {
+  enqueueCommit,
+  processQueue,
+  clearQueue,
+  type CommitJob,
+} from "@/lib/services/commit-queue"
+import {
+  pagesUpdateMessage,
+  sectionsUpdateMessage,
+  commonUpdateMessage,
+  mediaUpdateMessage,
+  deletePageMessage,
+  deleteSectionMessage,
+} from "@/lib/utils/commit-messages"
+import { removePage, removeSection } from "@/lib/utils/pages-helpers"
+import { findSectionByName } from "@/lib/types/sections"
 import { useOrganizationStore } from "./organization-store"
 
 const API_BASE_URL = typeof window !== "undefined" ? "" : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
 
 export type ViewState = "pages" | "sections" | "components" | "brand-settings"
+
+/** Clear invalid navigation state after fetch (prevents "Section not found" after refresh). */
+function getNavigationStateAfterFetch(
+  selectedPageKey: PageKey | null,
+  selectedSectionName: string | null,
+  pagesData: PagesData,
+  sectionsData: SectionsData
+): Partial<Pick<PagesStore, "selectedPageKey" | "selectedSectionName" | "currentView">> {
+  const updates: Partial<Pick<PagesStore, "selectedPageKey" | "selectedSectionName" | "currentView">> = {}
+  if (selectedPageKey && !(selectedPageKey in pagesData)) {
+    updates.selectedPageKey = null
+    updates.selectedSectionName = null
+    updates.currentView = "pages"
+  } else if (selectedSectionName && !findSectionByName(sectionsData, selectedSectionName)) {
+    updates.selectedSectionName = null
+    updates.currentView = "sections"
+  }
+  return updates
+}
+
+/** Executor for commit queue: runs one job with 409 retry (re-fetch SHA, retry once). */
+function createCommitExecutor(
+  owner: string,
+  repo: string,
+  get: () => PagesStore,
+  set: (partial: Partial<PagesStore>) => void
+) {
+  return async (job: CommitJob): Promise<{ newSha: string; [key: string]: unknown }> => {
+    const runWithRetry = async (retry = false): Promise<{ newSha: string; [key: string]: unknown }> => {
+      const state = get()
+      switch (job.type) {
+        case "pages": {
+          let sha = state.pagesSha || ""
+          if (retry) {
+            const fresh = await fetchPagesData(owner, repo)
+            sha = fresh.sha
+            set({ pagesSha: sha })
+          }
+          const result = await savePagesData(owner, repo, job.data as PagesData, sha, job.message)
+          set({ pagesData: result.pages, originalPagesData: result.pages, pagesSha: result.newSha })
+          return result
+        }
+        case "sections": {
+          let sha = state.sectionsSha || ""
+          if (retry) {
+            const fresh = await fetchSectionsData(owner, repo)
+            sha = fresh.sha
+            set({ sectionsSha: sha })
+          }
+          const result = await saveSectionsData(owner, repo, job.data as SectionsData, sha, job.message)
+          set({ sectionsData: result.sections, originalSectionsData: result.sections, sectionsSha: result.newSha })
+          return result
+        }
+        case "common": {
+          let sha = state.commonSha || ""
+          if (retry) {
+            const fresh = await fetchCommonData(owner, repo)
+            sha = fresh.sha
+            set({ commonSha: sha })
+          }
+          const result = await saveCommonData(owner, repo, job.data as CommonData, sha || undefined, job.message)
+          set({ commonData: result.common, originalCommonData: result.common, commonSha: result.newSha })
+          return result
+        }
+        case "media": {
+          let sha = state.mediaSha || ""
+          if (retry) {
+            const fresh = await fetchMediaData(owner, repo)
+            sha = fresh.sha
+            set({ mediaSha: sha })
+          }
+          const result = await saveMediaData(owner, repo, job.data as MediaData, sha || undefined, job.message)
+          set({ mediaData: result.media, originalMediaData: result.media, mediaSha: result.newSha })
+          return result
+        }
+        default:
+          throw new Error(`Unknown commit job type: ${(job as CommitJob).type}`)
+      }
+    }
+    try {
+      return await runWithRetry()
+    } catch (err) {
+      const error = err as Error & { isConflict?: boolean }
+      if (error.isConflict === true) {
+        return await runWithRetry(true)
+      }
+      throw err
+    }
+  }
+}
 
 interface PagesStore {
   // Original data (from server)
@@ -78,6 +184,22 @@ interface PagesStore {
   
   // Save all pending changes
   saveAll: () => Promise<void>
+
+  // Commit pages only (for add-page flow)
+  commitPages: (pages: PagesData, message: string) => Promise<void>
+
+  // Commit pages and sections (for add-section flow)
+  commitPagesAndSections: (
+    pages: PagesData,
+    sections: SectionsData,
+    messages: { pages?: string; sections?: string }
+  ) => Promise<void>
+
+  // Delete page (commit-on-delete)
+  deletePage: (pageKey: PageKey) => Promise<void>
+
+  // Delete section (commit-on-delete, updates both pages and sections)
+  deleteSection: (pageKey: PageKey, sectionName: string) => Promise<void>
   
   // Discard all pending changes
   discardChanges: () => void
@@ -146,6 +268,13 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
       const media = batch.media || {}
       const sectionsRegistry = batch.sectionsRegistry || { sections: [] }
 
+      const navState = getNavigationStateAfterFetch(
+        get().selectedPageKey,
+        get().selectedSectionName,
+        pages,
+        sections
+      )
+
       set({
         originalPagesData: pages,
         originalSectionsData: sections,
@@ -162,6 +291,7 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
         sectionsRegistryData: sectionsRegistry,
         isLoading: false,
         hasPendingChanges: false,
+        ...navState,
       })
     } catch (err) {
       try {
@@ -196,6 +326,13 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
           // Ignore
         }
 
+        const navState = getNavigationStateAfterFetch(
+          get().selectedPageKey,
+          get().selectedSectionName,
+          pagesResponse.pages,
+          sectionsResponse.sections
+        )
+
         set({
           originalPagesData: pagesResponse.pages,
           originalSectionsData: sectionsResponse.sections,
@@ -212,6 +349,7 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
           sectionsRegistryData,
           isLoading: false,
           hasPendingChanges: false,
+          ...navState,
         })
       } catch (fallbackErr) {
         const errorMessage = (fallbackErr as Error).message || "Failed to load pages and sections data."
@@ -329,7 +467,7 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
     set({ pagesData: newPages, sectionsData: newSections, hasPendingChanges: pagesChanged || sectionsChanged })
   },
 
-  // Save all pending changes
+  // Save all pending changes (uses commit queue for sequential commits)
   saveAll: async () => {
     const { pagesData, sectionsData, commonData, mediaData, pagesSha, sectionsSha, commonSha, mediaSha, originalPagesData, originalSectionsData, originalCommonData, originalMediaData } = get()
     
@@ -363,64 +501,30 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
 
       set({ isSaving: true, error: null, hasConflict: false })
 
-      const savePromises: Promise<any>[] = []
-      const indices: ("pages" | "sections" | "common" | "media")[] = []
-      
+      clearQueue()
       if (pagesChanged) {
-        indices.push("pages")
-        savePromises.push(savePagesData(owner, repo, pagesData, pagesSha || ""))
+        enqueueCommit({ type: "pages", data: pagesData, message: pagesUpdateMessage() })
       }
       if (sectionsChanged) {
-        indices.push("sections")
-        savePromises.push(saveSectionsData(owner, repo, sectionsData, sectionsSha || ""))
+        enqueueCommit({ type: "sections", data: sectionsData, message: sectionsUpdateMessage() })
       }
       if (commonChanged && commonData) {
-        indices.push("common")
-        savePromises.push(saveCommonData(owner, repo, commonData, commonSha || undefined))
+        enqueueCommit({ type: "common", data: commonData, message: commonUpdateMessage() })
       }
       if (mediaChanged && mediaData) {
-        indices.push("media")
-        savePromises.push(saveMediaData(owner, repo, mediaData, mediaSha || ""))
+        enqueueCommit({ type: "media", data: mediaData, message: mediaUpdateMessage() })
       }
 
-      const results = await Promise.all(savePromises)
-      
-      // Update state with saved data
-      const newState: Partial<PagesStore> = {
+      await processQueue(createCommitExecutor(owner, repo, get, set))
+
+      set({
         isSaving: false,
         hasPendingChanges: false,
         feedback: {
           type: "success",
           message: "All changes saved successfully.",
         },
-      }
-
-      let idx = 0
-      if (pagesChanged && results[idx]) {
-        newState.pagesData = results[idx].pages
-        newState.originalPagesData = results[idx].pages
-        newState.pagesSha = results[idx].newSha
-        idx++
-      }
-      if (sectionsChanged && results[idx]) {
-        newState.sectionsData = results[idx].sections
-        newState.originalSectionsData = results[idx].sections
-        newState.sectionsSha = results[idx].newSha
-        idx++
-      }
-      if (commonChanged && results[idx]) {
-        newState.commonData = results[idx].common
-        newState.originalCommonData = results[idx].common
-        newState.commonSha = results[idx].newSha
-        idx++
-      }
-      if (mediaChanged && results[idx]) {
-        newState.mediaData = results[idx].media
-        newState.originalMediaData = results[idx].media
-        newState.mediaSha = results[idx].newSha
-      }
-
-      set(newState)
+      })
     } catch (err) {
       const error = err as Error & { isConflict?: boolean }
       const isConflict = error.isConflict === true
@@ -435,10 +539,103 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
         },
       })
       
-      // Don't throw if it's a conflict - let UI handle it
       if (!isConflict) {
         throw err
       }
+    }
+  },
+
+  commitPages: async (pages: PagesData, message: string) => {
+    const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore.getState()
+    const owner = repoOwnerFromLink || ""
+    const repo = repoNameFromLink || ""
+    if (!owner || !repo) throw new Error("Repository owner/name missing.")
+    if (!pages) throw new Error("Pages data not loaded. Please refresh.")
+
+    set({ isSaving: true, error: null, hasConflict: false })
+    clearQueue()
+    enqueueCommit({ type: "pages", data: pages, message })
+
+    try {
+      await processQueue(createCommitExecutor(owner, repo, get, set))
+      set({
+        isSaving: false,
+        hasPendingChanges: false,
+        feedback: { type: "success", message: "Page saved successfully." },
+      })
+    } catch (err) {
+      const error = err as Error & { isConflict?: boolean }
+      set({
+        isSaving: false,
+        hasConflict: error.isConflict === true,
+        error: error.message || "Failed to save page.",
+        feedback: { type: "error", message: error.message || "Failed to save page." },
+      })
+      throw err
+    }
+  },
+
+  commitPagesAndSections: async (
+    pages: PagesData,
+    sections: SectionsData,
+    messages: { pages?: string; sections?: string }
+  ) => {
+    const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore.getState()
+    const owner = repoOwnerFromLink || ""
+    const repo = repoNameFromLink || ""
+    if (!owner || !repo) throw new Error("Repository owner/name missing.")
+    if (!pages || !sections) throw new Error("Pages and sections data not loaded. Please refresh.")
+
+    set({ isSaving: true, error: null, hasConflict: false })
+    clearQueue()
+    enqueueCommit({ type: "pages", data: pages, message: messages.pages || "New section" })
+    enqueueCommit({ type: "sections", data: sections, message: messages.sections || "New section" })
+
+    try {
+      await processQueue(createCommitExecutor(owner, repo, get, set))
+      set({
+        isSaving: false,
+        hasPendingChanges: false,
+        feedback: { type: "success", message: "Section saved successfully." },
+      })
+    } catch (err) {
+      const error = err as Error & { isConflict?: boolean }
+      set({
+        isSaving: false,
+        hasConflict: error.isConflict === true,
+        error: error.message || "Failed to save section.",
+        feedback: { type: "error", message: error.message || "Failed to save section." },
+      })
+      throw err
+    }
+  },
+
+  deletePage: async (pageKey: PageKey) => {
+    const { pagesData } = get()
+    if (!pagesData) throw new Error("Pages data not loaded. Please refresh.")
+    const page = pagesData[pageKey] as { title?: string } | undefined
+    const title = page?.title ?? pageKey
+    const updated = removePage(pagesData, pageKey)
+    await get().commitPages(updated, deletePageMessage(title))
+    set({ selectedPageKey: get().selectedPageKey === pageKey ? null : get().selectedPageKey })
+  },
+
+  deleteSection: async (pageKey: PageKey, sectionName: string) => {
+    const { pagesData, sectionsData } = get()
+    if (!pagesData || !sectionsData) throw new Error("Data not loaded. Please refresh.")
+    const { pagesData: newPages, sectionsData: newSections } = removeSection(
+      pagesData,
+      sectionsData,
+      pageKey,
+      sectionName
+    )
+    const msg = deleteSectionMessage(sectionName)
+    await get().commitPagesAndSections(newPages, newSections, {
+      pages: msg,
+      sections: msg,
+    })
+    if (get().selectedSectionName === sectionName) {
+      set({ selectedSectionName: null, currentView: "sections" })
     }
   },
 

@@ -71,7 +71,8 @@ export async function saveSectionsData(
   owner: string,
   repo: string,
   sections: SectionsData,
-  sha?: string
+  sha?: string,
+  commitMessage?: string
 ): Promise<{ newSha: string; sections: SectionsData }> {
   if (!owner || !repo) {
     throw new Error("Repository owner/name missing. Configure via organization settings.")
@@ -86,6 +87,7 @@ export async function saveSectionsData(
     body: JSON.stringify({
       sections,
       sha: sha || undefined,
+      commitMessage: commitMessage || undefined,
     }),
   })
 

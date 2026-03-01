@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { GripVertical, Eye, EyeOff, Edit2, ExternalLink, Layout, Plus } from "lucide-react"
+import { GripVertical, Eye, EyeOff, Edit2, ExternalLink, Layout, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { reorderPages, updatePage, getPageKeys, addPage } from "@/lib/utils/pages-helpers"
+import { newPageMessage } from "@/lib/utils/commit-messages"
 import { getPagePreviewImagePath } from "@/lib/utils/section-preview-images"
 import type { PageKey } from "@/lib/types/pages"
 import { cn } from "@/lib/utils"
@@ -65,6 +66,7 @@ interface SortablePageCardProps {
   onSelectPage: (pageKey: PageKey) => void
   onPreviewClick: (pageKey: PageKey, pageTitle: string) => void
   onHostClick: () => void
+  onDelete: (pageKey: PageKey) => void
 }
 
 function SortablePageCard({
@@ -84,9 +86,11 @@ function SortablePageCard({
   onSelectPage,
   onPreviewClick,
   onHostClick,
+  onDelete,
 }: SortablePageCardProps) {
   const isHomePage = pageKey.toLowerCase() === "home" || page.title?.toLowerCase() === "home"
   const [imageError, setImageError] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: pageKey,
@@ -245,29 +249,55 @@ function SortablePageCard({
               )}
             </div>
 
-            {/* Visibility Toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (isHomePage) {
-                  toast.error("Home page cannot be hidden", {
-                    description: "The Home page must always be visible as it's the main entry point of your site.",
-                  })
-                  return
-                }
-                onToggleShow(pageKey)
-              }}
-              className={cn(
-                "h-8 w-8 p-0 flex-shrink-0",
-                !page.show && "text-muted-foreground",
-                isHomePage && "opacity-50"
+            <div className="flex items-center gap-1">
+              {/* Visibility Toggle */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isHomePage) {
+                    toast.error("Home page cannot be hidden", {
+                      description: "The Home page must always be visible as it's the main entry point of your site.",
+                    })
+                    return
+                  }
+                  onToggleShow(pageKey)
+                }}
+                className={cn(
+                  "h-8 w-8 p-0 flex-shrink-0",
+                  !page.show && "text-muted-foreground",
+                  isHomePage && "opacity-50"
+                )}
+                title={isHomePage ? "Home page is always visible" : page.show ? "Hide page" : "Show page"}
+              >
+                {page.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </Button>
+              {/* Delete button - only for non-Home pages */}
+              {!isHomePage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (showDeleteConfirm) {
+                      onDelete(pageKey)
+                      setShowDeleteConfirm(false)
+                    } else {
+                      setShowDeleteConfirm(true)
+                      setTimeout(() => setShowDeleteConfirm(false), 3000)
+                    }
+                  }}
+                  className={cn(
+                    "h-8 w-8 p-0 flex-shrink-0",
+                    showDeleteConfirm && "text-red-600 hover:text-red-700 hover:bg-red-50"
+                  )}
+                  title={showDeleteConfirm ? "Click again to confirm delete" : "Delete page"}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               )}
-              title={isHomePage ? "Home page is always visible" : page.show ? "Hide page" : "Show page"}
-            >
-              {page.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -276,7 +306,7 @@ function SortablePageCard({
 }
 
 export function PagesView({ pages }: PagesViewProps) {
-  const { pagesData, selectPage, updatePagesData } = usePagesStore()
+  const { pagesData, selectPage, updatePagesData, commitPages, deletePage, isSaving } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [editingPage, setEditingPage] = useState<PageKey | null>(null)
   const [editTitle, setEditTitle] = useState("")
@@ -451,7 +481,16 @@ export function PagesView({ pages }: PagesViewProps) {
     setPreviewModal({ pageKey, pageTitle })
   }
 
-  const handleAddPage = () => {
+  const handleDeletePage = async (pageKey: PageKey) => {
+    try {
+      await deletePage(pageKey)
+      toast.success("Page deleted", { description: "The page has been removed." })
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
+
+  const handleAddPage = async () => {
     setAddPageError(null)
     const key = addPageKey.trim().toLowerCase().replace(/\s+/g, "-")
     if (!key) {
@@ -469,13 +508,16 @@ export function PagesView({ pages }: PagesViewProps) {
       return
     }
     try {
-      updatePagesData((data) => addPage(data, key, { title, description: "" }))
+      const updated = addPage(pagesData, key, { title, description: "" })
+      updatePagesData(() => updated)
+      await commitPages(updated, newPageMessage(title))
       setAddPageModalOpen(false)
       setAddPageKey("")
       setAddPageTitle("")
-      toast.success("Page added", { description: `"${title}" has been added.` })
+      toast.success("Page added", { description: `"${title}" has been saved.` })
     } catch (err) {
       setAddPageError((err as Error).message)
+      // Store sets hasConflict and error for 409; user can use Refresh and Retry
     }
   }
 
@@ -524,6 +566,7 @@ export function PagesView({ pages }: PagesViewProps) {
                   onSelectPage={selectPage}
                   onPreviewClick={handlePreviewClick}
                   onHostClick={handleHost}
+                  onDelete={handleDeletePage}
                 />
               ))}
             </div>
@@ -546,6 +589,7 @@ export function PagesView({ pages }: PagesViewProps) {
         pageKey={previewModal?.pageKey || ""}
         pageTitle={previewModal?.pageTitle || ""}
         hostedUrl={hostedUrl}
+        templateName={templateName}
       />
 
       {/* Add Page Modal */}
@@ -590,7 +634,9 @@ export function PagesView({ pages }: PagesViewProps) {
             <Button variant="outline" onClick={() => setAddPageModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddPage}>Add Page</Button>
+            <Button onClick={handleAddPage} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Add Page"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

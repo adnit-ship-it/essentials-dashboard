@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, Eye, EyeOff, GripVertical, Layout, Plus } from "lucide-react"
+import { ChevronLeft, Eye, EyeOff, GripVertical, Layout, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { usePagesStore } from "@/lib/stores/pages-store"
@@ -13,7 +13,11 @@ import {
   addSection,
 } from "@/lib/utils/pages-helpers"
 import { getDefaultSectionContent, FALLBACK_SECTION_TYPES } from "@/lib/utils/section-defaults"
-import { getSectionPreviewImagePath } from "@/lib/utils/section-preview-images"
+import { newSectionMessage } from "@/lib/utils/commit-messages"
+import {
+  getSectionPreviewImagePath,
+  getSectionPreviewImagePathByRegistryId,
+} from "@/lib/utils/section-preview-images"
 import { cn } from "@/lib/utils"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
@@ -38,20 +42,70 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
+
+function SectionTypeCard({
+  entry,
+  primaryPath,
+  fallbackPath,
+  isSaving,
+  onSelect,
+}: {
+  entry: { id: string; name: string; component: string; description?: string }
+  primaryPath: string | null
+  fallbackPath: string | null
+  isSaving: boolean
+  onSelect: () => void
+}) {
+  const [imageError, setImageError] = useState(false)
+  const [useFallback, setUseFallback] = useState(false)
+  const currentPath = useFallback ? fallbackPath : primaryPath || fallbackPath
+
+  const handleImageError = () => {
+    if (!useFallback && fallbackPath && fallbackPath !== primaryPath) {
+      setUseFallback(true)
+    } else {
+      setImageError(true)
+    }
+  }
+
+  return (
+    <Card
+      className={cn(
+        "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200 overflow-hidden h-full flex flex-col",
+        isSaving && "opacity-70 pointer-events-none"
+      )}
+      onClick={onSelect}
+    >
+      <div className="relative aspect-video bg-muted overflow-hidden">
+        {currentPath && !imageError ? (
+          <img
+            src={currentPath}
+            alt={`${entry.name} preview`}
+            className="w-full h-full object-cover"
+            onError={handleImageError}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Layout className="h-12 w-12 text-muted-foreground/40" />
+          </div>
+        )}
+      </div>
+      <CardContent className="p-4 flex-1 flex flex-col">
+        <h3 className="font-medium text-sm truncate">{entry.name}</h3>
+        {entry.description && (
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+            {entry.description}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 interface SortableSectionCardProps {
   section: any
@@ -59,6 +113,7 @@ interface SortableSectionCardProps {
   templateName: string | null
   onToggleShow: (name: string) => void
   onSelectSection: (name: string) => void
+  onDelete: (name: string) => void
 }
 
 function SortableSectionCard({
@@ -67,8 +122,10 @@ function SortableSectionCard({
   templateName,
   onToggleShow,
   onSelectSection,
+  onDelete,
 }: SortableSectionCardProps) {
   const [imageError, setImageError] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.name,
@@ -149,22 +206,46 @@ function SortableSectionCard({
               </p>
             </div>
 
-            {/* Visibility Toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleShow(section.name)
-              }}
-              className={cn(
-                "h-8 w-8 p-0 flex-shrink-0",
-                !section.show && "text-muted-foreground"
-              )}
-              title={section.show ? "Hide section" : "Show section"}
-            >
-              {section.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            </Button>
+            <div className="flex items-center gap-1">
+              {/* Visibility Toggle */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleShow(section.name)
+                }}
+                className={cn(
+                  "h-8 w-8 p-0 flex-shrink-0",
+                  !section.show && "text-muted-foreground"
+                )}
+                title={section.show ? "Hide section" : "Show section"}
+              >
+                {section.show ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </Button>
+              {/* Delete button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (showDeleteConfirm) {
+                    onDelete(section.name)
+                    setShowDeleteConfirm(false)
+                  } else {
+                    setShowDeleteConfirm(true)
+                    setTimeout(() => setShowDeleteConfirm(false), 3000)
+                  }
+                }}
+                className={cn(
+                  "h-8 w-8 p-0 flex-shrink-0",
+                  showDeleteConfirm && "text-red-600 hover:text-red-700 hover:bg-red-50"
+                )}
+                title={showDeleteConfirm ? "Click again to confirm delete" : "Delete section"}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -182,11 +263,13 @@ export function SectionsView() {
     selectSection,
     updatePagesData,
     updatePagesAndSections,
+    commitPagesAndSections,
+    deleteSection,
+    isSaving,
   } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
   const [templateName, setTemplateName] = useState<string | null>(null)
   const [addSectionModalOpen, setAddSectionModalOpen] = useState(false)
-  const [addSectionRegistryId, setAddSectionRegistryId] = useState<string>("")
   const [addSectionError, setAddSectionError] = useState<string | null>(null)
 
   // Fetch templateName from hostTemplate.json
@@ -268,6 +351,16 @@ export function SectionsView() {
     )
   }
 
+  const handleDeleteSection = async (sectionName: string) => {
+    if (!selectedPageKey) return
+    try {
+      await deleteSection(selectedPageKey, sectionName)
+      toast.success("Section deleted", { description: `"${sectionName}" has been removed.` })
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
+
   const sectionTypes = sectionsRegistryData?.sections?.length
     ? sectionsRegistryData.sections
     : FALLBACK_SECTION_TYPES
@@ -283,29 +376,31 @@ export function SectionsView() {
     return `${candidate} ${i}`
   }
 
-  const handleAddSection = () => {
+  const handleAddSection = async (registryEntry: { id: string; name: string; component: string; description?: string }) => {
     setAddSectionError(null)
-    if (!addSectionRegistryId) {
-      setAddSectionError("Please select a section type")
-      return
-    }
-    const registryEntry = sectionTypes.find((s) => s.id === addSectionRegistryId)
-    if (!registryEntry) {
-      setAddSectionError("Invalid section type")
-      return
-    }
+    if (!registryEntry) return
     if (!pagesData || !sectionsData || !selectedPageKey) return
 
     const sectionName = generateSectionName(registryEntry)
     const defaultSection = getDefaultSectionContent(registryEntry.id, sectionName)
 
     try {
-      updatePagesAndSections((p, s) =>
-        addSection(p, s, selectedPageKey, sectionName, registryEntry.component, defaultSection)
+      const { pagesData: newPages, sectionsData: newSections } = addSection(
+        pagesData,
+        sectionsData,
+        selectedPageKey,
+        sectionName,
+        registryEntry.component,
+        defaultSection
       )
+      updatePagesAndSections(() => ({ pagesData: newPages, sectionsData: newSections }))
+      await commitPagesAndSections(newPages, newSections, {
+        pages: newSectionMessage(sectionName, page?.title),
+        sections: newSectionMessage(sectionName),
+      })
       setAddSectionModalOpen(false)
-      setAddSectionRegistryId("")
-      toast.success("Section added", { description: `"${sectionName}" has been added.` })
+      selectSection(sectionName)
+      toast.success("Section added", { description: `"${sectionName}" has been saved.` })
     } catch (err) {
       setAddSectionError((err as Error).message)
     }
@@ -332,7 +427,6 @@ export function SectionsView() {
           onClick={() => {
             setAddSectionModalOpen(true)
             setAddSectionError(null)
-            setAddSectionRegistryId(sectionTypes[0]?.id ?? "")
           }}
           disabled={sectionTypes.length === 0}
         >
@@ -359,19 +453,20 @@ export function SectionsView() {
                 templateName={templateName}
                 onToggleShow={handleToggleShow}
                 onSelectSection={selectSection}
+                onDelete={handleDeleteSection}
               />
             ))}
           </div>
         </SortableContext>
       </DndContext>
 
-      {/* Add Section Modal */}
+      {/* Add Section Modal - Grid picker */}
       <Dialog open={addSectionModalOpen} onOpenChange={setAddSectionModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Section</DialogTitle>
             <DialogDescription>
-              Choose a section type to add to this page. The section will be created with default content that you can edit.
+              Choose a section type to add to this page. Click a card to add it—the section will be saved and you can edit its content.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -380,43 +475,23 @@ export function SectionsView() {
                 <AlertDescription>{addSectionError}</AlertDescription>
               </Alert>
             )}
-            <div className="space-y-2">
-              <Label>Section type</Label>
-              <Select
-                value={addSectionRegistryId}
-                onValueChange={(v) => {
-                  setAddSectionRegistryId(v)
-                  setAddSectionError(null)
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select section type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sectionTypes.map((entry) => (
-                    <SelectItem key={entry.id} value={entry.id}>
-                      <div>
-                        <span className="font-medium">{entry.name}</span>
-                        {entry.description && (
-                          <span className="text-muted-foreground text-xs ml-2">
-                            — {entry.description}
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {sectionTypes.map((entry) => {
+                const primaryPath = getSectionPreviewImagePath(entry.name, templateName)
+                const fallbackPath = getSectionPreviewImagePathByRegistryId(entry.id, templateName)
+                return (
+                  <SectionTypeCard
+                    key={entry.id}
+                    entry={entry}
+                    primaryPath={primaryPath}
+                    fallbackPath={fallbackPath}
+                    isSaving={isSaving}
+                    onSelect={() => handleAddSection(entry)}
+                  />
+                )
+              })}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddSectionModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddSection} disabled={!addSectionRegistryId}>
-              Add Section
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

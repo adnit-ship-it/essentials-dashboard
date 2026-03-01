@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { ChevronLeft } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { ChevronLeft, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { findSectionInSections } from "@/lib/utils/pages-helpers"
+import { getRegistryIdForComponent } from "@/lib/utils/component-to-registry"
+import { getDefaultSectionContent } from "@/lib/utils/section-defaults"
 import { getComponentEditors } from "./component-mapper"
 import { SectionPreviewEditor } from "./component-editors/section-preview-editor"
 import { ComponentPreviewCard } from "./component-preview-card"
@@ -18,9 +20,8 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
   updateComponentNestedProperty,
-  addArrayItem,
-  removeArrayItem,
 } from "@/lib/utils/pages-helpers"
+import { isComponentValueEmpty } from "@/lib/utils/empty-field-detection"
 
 export function ComponentsView() {
   const {
@@ -30,6 +31,8 @@ export function ComponentsView() {
     selectedSectionName,
     goBack,
     updateSectionsData,
+    commitPagesAndSections,
+    sectionsRegistryData,
   } = usePagesStore()
   
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
@@ -42,6 +45,8 @@ export function ComponentsView() {
     value: any
     editorType: string
   } | null>(null)
+  const [isRecovering, setIsRecovering] = useState(false)
+  const hasAttemptedRecovery = useRef(false)
 
   // Fetch template name from hostTemplate.json
   useEffect(() => {
@@ -81,8 +86,63 @@ export function ComponentsView() {
     return null
   }
 
-  const page = pagesData[selectedPageKey] as any
+  const page = pagesData[selectedPageKey] as { sections?: Array<{ name: string; component?: string | null }> } | undefined
   const section = findSectionInSections(sectionsData, selectedSectionName)
+  const pageSection = page?.sections?.find((s) => s.name === selectedSectionName)
+
+  // Auto-recovery: when section is in page.sections but not in sectionsData, commit the missing section
+  useEffect(() => {
+    if (!pagesData || !sectionsData || !selectedPageKey || !selectedSectionName) return
+    const sec = findSectionInSections(sectionsData, selectedSectionName)
+    const pg = pagesData[selectedPageKey] as { sections?: Array<{ name: string; component?: string | null }> } | undefined
+    const pgSection = pg?.sections?.find((s) => s.name === selectedSectionName)
+    if (
+      sec ||
+      !pgSection ||
+      hasAttemptedRecovery.current ||
+      isRecovering
+    ) {
+      return
+    }
+    const component = pgSection.component ?? "HeroSection"
+    const registryId = getRegistryIdForComponent(component, sectionsRegistryData)
+    if (!registryId) {
+      hasAttemptedRecovery.current = true
+      return
+    }
+    hasAttemptedRecovery.current = true
+    setIsRecovering(true)
+    const recoveredSection = getDefaultSectionContent(registryId, selectedSectionName)
+    const newSections = [...sectionsData, recoveredSection]
+    commitPagesAndSections(pagesData, newSections, {
+      pages: `Recover section: ${selectedSectionName}`,
+      sections: `Recover section: ${selectedSectionName}`,
+    })
+      .then(() => {
+        toast.success("Section recovered", {
+          description: `"${selectedSectionName}" was missing from sections data and has been restored.`,
+        })
+      })
+      .catch(() => {
+        hasAttemptedRecovery.current = false
+        toast.error("Recovery failed", {
+          description: "Could not restore the missing section. Please refresh and try again.",
+        })
+      })
+      .finally(() => {
+        setIsRecovering(false)
+      })
+  }, [
+    section,
+    pageSection,
+    pagesData,
+    sectionsData,
+    selectedPageKey,
+    selectedSectionName,
+    sectionsRegistryData,
+    isRecovering,
+    commitPagesAndSections,
+  ])
 
   // Generate animation key that changes when section components change
   const animationKey = useAnimationKey(
@@ -94,17 +154,30 @@ export function ComponentsView() {
   )
 
   if (!section) {
+    const canRecover = !!pageSection && !hasAttemptedRecovery.current
+    const showError = !pageSection || (hasAttemptedRecovery.current && !isRecovering)
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={goBack}>
+        <Button variant="ghost" size="sm" onClick={goBack} disabled={isRecovering}>
           <ChevronLeft className="h-4 w-4 mr-1" />
           Back to Sections
         </Button>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground">
-              Section "{selectedSectionName}" not found in sections data.
-            </p>
+            {isRecovering ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Recovering section &quot;{selectedSectionName}&quot;...
+              </div>
+            ) : showError ? (
+              <p className="text-sm text-muted-foreground">
+                Section &quot;{selectedSectionName}&quot; not found in sections data.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Preparing to recover section...
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -302,6 +375,11 @@ export function ComponentsView() {
                   handleShowToggle(editor.componentIndex, editor.componentKey, checked)
                 }
                 show={showValue}
+                isEmpty={isComponentValueEmpty(
+                  editor.value,
+                  editor.componentKey,
+                  editor.editorType
+                )}
               />
             </div>
           )

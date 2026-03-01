@@ -47,7 +47,8 @@ export async function saveCommonData(
   owner: string,
   repo: string,
   common: CommonData,
-  sha?: string
+  sha?: string,
+  commitMessage?: string
 ): Promise<{ newSha: string; common: CommonData }> {
   if (!owner || !repo) {
     throw new Error("Repository owner/name missing. Configure via organization settings.")
@@ -62,6 +63,7 @@ export async function saveCommonData(
     body: JSON.stringify({
       common,
       sha,
+      commitMessage: commitMessage || undefined,
     }),
   })
 

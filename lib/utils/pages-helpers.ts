@@ -102,6 +102,59 @@ export function reorderSections(
 }
 
 /**
+ * Remove a page from PagesData.
+ * Does not allow removing the Home page.
+ */
+export function removePage(
+  pagesData: PagesData,
+  pageKey: PageKey
+): PagesData {
+  const page = pagesData[pageKey] as Page | undefined
+  if (!page) {
+    throw new Error(`Page "${pageKey}" not found`)
+  }
+  const isHome =
+    pageKey.toLowerCase() === "home" || page.title?.toLowerCase() === "home"
+  if (isHome) {
+    throw new Error("Cannot delete the Home page")
+  }
+  const updated = { ...pagesData }
+  delete updated[pageKey]
+  return updated
+}
+
+/**
+ * Remove a section from a page and from sections data.
+ * Returns { pagesData, sectionsData } with the section removed from both.
+ */
+export function removeSection(
+  pagesData: PagesData,
+  sectionsData: SectionsData,
+  pageKey: PageKey,
+  sectionName: string
+): { pagesData: PagesData; sectionsData: SectionsData } {
+  const page = pagesData[pageKey] as Page | undefined
+  if (!page) {
+    throw new Error(`Page "${pageKey}" not found`)
+  }
+  const sectionInPage = page.sections.find((s) => s.name === sectionName)
+  if (!sectionInPage) {
+    throw new Error(`Section "${sectionName}" not found in page "${pageKey}"`)
+  }
+  const sectionIndex = sectionsData.findIndex((s) => s.name === sectionName)
+  if (sectionIndex === -1) {
+    throw new Error(`Section "${sectionName}" not found in sections data`)
+  }
+
+  const updatedPages = updatePage(pagesData, pageKey, {
+    sections: page.sections.filter((s) => s.name !== sectionName),
+  })
+  const updatedSections = sectionsData.filter((s) => s.name !== sectionName)
+
+  return { pagesData: updatedPages, sectionsData: updatedSections }
+}
+
+/**
  * Add a new page to PagesData
  */
 export function addPage(

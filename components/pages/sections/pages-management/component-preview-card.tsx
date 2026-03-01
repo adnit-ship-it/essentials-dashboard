@@ -19,6 +19,8 @@ interface ComponentPreviewCardProps {
   onClick: () => void
   onShowToggle: (checked: boolean) => void
   show: boolean
+  /** When true, shows a subtle border to indicate the field needs content */
+  isEmpty?: boolean
 }
 
 export function ComponentPreviewCard({
@@ -32,6 +34,7 @@ export function ComponentPreviewCard({
   onClick,
   onShowToggle,
   show,
+  isEmpty,
 }: ComponentPreviewCardProps) {
   // Get show value from the value object if it exists
   const showValue = typeof value === "object" && value !== null && !Array.isArray(value)
@@ -65,7 +68,8 @@ export function ComponentPreviewCard({
   return (
     <Card
       className={cn(
-        "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200 overflow-hidden h-full flex flex-col"
+        "cursor-pointer hover:bg-gradient-to-r hover:from-[#DDF0E3] hover:to-[#D3EBEB] transition-all duration-200 overflow-hidden h-full flex flex-col",
+        isEmpty && "border-amber-400/50 border-2"
       )}
       onClick={handleCardClick}
     >
@@ -89,6 +93,11 @@ export function ComponentPreviewCard({
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-sm capitalize line-clamp-1">
               {formattedTitle}
+              {isEmpty && (
+                <span className="ml-1.5 text-xs font-normal text-amber-600">
+                  (needs content)
+                </span>
+              )}
             </h3>
           </div>
 

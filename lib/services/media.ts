@@ -47,7 +47,8 @@ export async function saveMediaData(
   owner: string,
   repo: string,
   media: MediaData,
-  sha?: string
+  sha?: string,
+  commitMessage?: string
 ): Promise<{ newSha: string; media: MediaData }> {
   if (!owner || !repo) {
     throw new Error("Repository owner/name missing. Configure via organization settings.")
@@ -62,6 +63,7 @@ export async function saveMediaData(
     body: JSON.stringify({
       media,
       sha,
+      commitMessage: commitMessage || undefined,
     }),
   })
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Loader2, Monitor, Tablet, Smartphone, ExternalLink, AlertCircle } from "lucide-react"
+import { getPagePreviewImagePath } from "@/lib/utils/section-preview-images"
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ interface PagePreviewModalProps {
   pageKey: string
   pageTitle: string
   hostedUrl: string | null
+  templateName?: string | null
 }
 
 type DeviceSize = "mobile" | "tablet" | "desktop"
@@ -34,10 +36,12 @@ export function PagePreviewModal({
   pageKey,
   pageTitle,
   hostedUrl,
+  templateName,
 }: PagePreviewModalProps) {
   const [selectedDevice, setSelectedDevice] = useState<DeviceSize>("desktop")
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
+  const previewImagePath = getPagePreviewImagePath(pageKey, templateName ?? null)
 
   // Construct the page URL
   const getPageUrl = () => {
@@ -140,21 +144,41 @@ export function PagePreviewModal({
           </div>
         </DialogHeader>
 
-        {/* iframe Container */}
+        {/* iframe Container with preview image fallback */}
         <div className="flex-1 overflow-auto bg-muted/50 p-4">
           <div 
             className={cn(
-              "mx-auto bg-background rounded-lg shadow-lg overflow-hidden transition-all duration-300",
+              "mx-auto bg-background rounded-lg shadow-lg overflow-hidden transition-all duration-300 relative",
               selectedDevice !== "desktop" && "border"
             )}
             style={{ 
               width: deviceConfig[selectedDevice].width,
               maxWidth: "100%",
-              height: selectedDevice === "desktop" ? "100%" : "calc(100% - 2rem)"
+              height: selectedDevice === "desktop" ? "100%" : "calc(100% - 2rem)",
+              minHeight: "500px",
             }}
           >
-            {/* Loading State */}
-            {isLoading && (
+            {/* Preview image - shown while loading or as fallback when iframe fails */}
+            {(isLoading || hasError) && previewImagePath && (
+              <div className="absolute inset-0 z-0">
+                <img
+                  src={previewImagePath}
+                  alt={`${pageTitle} preview`}
+                  className="w-full h-full object-cover object-top"
+                />
+                {isLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Loading live preview...</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Loading state when no preview image */}
+            {isLoading && !previewImagePath && (
               <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -163,8 +187,29 @@ export function PagePreviewModal({
               </div>
             )}
 
-            {/* Error State */}
+            {/* Error State - when iframe fails and we have preview image, show overlay with Open button */}
             {hasError && !isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+                <div className="flex flex-col items-center gap-3 text-center px-4">
+                  <AlertCircle className="h-8 w-8 text-destructive" />
+                  <p className="text-sm text-muted-foreground">
+                    Live preview unavailable. The site may be blocking iframe embedding.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(pageUrl!, "_blank", "noopener,noreferrer")}
+                    className="gap-1.5"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open in New Tab
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Error state when no preview image */}
+            {hasError && !isLoading && !previewImagePath && (
               <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
                 <div className="flex flex-col items-center gap-3 text-center px-4">
                   <AlertCircle className="h-8 w-8 text-destructive" />
@@ -184,10 +229,13 @@ export function PagePreviewModal({
               </div>
             )}
 
-            {/* iframe */}
+            {/* iframe - overlays when loaded */}
             <iframe
               src={pageUrl!}
-              className="w-full h-full border-0"
+              className={cn(
+                "w-full h-full border-0 relative z-[1]",
+                isLoading && "opacity-0"
+              )}
               style={{ minHeight: "500px", height: "calc(95vh - 140px)" }}
               sandbox="allow-scripts allow-same-origin allow-forms"
               loading="lazy"

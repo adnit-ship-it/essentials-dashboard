@@ -29,6 +29,50 @@ function normalizeSectionName(sectionName: string): string {
 }
 
 /**
+ * Maps registry IDs to known screenshot filenames for section preview images.
+ * Used when section name (e.g. "New page Hero Section") doesn't match any asset.
+ */
+const REGISTRY_ID_TO_SCREENSHOT: Record<string, string> = {
+  hero: "home-hero",
+  "hero-minimal": "home-hero",
+  features: "features",
+  marquee: "marquee",
+  "trusted-by": "trusted-by",
+  cta: "cta",
+  discover: "discover",
+  journey: "journey",
+  faq: "faq",
+  stats: "stats",
+  "before-after": "before-after",
+  products: "products",
+  "intake-form": "intake-form",
+  "about-banner": "about-banner",
+  "about-priority": "about-priority",
+  statistics: "statistics",
+}
+
+/**
+ * Gets the preview image path for a section type by registry ID.
+ * Use when section name may not match any asset (e.g. "New page Hero Section").
+ *
+ * @param registryId - Section type id from sections-registry (e.g. "hero", "trusted-by")
+ * @param templateName - The name of the template (e.g., "Serenova Template")
+ * @returns The image path or null if template is not available
+ */
+export function getSectionPreviewImagePathByRegistryId(
+  registryId: string,
+  templateName: string | null
+): string | null {
+  if (!templateName) return null
+
+  const normalizedTemplate = normalizeTemplateName(templateName)
+  const screenshotName =
+    REGISTRY_ID_TO_SCREENSHOT[registryId] ?? registryId.replace(/\s+/g, "-")
+
+  return `/section-screenshots/${normalizedTemplate}/${screenshotName}.png`
+}
+
+/**
  * Gets the preview image path for a section based on its name and template type
  * 
  * @param sectionName - The name of the section (e.g., "Home Hero")

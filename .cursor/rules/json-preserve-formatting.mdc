@@ -1,0 +1,15 @@
+---
+description: Preserve indentation and structure when editing JSON files
+globs: **/*.json
+alwaysApply: false
+---
+
+# JSON Editing Rules
+
+When editing JSON files:
+
+1. **Preserve existing indentation** - Do not reformat or change the indentation style (spaces per level). Match the file's current pattern exactly.
+2. **Preserve structure** - Do not reorder keys, add/remove blank lines, or change the overall structure unless explicitly requested.
+3. **Minimal edits** - Only change what the user asked for. Avoid touching unrelated lines.
+
+If the user does not specify formatting preferences, infer from the file: count spaces before the first key at each nesting level and use that consistently.

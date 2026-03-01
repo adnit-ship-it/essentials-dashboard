@@ -2008,12 +2008,13 @@ interface PagesUpdateRequest extends Request {
   body: {
     pages: any;
     sha: string;
+    commitMessage?: string;
   };
 }
 
 app.post("/api/pages", async (req: PagesUpdateRequest, res: Response) => {
   try {
-    const { pages, sha } = req.body
+    const { pages, sha, commitMessage } = req.body
 
     if (!pages) {
       return res
@@ -2030,7 +2031,7 @@ app.post("/api/pages", async (req: PagesUpdateRequest, res: Response) => {
       owner: repoConfig.owner,
       repo: repoConfig.repo,
       path: repoConfig.pagesFilePath,
-      message: `CMS: Automated pages update for ${repoConfig.pagesFilePath}`,
+      message: commitMessage || `CMS: Automated pages update for ${repoConfig.pagesFilePath}`,
       content: contentBase64,
       branch: repoConfig.branch,
     }
@@ -2107,12 +2108,13 @@ interface SectionsUpdateRequest extends Request {
   body: {
     sections: any;
     sha: string;
+    commitMessage?: string;
   };
 }
 
 app.post("/api/sections", async (req: SectionsUpdateRequest, res: Response) => {
   try {
-    const { sections, sha } = req.body
+    const { sections, sha, commitMessage } = req.body
 
     if (!sections) {
       return res
@@ -2129,7 +2131,7 @@ app.post("/api/sections", async (req: SectionsUpdateRequest, res: Response) => {
       owner: repoConfig.owner,
       repo: repoConfig.repo,
       path: repoConfig.sectionsFilePath,
-      message: `CMS: Automated sections update for ${repoConfig.sectionsFilePath}`,
+      message: commitMessage || `CMS: Automated sections update for ${repoConfig.sectionsFilePath}`,
       content: contentBase64,
       branch: repoConfig.branch,
     }
@@ -2222,7 +2224,7 @@ app.get("/api/common", async (req: Request, res: Response) => {
 // POST /api/common - Update or create data/common.json
 app.post("/api/common", async (req: Request, res: Response) => {
   try {
-    const { common, sha } = req.body
+    const { common, sha, commitMessage } = req.body
     if (!common) {
       return res.status(400).json({ error: "Missing common data in request body." })
     }
@@ -2234,7 +2236,7 @@ app.post("/api/common", async (req: Request, res: Response) => {
       owner: repoConfig.owner,
       repo: repoConfig.repo,
       path: COMMON_FILE_PATH,
-      message: `CMS: Automated common update for ${COMMON_FILE_PATH}`,
+      message: commitMessage || `CMS: Automated common update for ${COMMON_FILE_PATH}`,
       content: contentBase64,
       branch: repoConfig.branch,
     }
@@ -2345,7 +2347,7 @@ app.get("/api/media", async (req: Request, res: Response) => {
 // POST /api/media - Update or create data/media.json
 app.post("/api/media", async (req: Request, res: Response) => {
   try {
-    const { media, sha } = req.body
+    const { media, sha, commitMessage } = req.body
     if (!media) {
       return res.status(400).json({ error: "Missing media data in request body." })
     }
@@ -2357,7 +2359,7 @@ app.post("/api/media", async (req: Request, res: Response) => {
       owner: repoConfig.owner,
       repo: repoConfig.repo,
       path: MEDIA_FILE_PATH,
-      message: `CMS: Automated media update for ${MEDIA_FILE_PATH}`,
+      message: commitMessage || `CMS: Automated media update for ${MEDIA_FILE_PATH}`,
       content: contentBase64,
       branch: repoConfig.branch,
     }
