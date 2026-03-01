@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { GripVertical, Eye, EyeOff, Edit2, ExternalLink, Layout, Plus, Trash2 } from "lucide-react"
+import { GripVertical, Eye, EyeOff, Edit2, ExternalLink, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import { PagePreviewModal } from "./page-preview-modal"
+import { PreviewPlaceholder } from "./preview-placeholder"
 import { LegalPagesSection } from "./legal-pages"
 import {
   Dialog,
@@ -146,9 +147,7 @@ function SortablePageCard({
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Layout className="h-12 w-12 text-muted-foreground/40" />
-            </div>
+            <PreviewPlaceholder variant="page" />
           )}
           
           {/* Drag Handle - Overlay on top left */}

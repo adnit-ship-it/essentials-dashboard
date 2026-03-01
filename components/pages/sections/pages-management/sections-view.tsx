@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, Eye, EyeOff, GripVertical, Layout, Plus, Trash2 } from "lucide-react"
+import { ChevronLeft, Eye, EyeOff, GripVertical, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { usePagesStore } from "@/lib/stores/pages-store"
@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
+import { PreviewPlaceholder } from "./preview-placeholder"
 
 function SectionTypeCard({
   entry,
@@ -90,9 +91,7 @@ function SectionTypeCard({
             onError={handleImageError}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Layout className="h-12 w-12 text-muted-foreground/40" />
-          </div>
+          <PreviewPlaceholder variant="section" />
         )}
       </div>
       <CardContent className="p-4 flex-1 flex flex-col">
@@ -179,9 +178,7 @@ function SortableSectionCard({
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Layout className="h-12 w-12 text-muted-foreground/40" />
-            </div>
+            <PreviewPlaceholder variant="section" />
           )}
           
           {/* Drag Handle - Overlay on top left */}

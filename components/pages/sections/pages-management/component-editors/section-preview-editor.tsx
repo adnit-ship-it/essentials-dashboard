@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Layout } from "lucide-react"
 import { getSectionPreviewImagePath } from "@/lib/utils/section-preview-images"
+import { PreviewPlaceholder } from "../preview-placeholder"
 import { cn } from "@/lib/utils"
 
 interface SectionPreviewEditorProps {
@@ -44,9 +44,7 @@ export function SectionPreviewEditor({ sectionName, templateName, onExpandClick 
             }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Layout className="h-12 w-12 text-muted-foreground/40" />
-          </div>
+          <PreviewPlaceholder variant="section" />
         )}
         
         {/* Hover overlay with button */}
