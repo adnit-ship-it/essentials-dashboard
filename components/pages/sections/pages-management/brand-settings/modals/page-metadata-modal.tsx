@@ -18,38 +18,17 @@ interface PageMetadataModalProps {
 }
 
 export function PageMetadataModal({ open, onOpenChange }: PageMetadataModalProps) {
-  const { pagesData, updatePagesData } = usePagesStore()
+  const { commonData, updatePageMetadata } = usePagesStore()
 
-  if (!pagesData) {
-    return null
-  }
-
-  const common = (pagesData as any).common || {}
-  const pageTitle = common.pageTitle || ""
-  const pageDescription = common.pageDescription || ""
+  const pageTitle = commonData?.strings?.pageTitle || ""
+  const pageDescription = commonData?.strings?.pageDescription || ""
 
   const handlePageTitleChange = (title: string) => {
-    updatePagesData(((data: any) => {
-      return {
-        ...data,
-        common: {
-          ...common,
-          pageTitle: title,
-        },
-      }
-    }) as any)
+    updatePageMetadata(title, pageDescription)
   }
 
   const handlePageDescriptionChange = (description: string) => {
-    updatePagesData(((data: any) => {
-      return {
-        ...data,
-        common: {
-          ...common,
-          pageDescription: description,
-        },
-      }
-    }) as any)
+    updatePageMetadata(pageTitle, description)
   }
 
   return (

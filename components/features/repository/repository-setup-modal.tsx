@@ -9,6 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { X, Loader2, CheckCircle2, AlertCircle, GitBranch } from "lucide-react"
 import type { GitHubRepo, RepoConfig } from "@/lib/types/repository"
 import { DEFAULT_FILE_PATHS } from "@/lib/types/repository"
+import { deriveLogoPathsFromMedia } from "@/lib/utils/media-logo-paths"
+
+const API_BASE_URL = typeof window !== "undefined" ? "" : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
 
 interface RepositorySetupModalProps {
   isOpen: boolean
@@ -54,6 +57,29 @@ export function RepositorySetupModal({
       setDisplayName(selectedRepo.repo)
     }
   }, [selectedRepo])
+
+  // Prefill logo paths from media.json when repo is selected
+  useEffect(() => {
+    if (!selectedRepo) return
+    const controller = new AbortController()
+    const url = `${API_BASE_URL}/api/media?owner=${encodeURIComponent(selectedRepo.owner)}&repo=${encodeURIComponent(selectedRepo.repo)}`
+    fetch(url, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.media) {
+          const derived = deriveLogoPathsFromMedia(data.media)
+          setPaths((p) => ({
+            ...p,
+            brandLogoPath: derived.brandLogoPath,
+            brandAltLogoPath: derived.brandAltLogoPath,
+          }))
+        }
+      })
+      .catch(() => {
+        // Ignore - use defaults
+      })
+    return () => controller.abort()
+  }, [selectedRepo?.id])
 
   const handleRepoSelect = (repoId: string) => {
     const repo = availableRepos.find(r => r.id === repoId)

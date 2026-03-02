@@ -5,17 +5,19 @@ import { Menu, X, AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 import { ProductsSection, ReviewsSection, PagesManagementSection } from "@/components/pages"
+import { OverviewSection } from "@/components/pages/sections/overview-section"
 import { BrandSettingsView } from "@/components/pages/sections/pages-management/brand-settings/brand-settings-view"
 import { RepositorySetupModal, RepositoryCreateModal } from "@/components/features/repository"
 import { Sidebar } from "./sidebar"
 import { EmptyStateView } from "./empty-state-view"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { useRepositoryStore } from "@/lib/stores/repository-store"
+import { usePagesStore } from "@/lib/stores/pages-store"
 import { toast } from "sonner"
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeSection, setActiveSection] = useState("brand-settings")
+  const [activeSection, setActiveSection] = useState("overview")
   const [showRepoModal, setShowRepoModal] = useState(false)
   const [showCreateRepoModal, setShowCreateRepoModal] = useState(false)
   const [show404Alert, setShow404Alert] = useState(false)
@@ -55,6 +57,7 @@ export function DashboardLayout() {
 
   const getCurrentSectionTitle = () => {
     const sections = [
+      { id: "overview", title: "Overview" },
       { id: "pages", title: "Pages & Sections" },
       { id: "products", title: "Products" },
       { id: "brand-settings", title: "Brand Settings" },
@@ -72,6 +75,13 @@ export function DashboardLayout() {
     return !selectedRepoId && configuredRepos.length === 0
   }, [selectedOrgId, repoOwnerFromLink, repoNameFromLink, repoValidationError, selectedRepoId, configuredRepos])
 
+  // Centralized data fetch: load template data as soon as we have a valid repo
+  useEffect(() => {
+    if (repoOwnerFromLink && repoNameFromLink && !showEmptyState) {
+      usePagesStore.getState().fetchData()
+    }
+  }, [repoOwnerFromLink, repoNameFromLink, showEmptyState])
+
   const handleRepositoryCreated = async (owner: string | null, repo: string | null, isNewlyCreated?: boolean) => {
     setShowCreateRepoModal(false)
     fetchAvailableRepos()
@@ -88,6 +98,8 @@ export function DashboardLayout() {
         if (validateRepositoryExists) {
           await validateRepositoryExists(owner, repo)
         }
+        // Ensure repo config is created with logo paths derived from media.json
+        await ensureRepoConfigured(owner, repo)
         toast.success(`Repository '${repo}' linked to organization successfully!`)
       } catch (error) {
         console.error("Error linking repository:", error)
@@ -176,6 +188,9 @@ export function DashboardLayout() {
               )}
 
               <div className="space-y-4">
+                <div className={activeSection === "overview" ? "" : "hidden"}>
+                  <OverviewSection onNavigate={setActiveSection} />
+                </div>
                 <div className={activeSection === "pages" ? "" : "hidden"}>
                   <PagesManagementSection />
                 </div>

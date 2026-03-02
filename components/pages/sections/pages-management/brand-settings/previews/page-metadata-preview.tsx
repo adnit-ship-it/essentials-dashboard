@@ -11,9 +11,9 @@ interface PageMetadataPreviewProps {
 }
 
 export function PageMetadataPreview({ onEdit, repoOwner, repoName }: PageMetadataPreviewProps) {
-  const { pagesData } = usePagesStore()
+  const { commonData } = usePagesStore()
 
-  if (!pagesData) {
+  if (!commonData) {
     return (
       <div className="w-full h-full flex items-center justify-center">
         <div className="text-sm text-muted-foreground text-center">
@@ -23,9 +23,8 @@ export function PageMetadataPreview({ onEdit, repoOwner, repoName }: PageMetadat
     )
   }
 
-  const common = (pagesData as any).common || {}
-  const pageTitle = common.pageTitle || ""
-  const pageDescription = common.pageDescription || ""
+  const pageTitle = commonData?.strings?.pageTitle || ""
+  const pageDescription = commonData?.strings?.pageDescription || ""
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation()

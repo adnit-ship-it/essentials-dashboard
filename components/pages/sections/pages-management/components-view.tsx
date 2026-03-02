@@ -86,9 +86,14 @@ export function ComponentsView() {
     return null
   }
 
-  const page = pagesData[selectedPageKey] as { sections?: Array<{ name: string; component?: string | null }> } | undefined
+  const page = pagesData[selectedPageKey] as { title?: string; sections?: Array<{ name: string; component?: string | null }> } | undefined
   const section = findSectionInSections(sectionsData, selectedSectionName)
   const pageSection = page?.sections?.find((s) => s.name === selectedSectionName)
+
+  if (!page) {
+    goBack()
+    return null
+  }
 
   // Auto-recovery: when section is in page.sections but not in sectionsData, commit the missing section
   useEffect(() => {

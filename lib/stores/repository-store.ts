@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GitHubRepo, RepoConfig } from '@/lib/types/repository';
+import { deriveLogoPathsFromMedia } from '@/lib/utils/media-logo-paths';
 
 export interface TemplateRepo {
   id: string;
@@ -323,6 +324,21 @@ export const useRepositoryStore = create<RepositoryStore>((set, get) => ({
       const availableRepo = availableRepos.find(r => r.id === repoId);
       const branch = availableRepo?.defaultBranch || defaultBranch;
 
+      // Derive logo paths from media.json
+      let brandLogoPath = "public/assets/images/brand/logo.svg";
+      let brandAltLogoPath = "public/assets/images/brand/logo-alt.svg";
+      try {
+        const mediaRes = await fetch(`${API_BASE_URL}/api/media?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`);
+        if (mediaRes.ok) {
+          const { media } = await mediaRes.json();
+          const derived = deriveLogoPathsFromMedia(media);
+          brandLogoPath = derived.brandLogoPath;
+          brandAltLogoPath = derived.brandAltLogoPath;
+        }
+      } catch {
+        // Use defaults if media fetch fails
+      }
+
       // Create default config
       const defaultConfig: RepoConfig = {
         id: repoId,
@@ -332,8 +348,8 @@ export const useRepositoryStore = create<RepositoryStore>((set, get) => ({
         displayName: repo,
         productsFilePath: "data/intake-form/productsList.json",
         tailwindConfigPath: "tailwind.config.js",
-        brandLogoPath: "public/assets/images/brand/logo.svg",
-        brandAltLogoPath: "public/assets/images/brand/logo-alt.svg",
+        brandLogoPath,
+        brandAltLogoPath,
         pagesFilePath: "data/pages.json",
         sectionsFilePath: "data/sections.json",
         isConfigured: false,

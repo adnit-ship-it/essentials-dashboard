@@ -1,13 +1,14 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette, GitBranch, Plus, Sparkles, Globe, AlertTriangle } from "lucide-react"
+import { Package, X, LogOut, ChevronLeft, ChevronRight, Layout, Palette, GitBranch, Plus, Sparkles, Globe, AlertTriangle, Home } from "lucide-react"
 
 import { OrganizationDropdown } from "@/components/features/organization"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { usePagesStore } from "@/lib/stores/pages-store"
 import { Card, CardContent } from "@/components/ui/card"
 import { ExternalLink } from "lucide-react"
 import { signOut } from "firebase/auth"
@@ -15,6 +16,12 @@ import { auth } from "@/lib/firebase/client"
 import { toast } from "sonner"
 
 const sidebarItems = [
+  {
+    title: "Overview",
+    icon: Home,
+    href: "/overview",
+    id: "overview",
+  },
   {
     title: "Brand Settings",
     icon: Palette,
@@ -54,47 +61,41 @@ export function Sidebar({
 }: SidebarProps) {
   const router = useRouter()
   const { organizations, isLoading, repoOwnerFromLink, repoNameFromLink, repoValidationError, isValidatingRepo } = useOrganizationStore()
+  const hostTemplateInfo = usePagesStore((s) => s.hostTemplateInfo)
+  const setHostTemplateInfo = usePagesStore((s) => s.setHostTemplateInfo)
+  const fetchData = usePagesStore((s) => s.fetchData)
+  const isLoadingPages = usePagesStore((s) => s.isLoading)
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [hostTemplateInfo, setHostTemplateInfo] = useState<{ hostedAt: string; templateName: string } | null>(null)
   const [isHosting, setIsHosting] = useState(false)
+  const hasFetchedHostTemplateFallback = useRef<string | null>(null)
 
-  // Fetch hostTemplate.json when repo is available
+  // Fallback: fetch host-template directly when batch didn't return it
   useEffect(() => {
-    if (repoOwnerFromLink && repoNameFromLink && !isCollapsed) {
-      // Use relative URL in browser (same origin, no CORS), or configured URL on server
-      const apiUrl = typeof window !== "undefined" 
-        ? "" // Relative URL in browser
-        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
-      const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
-
-      fetch(url)
-        .then((res) => {
-          if (res.ok) {
-            return res.json()
-          }
-          if (res.status === 404) {
-            return null // File doesn't exist yet
-          }
-          throw new Error(`Failed to fetch host template: ${res.status}`)
-        })
-        .then((data) => {
-          if (data) {
-            setHostTemplateInfo({
-              hostedAt: data.hostedAt || "",
-              templateName: data.templateName || "Unknown",
-            })
-          } else {
-            setHostTemplateInfo(null)
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching host template:", error)
-          setHostTemplateInfo(null)
-        })
-    } else {
-      setHostTemplateInfo(null)
-    }
-  }, [repoOwnerFromLink, repoNameFromLink, isCollapsed])
+    if (!repoOwnerFromLink || !repoNameFromLink || hostTemplateInfo || isLoadingPages) return
+    const repoKey = `${repoOwnerFromLink}/${repoNameFromLink}`
+    if (hasFetchedHostTemplateFallback.current === repoKey) return
+    hasFetchedHostTemplateFallback.current = repoKey
+    const apiUrl = typeof window !== "undefined" ? "" : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
+    const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
+    fetch(url)
+      .then((res) => {
+        if (res.ok) return res.json()
+        if (res.status === 404) return null
+        throw new Error(`Failed to fetch host template: ${res.status}`)
+      })
+      .then((data) => {
+        if (data?.templateName) {
+          setHostTemplateInfo({
+            templateName: data.templateName || "",
+            hostedAt: data.hostedAt || "",
+          })
+        }
+      })
+      .catch((err) => {
+        console.error("Error fetching host template fallback:", err)
+        hasFetchedHostTemplateFallback.current = null
+      })
+  }, [repoOwnerFromLink, repoNameFromLink, hostTemplateInfo, isLoadingPages, setHostTemplateInfo])
 
   const handleLogout = async () => {
     try {
@@ -135,12 +136,8 @@ export function Sidebar({
 
       const data = await response.json();
 
-      // Update hostTemplateInfo state
-      setHostTemplateInfo((prev) => ({
-        ...prev,
-        hostedAt: data.deploymentUrl,
-        templateName: prev?.templateName || "Unknown",
-      }));
+      // Refresh template data to get updated hostTemplate.json
+      await fetchData();
 
       toast.success(`Repository hosted successfully! ${data.deploymentUrl}`);
     } catch (error) {
@@ -285,7 +282,7 @@ export function Sidebar({
                           Template
                         </div>
                         <div className="text-sm text-sidebar-foreground/80">
-                          {hostTemplateInfo?.templateName || "Unknown"}
+                          {isLoadingPages ? "…" : hostTemplateInfo?.templateName ?? "—"}
                         </div>
                       </div>
 
