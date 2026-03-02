@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { GripVertical, Eye, EyeOff, Edit2, ExternalLink, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useRepoAppDataStore } from "@/lib/stores/repo-app-data-store"
 import { reorderPages, updatePage, getPageKeys, addPage } from "@/lib/utils/pages-helpers"
 import { newPageMessage } from "@/lib/utils/commit-messages"
 import { getPagePreviewImagePath } from "@/lib/utils/section-preview-images"
@@ -307,10 +308,10 @@ function SortablePageCard({
 export function PagesView({ pages }: PagesViewProps) {
   const { pagesData, selectPage, updatePagesData, commitPages, deletePage, isSaving } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
+  const hostTemplateInfo = useRepoAppDataStore((s) => s.hostTemplateInfo)
+  const fetchRepoAppData = useRepoAppDataStore((s) => s.fetchRepoAppData)
   const [editingPage, setEditingPage] = useState<PageKey | null>(null)
   const [editTitle, setEditTitle] = useState("")
-  const [templateName, setTemplateName] = useState<string | null>(null)
-  const [hostedUrl, setHostedUrl] = useState<string | null>(null)
   const [previewModal, setPreviewModal] = useState<{ pageKey: string; pageTitle: string } | null>(null)
   const [isHosting, setIsHosting] = useState(false)
   const [addPageModalOpen, setAddPageModalOpen] = useState(false)
@@ -339,7 +340,7 @@ export function PagesView({ pages }: PagesViewProps) {
       }
 
       const data = await response.json()
-      setHostedUrl(data.deploymentUrl)
+      await fetchRepoAppData()
       toast.success("Site hosted successfully!", {
         description: `Your site is now live at ${data.deploymentUrl}`,
       })
@@ -350,44 +351,6 @@ export function PagesView({ pages }: PagesViewProps) {
       setIsHosting(false)
     }
   }
-
-  // Fetch templateName and hostedUrl from hostTemplate.json
-  useEffect(() => {
-    if (repoOwnerFromLink && repoNameFromLink) {
-      const apiUrl = typeof window !== "undefined" 
-        ? "" // Relative URL in browser
-        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
-      const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
-      
-      fetch(url)
-        .then((res) => {
-          if (res.ok) {
-            return res.json()
-          }
-          if (res.status === 404) {
-            return null
-          }
-          throw new Error(`Failed to fetch host template: ${res.status}`)
-        })
-        .then((data) => {
-          if (data?.templateName) {
-            setTemplateName(data.templateName)
-          } else {
-            setTemplateName(null)
-          }
-          if (data?.hostedAt) {
-            setHostedUrl(data.hostedAt)
-          } else {
-            setHostedUrl(null)
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching host template:", error)
-          setTemplateName(null)
-          setHostedUrl(null)
-        })
-    }
-  }, [repoOwnerFromLink, repoNameFromLink])
 
   // Generate animation key that changes when pages data changes
   const animationKey = useAnimationKey(pages, (p) => p.key)
@@ -554,8 +517,8 @@ export function PagesView({ pages }: PagesViewProps) {
                   index={index}
                   editingPage={editingPage}
                   editTitle={editTitle}
-                  templateName={templateName}
-                  hostedUrl={hostedUrl}
+                  templateName={hostTemplateInfo?.templateName ?? null}
+                  hostedUrl={hostTemplateInfo?.hostedAt ?? null}
                   isHosting={isHosting}
                   onStartEdit={handleStartEdit}
                   onSaveEdit={handleSaveEdit}
@@ -587,8 +550,8 @@ export function PagesView({ pages }: PagesViewProps) {
         }}
         pageKey={previewModal?.pageKey || ""}
         pageTitle={previewModal?.pageTitle || ""}
-        hostedUrl={hostedUrl}
-        templateName={templateName}
+        hostedUrl={hostTemplateInfo?.hostedAt ?? null}
+        templateName={hostTemplateInfo?.templateName ?? null}
       />
 
       {/* Add Page Modal */}

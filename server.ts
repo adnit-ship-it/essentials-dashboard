@@ -2406,27 +2406,19 @@ app.get("/api/sections-registry", async (req: Request, res: Response) => {
   }
 })
 
-const HOST_TEMPLATE_FILE_PATH = "data/hostTemplate.json"
-
-// GET /api/template-data - Batch fetch common, media, pages, sections, sections-registry, hostTemplate
+// GET /api/template-data - Batch fetch common, media, pages, sections, sections-registry
 app.get("/api/template-data", async (req: Request, res: Response) => {
   try {
     const repoConfig = getActiveRepoConfigFromRequest(req)
     const octokit = await getAuthenticatedClient()
 
-    const [commonResult, mediaResult, pagesResult, sectionsResult, registryResult, hostTemplateResult] = await Promise.all([
+    const [commonResult, mediaResult, pagesResult, sectionsResult, registryResult] = await Promise.all([
       fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, COMMON_FILE_PATH, repoConfig.branch),
       fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, MEDIA_FILE_PATH, repoConfig.branch),
       fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, repoConfig.pagesFilePath, repoConfig.branch),
       fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, repoConfig.sectionsFilePath, repoConfig.branch),
       fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, SECTIONS_REGISTRY_FILE_PATH, repoConfig.branch),
-      fetchJsonFile(octokit, repoConfig.owner, repoConfig.repo, HOST_TEMPLATE_FILE_PATH, repoConfig.branch),
     ])
-
-    const hostTemplateData = hostTemplateResult?.data as { templateName?: string; hostedAt?: string } | undefined
-    const hostTemplate = hostTemplateData
-      ? { templateName: hostTemplateData.templateName || "", hostedAt: hostTemplateData.hostedAt || "" }
-      : null
 
     res.status(200).json({
       common: commonResult?.data ?? {},
@@ -2439,7 +2431,6 @@ app.get("/api/template-data", async (req: Request, res: Response) => {
       sectionsSha: sectionsResult?.sha ?? null,
       sectionsRegistry: registryResult?.data ?? { sections: [] },
       sectionsRegistrySha: registryResult?.sha ?? null,
-      hostTemplate,
     })
   } catch (error) {
     console.error("Error fetching template data:", error)

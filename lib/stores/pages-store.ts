@@ -135,7 +135,6 @@ interface PagesStore {
   commonSha: string | null
   mediaSha: string | null
   sectionsRegistryData: SectionsRegistry | null
-  hostTemplateInfo: { templateName: string; hostedAt: string } | null
 
   // Draft data (user edits)
   pagesData: PagesData | null
@@ -214,7 +213,6 @@ interface PagesStore {
   // Utility
   clearError: () => void
   clearFeedback: () => void
-  setHostTemplateInfo: (info: { templateName: string; hostedAt: string } | null) => void
 }
 
 export const usePagesStore = create<PagesStore>((set, get) => ({
@@ -232,7 +230,6 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
   commonSha: null,
   mediaSha: null,
   sectionsRegistryData: null,
-  hostTemplateInfo: null,
   currentView: "pages",
   selectedPageKey: null,
   selectedSectionName: null,
@@ -273,7 +270,6 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
       const common = batch.common || {}
       const media = batch.media || {}
       const sectionsRegistry = batch.sectionsRegistry || { sections: [] }
-      const hostTemplateInfo = batch.hostTemplate ?? null
 
       const navState = getNavigationStateAfterFetch(
         get().selectedPageKey,
@@ -296,7 +292,6 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
         commonSha: batch.commonSha || "",
         mediaSha: batch.mediaSha || "",
         sectionsRegistryData: sectionsRegistry,
-        hostTemplateInfo,
         isLoading: false,
         hasPendingChanges: false,
         ...navState,
@@ -324,21 +319,11 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
           // Ignore - common/media may not exist
         }
         let sectionsRegistryData: SectionsRegistry | null = null
-        let hostTemplateInfo: { templateName: string; hostedAt: string } | null = null
         try {
           const regRes = await fetch(`${API_BASE_URL}/api/sections-registry?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`)
           if (regRes.ok) {
             const reg = await regRes.json()
             sectionsRegistryData = reg.sectionsRegistry || { sections: [] }
-          }
-        } catch {
-          // Ignore
-        }
-        try {
-          const htRes = await fetch(`${API_BASE_URL}/api/host-template?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`)
-          if (htRes.ok) {
-            const ht = await htRes.json()
-            hostTemplateInfo = { templateName: ht.templateName || "", hostedAt: ht.hostedAt || "" }
           }
         } catch {
           // Ignore
@@ -365,7 +350,6 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
           commonSha: commonSha || null,
           mediaSha: mediaSha || null,
           sectionsRegistryData,
-          hostTemplateInfo,
           isLoading: false,
           hasPendingChanges: false,
           ...navState,
@@ -405,11 +389,13 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
   },
 
   goBack: () => {
-    const { currentView, selectedPageKey } = get()
+    const { currentView } = get()
     if (currentView === "components") {
       set({ currentView: "sections", selectedSectionName: null })
     } else if (currentView === "sections") {
       set({ currentView: "pages", selectedPageKey: null })
+    } else if (currentView === "brand-settings") {
+      set({ currentView: "pages" })
     }
   },
 
@@ -718,10 +704,6 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
 
   clearFeedback: () => {
     set({ feedback: null })
-  },
-
-  setHostTemplateInfo: (info) => {
-    set({ hostTemplateInfo: info })
   },
 }))
 

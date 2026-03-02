@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Menu, X, AlertTriangle } from "lucide-react"
+import { Menu, X, AlertTriangle, ChevronLeft } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 import { ProductsSection, ReviewsSection, PagesManagementSection } from "@/components/pages"
@@ -13,6 +13,7 @@ import { EmptyStateView } from "./empty-state-view"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { useRepositoryStore } from "@/lib/stores/repository-store"
 import { usePagesStore } from "@/lib/stores/pages-store"
+import { useRepoAppDataStore } from "@/lib/stores/repo-app-data-store"
 import { toast } from "sonner"
 
 export function DashboardLayout() {
@@ -42,6 +43,8 @@ export function DashboardLayout() {
     validateRepositoryExists
   } = useOrganizationStore()
 
+  const { currentView, goBack } = usePagesStore()
+
   useEffect(() => {
     fetchOrganizations()
   }, [fetchOrganizations])
@@ -54,6 +57,14 @@ export function DashboardLayout() {
       })
     }
   }, [selectedOrgId, repoOwnerFromLink, repoNameFromLink, repoValidationError, ensureRepoConfigured])
+
+  const handleBack = () => {
+    if (activeSection === "pages" && currentView !== "pages") {
+      goBack()
+    } else {
+      setActiveSection("overview")
+    }
+  }
 
   const getCurrentSectionTitle = () => {
     const sections = [
@@ -79,6 +90,7 @@ export function DashboardLayout() {
   useEffect(() => {
     if (repoOwnerFromLink && repoNameFromLink && !showEmptyState) {
       usePagesStore.getState().fetchData()
+      useRepoAppDataStore.getState().fetchRepoAppData()
     }
   }, [repoOwnerFromLink, repoNameFromLink, showEmptyState])
 
@@ -163,7 +175,18 @@ export function DashboardLayout() {
             />
           ) : (
             <div className="flex-1 space-y-4 p-8 pt-6">
-              <div className="flex items-center justify-between space-y-2">
+              <div className="flex items-center gap-3">
+                {activeSection !== "overview" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    onClick={handleBack}
+                    aria-label="Go back"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                )}
                 <h2 className="text-3xl font-bold tracking-tight">
                   {organizations.length === 0 ? "Welcome" : getCurrentSectionTitle()}
                 </h2>

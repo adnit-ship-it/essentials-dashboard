@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useRepoAppDataStore } from "@/lib/stores/repo-app-data-store"
 import type { BrandSettingsData, LogoState, LogoSize, GlobalLayoutHeights, BrandingColors } from "@/lib/types/branding"
 import type { AnnouncementConfig } from "@/lib/types/pages"
 import { DEFAULT_ANNOUNCEMENT_CONFIG } from "@/lib/types/pages"
@@ -58,7 +59,7 @@ export function BrandSettingsSection() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<Feedback>(null)
-  const [templateName, setTemplateName] = useState<string | null>(null)
+  const hostTemplateInfo = useRepoAppDataStore((s) => s.hostTemplateInfo)
   
   const [settings, setSettings] = useState<BrandSettingsData>(DEFAULT_BRAND_SETTINGS)
   const [originalSettings, setOriginalSettings] = useState<BrandSettingsData | null>(null)
@@ -105,39 +106,6 @@ export function BrandSettingsSection() {
       fetchBrandSettingsData()
     }
   }, [repoOwnerFromLink, repoNameFromLink, fetchBrandSettingsData])
-
-  // Fetch template name from hostTemplate.json
-  useEffect(() => {
-    if (repoOwnerFromLink && repoNameFromLink) {
-      // Use relative URL in browser (same origin, no CORS), or configured URL on server
-      const apiUrl = typeof window !== "undefined" 
-        ? "" // Relative URL in browser
-        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
-      const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
-      
-      fetch(url)
-        .then((res) => {
-          if (res.ok) {
-            return res.json()
-          }
-          if (res.status === 404) {
-            return null // File doesn't exist yet
-          }
-          throw new Error(`Failed to fetch host template: ${res.status}`)
-        })
-        .then((data) => {
-          if (data?.templateName) {
-            setTemplateName(data.templateName)
-          } else {
-            setTemplateName(null)
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching host template:", error)
-          setTemplateName(null)
-        })
-    }
-  }, [repoOwnerFromLink, repoNameFromLink])
 
   const handleLogoUpload = async (type: "primary" | "secondary" | "loadingScreen" | "favicon", file: File) => {
     try {
@@ -432,7 +400,7 @@ export function BrandSettingsSection() {
           <LogoSizesEditor
             logoSizes={settings.logoSizes}
             onLogoSizesChange={(logoSizes) => setSettings((prev) => ({ ...prev, logoSizes }))}
-            templateName={templateName}
+            templateName={hostTemplateInfo?.templateName ?? null}
           />
         </CardContent>
       </Card>

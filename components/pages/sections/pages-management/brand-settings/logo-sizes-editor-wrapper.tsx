@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { usePagesStore } from "@/lib/stores/pages-store"
-import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useRepoAppDataStore } from "@/lib/stores/repo-app-data-store"
 import { LogoSizesEditor } from "@/components/pages/sections/brand-settings/logo-sizes-editor"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -40,46 +40,12 @@ interface LogoSizesEditorWrapperProps {
 
 export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle, hideCard = false }: LogoSizesEditorWrapperProps = {}) {
   const { commonData, updateCommonData } = usePagesStore()
-  const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
+  const hostTemplateInfo = useRepoAppDataStore((s) => s.hostTemplateInfo)
   const [localIsOpen, setLocalIsOpen] = useState(false)
-  const [templateName, setTemplateName] = useState<string | null>(null)
   
   // Use controlled state if provided, otherwise use local state
   const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : localIsOpen
   const handleToggle = onToggle || (() => setLocalIsOpen(!localIsOpen))
-
-  // Fetch template name from hostTemplate.json
-  useEffect(() => {
-    if (repoOwnerFromLink && repoNameFromLink) {
-      // Use relative URL in browser (same origin, no CORS), or configured URL on server
-      const apiUrl = typeof window !== "undefined" 
-        ? "" // Relative URL in browser
-        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
-      const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
-      
-      fetch(url)
-        .then((res) => {
-          if (res.ok) {
-            return res.json()
-          }
-          if (res.status === 404) {
-            return null // File doesn't exist yet
-          }
-          throw new Error(`Failed to fetch host template: ${res.status}`)
-        })
-        .then((data) => {
-          if (data?.templateName) {
-            setTemplateName(data.templateName)
-          } else {
-            setTemplateName(null)
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching host template:", error)
-          setTemplateName(null)
-        })
-    }
-  }, [repoOwnerFromLink, repoNameFromLink])
 
   if (!commonData) {
     return (
@@ -117,7 +83,7 @@ export function LogoSizesEditorWrapper({ isOpen: controlledIsOpen, onToggle, hid
       logoSizes={logoSizes} 
       onLogoSizesChange={handleLogoSizesChange} 
       hideHeader={true}
-      templateName={templateName}
+      templateName={hostTemplateInfo?.templateName ?? null}
     />
   )
 

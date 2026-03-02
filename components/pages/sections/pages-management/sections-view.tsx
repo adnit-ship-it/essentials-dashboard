@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { ChevronLeft, Eye, EyeOff, GripVertical, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useRepoAppDataStore } from "@/lib/stores/repo-app-data-store"
 import {
   getSectionsForPage,
   reorderSections,
@@ -265,41 +266,9 @@ export function SectionsView() {
     isSaving,
   } = usePagesStore()
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
-  const [templateName, setTemplateName] = useState<string | null>(null)
+  const hostTemplateInfo = useRepoAppDataStore((s) => s.hostTemplateInfo)
   const [addSectionModalOpen, setAddSectionModalOpen] = useState(false)
   const [addSectionError, setAddSectionError] = useState<string | null>(null)
-
-  // Fetch templateName from hostTemplate.json
-  useEffect(() => {
-    if (repoOwnerFromLink && repoNameFromLink) {
-      const apiUrl = typeof window !== "undefined" 
-        ? "" // Relative URL in browser
-        : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
-      const url = `${apiUrl}/api/host-template?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
-      
-      fetch(url)
-        .then((res) => {
-          if (res.ok) {
-            return res.json()
-          }
-          if (res.status === 404) {
-            return null
-          }
-          throw new Error(`Failed to fetch host template: ${res.status}`)
-        })
-        .then((data) => {
-          if (data?.templateName) {
-            setTemplateName(data.templateName)
-          } else {
-            setTemplateName(null)
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching host template:", error)
-          setTemplateName(null)
-        })
-    }
-  }, [repoOwnerFromLink, repoNameFromLink])
 
   if (!pagesData || !selectedPageKey) {
     goBack()
@@ -447,7 +416,7 @@ export function SectionsView() {
                 key={section.name}
                 section={section}
                 index={index}
-                templateName={templateName}
+                templateName={hostTemplateInfo?.templateName ?? null}
                 onToggleShow={handleToggleShow}
                 onSelectSection={selectSection}
                 onDelete={handleDeleteSection}
@@ -474,8 +443,8 @@ export function SectionsView() {
             )}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {sectionTypes.map((entry) => {
-                const primaryPath = getSectionPreviewImagePath(entry.name, templateName)
-                const fallbackPath = getSectionPreviewImagePathByRegistryId(entry.id, templateName)
+                const primaryPath = getSectionPreviewImagePath(entry.name, hostTemplateInfo?.templateName ?? null)
+                const fallbackPath = getSectionPreviewImagePathByRegistryId(entry.id, hostTemplateInfo?.templateName ?? null)
                 return (
                   <SectionTypeCard
                     key={entry.id}
