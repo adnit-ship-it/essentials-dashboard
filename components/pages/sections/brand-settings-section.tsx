@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { useRepoAppDataStore } from "@/lib/stores/repo-app-data-store"
+import { useBrandColorsStore } from "@/lib/stores/brand-colors-store"
+import { usePagesStore } from "@/lib/stores/pages-store"
 import type { BrandSettingsData, LogoState, LogoSize, GlobalLayoutHeights, BrandingColors } from "@/lib/types/branding"
 import type { AnnouncementConfig } from "@/lib/types/pages"
 import { DEFAULT_ANNOUNCEMENT_CONFIG } from "@/lib/types/pages"
@@ -213,6 +215,7 @@ export function BrandSettingsSection() {
       // Save colors (design tokens)
       if (designTokensSha) {
         const brandingResult = await saveBrandingColors(owner, repo, settings.colors, designTokensSha)
+        useBrandColorsStore.getState().setBrandColors(brandingResult.colors)
         setDesignTokensSha(brandingResult.newSha)
         setSettings((prev) => ({
           ...prev,
@@ -234,6 +237,7 @@ export function BrandSettingsSection() {
         }
         const updatedCommon = { ...common, announcement }
         const result = await saveCommonData(owner, repo, updatedCommon, sha || undefined)
+        usePagesStore.getState().syncCommonFromExternalSave(result.common, result.newSha)
         setCommonSha(result.newSha)
         setOriginalAnnouncement(JSON.parse(JSON.stringify(announcement)))
       }

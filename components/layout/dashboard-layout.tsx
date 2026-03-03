@@ -14,6 +14,7 @@ import { useOrganizationStore } from "@/lib/stores/organization-store"
 import { useRepositoryStore } from "@/lib/stores/repository-store"
 import { usePagesStore } from "@/lib/stores/pages-store"
 import { useRepoAppDataStore } from "@/lib/stores/repo-app-data-store"
+import { useBrandColorsStore } from "@/lib/stores/brand-colors-store"
 import { toast } from "sonner"
 
 export function DashboardLayout() {
@@ -88,6 +89,7 @@ export function DashboardLayout() {
 
   // Centralized data fetch: load template data as soon as we have a valid repo
   useEffect(() => {
+    useBrandColorsStore.getState().clearIfRepoChanged()
     if (repoOwnerFromLink && repoNameFromLink && !showEmptyState) {
       usePagesStore.getState().fetchData()
       useRepoAppDataStore.getState().fetchRepoAppData()

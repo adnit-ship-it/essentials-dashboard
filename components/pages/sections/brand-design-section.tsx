@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useBrandColorsStore } from "@/lib/stores/brand-colors-store"
+import { usePagesStore } from "@/lib/stores/pages-store"
 import { useAnimationKey } from "@/lib/hooks/use-animation-key"
 import { getStaggeredAnimationStyle } from "@/lib/utils/animation"
 import type {
@@ -578,6 +580,7 @@ export function BrandDesignSection() {
 
       // Save colors using service
       const brandingResult = await saveBrandingColors(owner, repo, colors, tailwindSha)
+      useBrandColorsStore.getState().setBrandColors(brandingResult.colors)
       const nextTailwindSha = brandingResult.newSha
 
       // Update colors from the response
@@ -681,7 +684,8 @@ export function BrandDesignSection() {
           logoPaths: logoPathsToSave,
           heroLogoPath: heroLogoPathToSave,
         })
-        
+        usePagesStore.getState().refreshCommonAndMedia()
+
         // Update state
         if (hasPageTitleChanges) {
           setOriginalPageTitle(pageTitle)

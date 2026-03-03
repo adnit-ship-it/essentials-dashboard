@@ -2,15 +2,12 @@
  * Utilities for resolving brand color names to hex values
  */
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import type { BrandingColors } from "@/lib/types/branding"
+import { useBrandColorsStore } from "@/lib/stores/brand-colors-store"
 
-export const DEFAULT_BRAND_COLORS: BrandingColors = {
-  backgroundColor: "#FFFFFF",
-  bodyColor: "#000000",
-  accentColor1: "#FF6B35",
-  accentColor2: "#004E89",
-}
+// Re-export for backward compatibility
+export { DEFAULT_BRAND_COLORS } from "@/lib/stores/brand-colors-store"
 
 /**
  * Resolves a color value to a hex color string
@@ -47,53 +44,27 @@ export function resolveBrandColor(
 }
 
 /**
- * Hook to fetch brand colors from API
+ * Hook to fetch brand colors from API.
+ * Subscribes to brand-colors-store; triggers fetch when repo is available.
  */
 export function useBrandColors(
   repoOwner?: string | null,
   repoName?: string | null
 ): { colors: BrandingColors | null; loading: boolean } {
-  const [colors, setColors] = useState<BrandingColors | null>(null)
-  const [loading, setLoading] = useState(true)
+  const colors = useBrandColorsStore((s) => s.colors)
+  const loading = useBrandColorsStore((s) => s.loading)
+  const fetchBrandColors = useBrandColorsStore((s) => s.fetchBrandColors)
 
   useEffect(() => {
     if (!repoOwner || !repoName) {
-      setColors(null)
-      setLoading(false)
       return
     }
-
-    const fetchBrandColors = async () => {
-      try {
-        const API_BASE_URL =
-          typeof window !== "undefined"
-            ? ""
-            : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-        const response = await fetch(
-          `${API_BASE_URL}/api/branding?owner=${encodeURIComponent(repoOwner)}&repo=${encodeURIComponent(repoName)}`
-        )
-
-        if (response.ok) {
-          const data = await response.json()
-          if (data.colors) {
-            setColors(data.colors)
-          } else {
-            setColors(DEFAULT_BRAND_COLORS)
-          }
-        } else {
-          // Use default colors on error
-          setColors(DEFAULT_BRAND_COLORS)
-        }
-      } catch (error) {
-        console.error("Failed to fetch brand colors:", error)
-        setColors(DEFAULT_BRAND_COLORS)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchBrandColors()
-  }, [repoOwner, repoName])
+  }, [repoOwner, repoName, fetchBrandColors])
+
+  if (!repoOwner || !repoName) {
+    return { colors: null, loading: false }
+  }
 
   return { colors, loading }
 }

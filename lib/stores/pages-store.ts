@@ -209,6 +209,10 @@ interface PagesStore {
   
   // Refresh and retry after conflict
   refreshAndRetry: () => Promise<void>
+
+  // Sync common/media from external saves (e.g. brand-settings-section, brand-design-section)
+  syncCommonFromExternalSave: (common: CommonData, sha: string) => void
+  refreshCommonAndMedia: () => Promise<void>
   
   // Utility
   clearError: () => void
@@ -681,14 +685,14 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
   // Refresh and retry after conflict
   refreshAndRetry: async () => {
     const { pagesData, sectionsData, commonData, mediaData } = get()
-    
+
     const draftPages = pagesData ? JSON.parse(JSON.stringify(pagesData)) : null
     const draftSections = sectionsData ? JSON.parse(JSON.stringify(sectionsData)) : null
     const draftCommon = commonData ? JSON.parse(JSON.stringify(commonData)) : null
     const draftMedia = mediaData ? JSON.parse(JSON.stringify(mediaData)) : null
-    
+
     await get().fetchData()
-    
+
     if (draftPages) get().updatePagesData(() => draftPages)
     if (draftSections) get().updateSectionsData(() => draftSections)
     if (draftCommon) get().updateCommonData(() => draftCommon)
@@ -696,6 +700,39 @@ export const usePagesStore = create<PagesStore>((set, get) => ({
 
     set({ hasConflict: false })
     await get().saveAll()
+  },
+
+  syncCommonFromExternalSave: (common, sha) => {
+    set({
+      commonData: common,
+      originalCommonData: common,
+      commonSha: sha,
+    })
+  },
+
+  refreshCommonAndMedia: async () => {
+    const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore.getState()
+    const owner = repoOwnerFromLink || ""
+    const repo = repoNameFromLink || ""
+
+    if (!owner || !repo) return
+
+    try {
+      const [c, m] = await Promise.all([
+        fetchCommonData(owner, repo),
+        fetchMediaData(owner, repo),
+      ])
+      set({
+        commonData: c.common,
+        originalCommonData: c.common,
+        commonSha: c.sha || null,
+        mediaData: m.media,
+        originalMediaData: m.media,
+        mediaSha: m.sha || null,
+      })
+    } catch {
+      // Ignore - common/media may not exist
+    }
   },
 
   clearError: () => {

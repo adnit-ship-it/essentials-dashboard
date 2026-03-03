@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Save, Loader2 } from "lucide-react"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useBrandColorsStore } from "@/lib/stores/brand-colors-store"
 import { saveBrandingColors } from "@/lib/services/branding"
 import { isValidHex, normalizeHexForSave } from "@/lib/utils/colors"
 import { cn } from "@/lib/utils"
@@ -116,6 +117,7 @@ export function BrandColorsEditor({ isOpen: controlledIsOpen, onToggle }: BrandC
 
     try {
       const result = await saveBrandingColors(repoOwnerFromLink, repoNameFromLink, colors, tailwindSha)
+      useBrandColorsStore.getState().setBrandColors(result.colors)
       setTailwindSha(result.newSha)
       setSuccess("Brand colors saved successfully!")
       setTimeout(() => setSuccess(null), 5000)

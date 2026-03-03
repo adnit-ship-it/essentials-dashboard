@@ -13,21 +13,13 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Save, Loader2 } from "lucide-react"
 import { useOrganizationStore } from "@/lib/stores/organization-store"
+import { useBrandColorsStore } from "@/lib/stores/brand-colors-store"
 import { saveBrandingColors } from "@/lib/services/branding"
 import { isValidHex, normalizeHexForSave } from "@/lib/utils/colors"
+import type { BrandingColors } from "@/lib/types/branding"
 
-type BrandingColors = {
-  backgroundColor: string
-  bodyColor: string
-  accentColor1: string
-  accentColor2: string
-}
-
-const DEFAULT_COLORS: BrandingColors = {
-  backgroundColor: "#FDFAF6",
-  bodyColor: "#000000",
-  accentColor1: "#A75809",
-  accentColor2: "#F8F2EC",
+function makeRepoKey(owner: string, repo: string): string {
+  return owner && repo ? `${owner}/${repo}` : ""
 }
 
 interface BrandColorsModalProps {
@@ -37,64 +29,60 @@ interface BrandColorsModalProps {
 
 export function BrandColorsModal({ open, onOpenChange }: BrandColorsModalProps) {
   const { repoOwnerFromLink, repoNameFromLink } = useOrganizationStore()
-  const [colors, setColors] = useState<BrandingColors>(DEFAULT_COLORS)
-  const [colorInputs, setColorInputs] = useState<BrandingColors>(DEFAULT_COLORS)
+  const storeColors = useBrandColorsStore((s) => s.colors)
+  const designTokensSha = useBrandColorsStore((s) => s.designTokensSha)
+  const loading = useBrandColorsStore((s) => s.loading)
+  const repoKey = useBrandColorsStore((s) => s.repoKey)
+  const fetchBrandColors = useBrandColorsStore((s) => s.fetchBrandColors)
+
+  const [colors, setColors] = useState<BrandingColors | null>(null)
+  const [colorInputs, setColorInputs] = useState<BrandingColors | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [tailwindSha, setTailwindSha] = useState<string | null>(null)
 
-  // Load colors and tailwind SHA when modal opens
+  const currentRepoKey = makeRepoKey(repoOwnerFromLink || "", repoNameFromLink || "")
+  const storeHasDataForRepo = storeColors && repoKey === currentRepoKey && currentRepoKey
+
+  // Sync editing state from store when modal opens and store has data
   useEffect(() => {
     if (!open) return
-
-    const loadColors = async () => {
-      if (!repoOwnerFromLink || !repoNameFromLink) return
-
-      try {
-        const API_BASE_URL = typeof window !== "undefined" ? "" : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
-        const response = await fetch(
-          `${API_BASE_URL}/api/branding?owner=${encodeURIComponent(repoOwnerFromLink)}&repo=${encodeURIComponent(repoNameFromLink)}`
-        )
-        if (response.ok) {
-          const data = await response.json()
-          if (data.colors) {
-            setColors(data.colors)
-            setColorInputs(data.colors)
-          }
-          if (data.sha) {
-            setTailwindSha(data.sha)
-          }
-        } else {
-          const errorData = await response.json().catch(() => ({}))
-          console.error("Failed to load brand colors:", errorData.error || "Unknown error")
-        }
-      } catch (err) {
-        console.error("Failed to load brand colors:", err)
-      }
+    if (storeHasDataForRepo && storeColors) {
+      setColors(storeColors)
+      setColorInputs(storeColors)
+    } else {
+      setColors(null)
+      setColorInputs(null)
     }
+  }, [open, storeHasDataForRepo, storeColors])
 
-    loadColors()
-  }, [open, repoOwnerFromLink, repoNameFromLink])
+  // Trigger fetch when modal opens if store is empty or loading for this repo
+  useEffect(() => {
+    if (!open || !repoOwnerFromLink || !repoNameFromLink) return
+    if (!storeHasDataForRepo || loading) {
+      fetchBrandColors()
+    }
+  }, [open, repoOwnerFromLink, repoNameFromLink, storeHasDataForRepo, loading, fetchBrandColors])
 
   const handleColorPickerChange = (key: keyof BrandingColors, value: string) => {
     const normalized = normalizeHexForSave(value)
-    setColors((prev) => ({ ...prev, [key]: normalized }))
-    setColorInputs((prev) => ({ ...prev, [key]: normalized }))
+    setColors((prev) => (prev ? { ...prev, [key]: normalized } : null))
+    setColorInputs((prev) => (prev ? { ...prev, [key]: normalized } : null))
   }
 
   const handleColorTextChange = (key: keyof BrandingColors, value: string) => {
-    setColorInputs((prev) => ({ ...prev, [key]: value }))
+    setColorInputs((prev) => (prev ? { ...prev, [key]: value } : null))
   }
 
   const handleColorTextBlur = (key: keyof BrandingColors) => {
-    const input = colorInputs[key]
+    const input = colorInputs?.[key]
+    if (input === undefined || !colors) return
     if (isValidHex(input)) {
       const normalized = normalizeHexForSave(input)
-      setColors((prev) => ({ ...prev, [key]: normalized }))
-      setColorInputs((prev) => ({ ...prev, [key]: normalized }))
+      setColors((prev) => (prev ? { ...prev, [key]: normalized } : null))
+      setColorInputs((prev) => (prev ? { ...prev, [key]: normalized } : null))
     } else {
-      setColorInputs((prev) => ({ ...prev, [key]: colors[key] }))
+      setColorInputs((prev) => (prev ? { ...prev, [key]: colors[key] } : null))
     }
   }
 
@@ -103,8 +91,8 @@ export function BrandColorsModal({ open, onOpenChange }: BrandColorsModalProps) 
       setError("Repository not configured")
       return
     }
-
-    if (!tailwindSha) {
+    if (!colors) return
+    if (!designTokensSha) {
       setError("Tailwind config SHA not available. Please try again.")
       return
     }
@@ -114,19 +102,24 @@ export function BrandColorsModal({ open, onOpenChange }: BrandColorsModalProps) 
     setSuccess(null)
 
     try {
-      const result = await saveBrandingColors(repoOwnerFromLink, repoNameFromLink, colors, tailwindSha)
-      setTailwindSha(result.newSha)
+      const result = await saveBrandingColors(repoOwnerFromLink, repoNameFromLink, colors, designTokensSha)
+      useBrandColorsStore.getState().setBrandColors(result.colors, result.newSha)
+      setColors(result.colors)
+      setColorInputs(result.colors)
       setSuccess("Brand colors saved successfully!")
       setTimeout(() => {
         setSuccess(null)
         onOpenChange(false)
       }, 2000)
-    } catch (err: any) {
-      setError(err?.message || "Failed to save brand colors")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save brand colors")
     } finally {
       setSaving(false)
     }
   }
+
+  const showLoading = open && (!storeHasDataForRepo || loading) && !colors
+  const showForm = open && colors && colorInputs
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -138,55 +131,64 @@ export function BrandColorsModal({ open, onOpenChange }: BrandColorsModalProps) 
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="grid gap-6 md:grid-cols-2">
-            {(Object.keys(colors) as Array<keyof BrandingColors>).map((key) => (
-              <div key={key} className="space-y-2">
-                <Label className="uppercase text-xs text-muted-foreground">
-                  {key.replace(/([A-Z])/g, " $1")}
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="color"
-                    value={colors[key]}
-                    onChange={(event) => handleColorPickerChange(key, event.target.value)}
-                    className="h-10 w-12 cursor-pointer p-1"
-                  />
-                  <Input
-                    value={colorInputs[key]}
-                    onChange={(event) => handleColorTextChange(key, event.target.value)}
-                    onBlur={() => handleColorTextBlur(key)}
-                    placeholder="#FFFFFF"
-                  />
-                </div>
+          {showLoading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {showForm && (
+            <>
+              <div className="grid gap-6 md:grid-cols-2">
+                {(Object.keys(colors) as Array<keyof BrandingColors>).map((key) => (
+                  <div key={key} className="space-y-2">
+                    <Label className="uppercase text-xs text-muted-foreground">
+                      {key.replace(/([A-Z])/g, " $1")}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={colors[key]}
+                        onChange={(event) => handleColorPickerChange(key, event.target.value)}
+                        className="h-10 w-12 cursor-pointer p-1"
+                      />
+                      <Input
+                        value={colorInputs[key]}
+                        onChange={(event) => handleColorTextChange(key, event.target.value)}
+                        onBlur={() => handleColorTextBlur(key)}
+                        placeholder="#FFFFFF"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {error && (
-            <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
-              {error}
-            </div>
+              {error && (
+                <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div className="text-sm text-green-500 bg-green-50 p-2 rounded">
+                  {success}
+                </div>
+              )}
+
+              <Button onClick={handleSave} disabled={saving} className="gap-2 w-full">
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Save Colors
+                  </>
+                )}
+              </Button>
+            </>
           )}
-
-          {success && (
-            <div className="text-sm text-green-500 bg-green-50 p-2 rounded">
-              {success}
-            </div>
-          )}
-
-          <Button onClick={handleSave} disabled={saving} className="gap-2 w-full">
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                Save Colors
-              </>
-            )}
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
