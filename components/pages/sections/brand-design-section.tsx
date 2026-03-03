@@ -580,7 +580,7 @@ export function BrandDesignSection() {
 
       // Save colors using service
       const brandingResult = await saveBrandingColors(owner, repo, colors, tailwindSha)
-      useBrandColorsStore.getState().setBrandColors(brandingResult.colors)
+      useBrandColorsStore.getState().setBrandColors(brandingResult.colors, brandingResult.newSha)
       const nextTailwindSha = brandingResult.newSha
 
       // Update colors from the response

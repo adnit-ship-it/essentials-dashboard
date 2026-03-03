@@ -215,7 +215,7 @@ export function BrandSettingsSection() {
       // Save colors (design tokens)
       if (designTokensSha) {
         const brandingResult = await saveBrandingColors(owner, repo, settings.colors, designTokensSha)
-        useBrandColorsStore.getState().setBrandColors(brandingResult.colors)
+        useBrandColorsStore.getState().setBrandColors(brandingResult.colors, brandingResult.newSha)
         setDesignTokensSha(brandingResult.newSha)
         setSettings((prev) => ({
           ...prev,

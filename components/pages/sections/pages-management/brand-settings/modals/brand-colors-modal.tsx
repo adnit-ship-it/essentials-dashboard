@@ -66,23 +66,28 @@ export function BrandColorsModal({ open, onOpenChange }: BrandColorsModalProps) 
 
   const handleColorPickerChange = (key: keyof BrandingColors, value: string) => {
     const normalized = normalizeHexForSave(value)
-    setColors((prev) => (prev ? { ...prev, [key]: normalized } : null))
-    setColorInputs((prev) => (prev ? { ...prev, [key]: normalized } : null))
+    const base = colors ?? storeColors
+    if (!base) return
+    setColors({ ...base, [key]: normalized })
+    setColorInputs({ ...base, [key]: normalized })
   }
 
   const handleColorTextChange = (key: keyof BrandingColors, value: string) => {
-    setColorInputs((prev) => (prev ? { ...prev, [key]: value } : null))
+    const base = colorInputs ?? storeColors
+    if (!base) return
+    setColorInputs({ ...base, [key]: value })
   }
 
   const handleColorTextBlur = (key: keyof BrandingColors) => {
-    const input = colorInputs?.[key]
-    if (input === undefined || !colors) return
+    const base = colorInputs ?? storeColors
+    if (!base) return
+    const input = base[key]
     if (isValidHex(input)) {
       const normalized = normalizeHexForSave(input)
-      setColors((prev) => (prev ? { ...prev, [key]: normalized } : null))
-      setColorInputs((prev) => (prev ? { ...prev, [key]: normalized } : null))
+      setColors((prev) => (prev ? { ...prev, [key]: normalized } : { ...base, [key]: normalized }))
+      setColorInputs((prev) => (prev ? { ...prev, [key]: normalized } : { ...base, [key]: normalized }))
     } else {
-      setColorInputs((prev) => (prev ? { ...prev, [key]: colors[key] } : null))
+      setColorInputs((prev) => (prev ? { ...prev, [key]: (colors ?? storeColors)?.[key] ?? input } : base))
     }
   }
 
@@ -91,7 +96,8 @@ export function BrandColorsModal({ open, onOpenChange }: BrandColorsModalProps) 
       setError("Repository not configured")
       return
     }
-    if (!colors) return
+    const colorsToSave = colors ?? storeColors
+    if (!colorsToSave) return
     if (!designTokensSha) {
       setError("Tailwind config SHA not available. Please try again.")
       return
@@ -102,7 +108,7 @@ export function BrandColorsModal({ open, onOpenChange }: BrandColorsModalProps) 
     setSuccess(null)
 
     try {
-      const result = await saveBrandingColors(repoOwnerFromLink, repoNameFromLink, colors, designTokensSha)
+      const result = await saveBrandingColors(repoOwnerFromLink, repoNameFromLink, colorsToSave, designTokensSha)
       useBrandColorsStore.getState().setBrandColors(result.colors, result.newSha)
       setColors(result.colors)
       setColorInputs(result.colors)
@@ -118,8 +124,11 @@ export function BrandColorsModal({ open, onOpenChange }: BrandColorsModalProps) 
     }
   }
 
-  const showLoading = open && (!storeHasDataForRepo || loading) && !colors
-  const showForm = open && colors && colorInputs
+  // Use store colors for display when local state not yet synced (avoids empty flash when store has data)
+  const displayColors = colors ?? (storeHasDataForRepo ? storeColors : null)
+  const displayColorInputs = colorInputs ?? (storeHasDataForRepo ? storeColors : null)
+  const showLoading = open && !displayColors && (loading || !storeHasDataForRepo)
+  const showForm = open && displayColors && displayColorInputs
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -139,7 +148,7 @@ export function BrandColorsModal({ open, onOpenChange }: BrandColorsModalProps) 
           {showForm && (
             <>
               <div className="grid gap-6 md:grid-cols-2">
-                {(Object.keys(colors) as Array<keyof BrandingColors>).map((key) => (
+                {(Object.keys(displayColors) as Array<keyof BrandingColors>).map((key) => (
                   <div key={key} className="space-y-2">
                     <Label className="uppercase text-xs text-muted-foreground">
                       {key.replace(/([A-Z])/g, " $1")}
@@ -147,12 +156,12 @@ export function BrandColorsModal({ open, onOpenChange }: BrandColorsModalProps) 
                     <div className="flex gap-2">
                       <Input
                         type="color"
-                        value={colors[key]}
+                        value={displayColors[key]}
                         onChange={(event) => handleColorPickerChange(key, event.target.value)}
                         className="h-10 w-12 cursor-pointer p-1"
                       />
                       <Input
-                        value={colorInputs[key]}
+                        value={displayColorInputs[key]}
                         onChange={(event) => handleColorTextChange(key, event.target.value)}
                         onBlur={() => handleColorTextBlur(key)}
                         placeholder="#FFFFFF"
