@@ -120,7 +120,7 @@ export function Sidebar({
       setIsHosting(false);
     }
   }
-
+    
   return (
     <>
       {/* Mobile sidebar overlay */}
